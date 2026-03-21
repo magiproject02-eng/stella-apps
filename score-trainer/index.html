@@ -115,7 +115,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 .score-container .vf-clef path{fill:#888!important;stroke:#888!important}
 .score-container .vf-keysignature path{fill:#999!important;stroke:#999!important}
 .score-container .vf-timesignature path{fill:#999!important;stroke:#999!important}
-.score-highlight{position:absolute;background:rgba(244,162,97,0.25);border-left:3px solid var(--gold);pointer-events:none;z-index:5;top:0;bottom:0;width:40px;transition:left 0.08s}
+.score-highlight{position:absolute;background:rgba(244,162,97,0.4);border-left:2px solid var(--gold);pointer-events:none;z-index:5;top:0;bottom:0;width:3px}
 .play-container canvas{flex:1;width:100%;min-height:0}
 .part-select{position:absolute;inset:0;background:rgba(15,15,20,0.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;gap:0.4rem;padding:1.5rem}
 .part-select h2{font-size:1.3rem;font-weight:700;margin-bottom:0.5rem}
@@ -1115,7 +1115,7 @@ function renderVexScore(partIdx){
       // Whole bar rest
       const restDur=song.timeSigBot===4?(song.timeSigTop===3?'hd':'w'):'w';
       const rest=new VF.StaveNote({keys:['b/4'],duration:restDur+'r'});
-      if(isDotted(restDur))rest.addDotToAll();
+      if(isDotted(restDur))rest.addDot(0);
       const voice=new VF.Voice({num_beats:song.timeSigTop,beat_value:song.timeSigBot}).setStrict(false);
       voice.addTickables([rest]);
       new VF.Formatter().joinVoices([voice]).format([voice],staveWidth-40);
@@ -1134,14 +1134,14 @@ function renderVexScore(partIdx){
         const restSubs=relPos-pos;
         const rd=durToVex(restSubs,song.subdivPerBeat);
         const rest=new VF.StaveNote({keys:['b/4'],duration:vexDurBase(rd)+'r'});
-        if(isDotted(rd))rest.addDotToAll();
+        if(isDotted(rd))rest.addDot(0);
         notes.push(rest);
       }
       // Add note
       const vd=durToVex(beat.dur,song.subdivPerBeat);
       const vp=pitchToVex(beat.pitch);
       const note=new VF.StaveNote({keys:[vp],duration:vexDurBase(vd),clef:part.clef||'treble'});
-      if(isDotted(vd))note.addDotToAll();
+      if(isDotted(vd))note.addDot(0);
       // Add accidentals if needed
       const pitchStr=(beat.pitch||'').toLowerCase();
       if(pitchStr.includes('#'))note.addAccidental(0,new VF.Accidental('#'));
@@ -1155,7 +1155,7 @@ function renderVexScore(partIdx){
       const restSubs=subsPerBar-pos;
       const rd=durToVex(restSubs,song.subdivPerBeat);
       const rest=new VF.StaveNote({keys:['b/4'],duration:vexDurBase(rd)+'r'});
-      if(isDotted(rd))rest.addDotToAll();
+      if(isDotted(rd))rest.addDot(0);
       notes.push(rest);
     }
 
@@ -1188,65 +1188,52 @@ function highlightVexNote(elapsed){
   if(!showScore||!hl||vexNoteElements.length===0){if(hl)hl.style.display='none';return}
 
   const msPerSub=(60000/(song.bpm*(difficulty==='slow'?0.7:1)))/song.subdivPerBeat;
+  const totalSubs=song.bars*song.timeSigTop*song.subdivPerBeat;
+  const totalMs=totalSubs*msPerSub;
 
-  // Find current and next note for interpolation
-  let current=null,prev=null,next=null;
+  // Time-based scroll: map elapsed time to x position across the entire SVG
+  const firstNote=vexNoteElements[0];
+  const lastNote=vexNoteElements[vexNoteElements.length-1];
+  const startX=firstNote.x;
+  const endX=lastNote.x+lastNote.w;
+  const startT=firstNote.pos*msPerSub;
+  const endT=lastNote.pos*msPerSub;
+  // Linear interpolation: time → x position
+  const frac=Math.max(0,Math.min(1,(elapsed-startT)/(endT-startT||1)));
+  const smoothX=startX+(endX-startX)*frac;
+
+  // Always show playhead and scroll, even during rests
+  hl.style.display='block';
+  hl.style.left=(smoothX-5)+'px';
+  hl.style.width='3px'; // thin line like a real playhead
+
+  // Smooth continuous scroll
+  const scrollTarget=smoothX-sc.clientWidth*0.5;
+  sc.scrollLeft=Math.max(0,scrollTarget);
+
+  // Find nearest note for coloring
+  let current=null;
   let minDist=Infinity;
   for(const ne of vexNoteElements){
     const noteTime=ne.pos*msPerSub;
     const dist=Math.abs(noteTime-elapsed);
     if(dist<minDist){minDist=dist;current=ne}
   }
-  // Find prev and next for smooth x interpolation
-  for(const ne of vexNoteElements){
-    const t=ne.pos*msPerSub;
-    if(t<=elapsed&&(!prev||t>prev.pos*msPerSub))prev=ne;
-    if(t>elapsed&&(!next||t<next.pos*msPerSub))next=ne;
-  }
 
-  if(current&&minDist<2000){
-    // Smoothly interpolate x position between prev and next note
-    let smoothX=current.x;
-    if(prev&&next){
-      const prevT=prev.pos*msPerSub,nextT=next.pos*msPerSub;
-      const frac=Math.max(0,Math.min(1,(elapsed-prevT)/(nextT-prevT)));
-      smoothX=prev.x+(next.x-prev.x)*frac;
-    }else if(prev){
-      smoothX=prev.x;
-    }
-
-    hl.style.display='block';
-    hl.style.left=(smoothX-5)+'px';
-    hl.style.width='40px';
-
-    // Smooth continuous scroll based on interpolated position
-    const scrollTarget=smoothX-sc.clientWidth*0.5;
-    sc.scrollLeft=Math.max(0,scrollTarget);
-
-    // Color past/current/future notes via SVG (if elements available)
-    vexNoteElements.forEach(ne=>{
-      if(!ne.el)return;
-      try{
-        const noteTime=ne.pos*msPerSub;
-        const heads=ne.el.querySelectorAll&&ne.el.querySelectorAll('.vf-notehead path');
-        if(!heads||!heads.length){
-          // Try alternate selectors for VF3
-          const allPaths=ne.el.querySelectorAll&&ne.el.querySelectorAll('path');
-          if(allPaths&&allPaths.length){
-            allPaths.forEach(p=>{
-              const noteTime=ne.pos*msPerSub;
-              if(noteTime<=elapsed-500){p.style.fill='#555';p.style.stroke='#555'}
-              else if(ne===current){p.style.fill='#f4a261';p.style.stroke='#f4a261'}
-              else{p.style.fill='';p.style.stroke=''}
-            });
-          }
-          return;
-        }
-        heads.forEach(p=>{
-          if(noteTime<=elapsed-500){p.style.fill='#555';p.style.stroke='#555'}
-          else if(ne===current){p.style.fill='#f4a261';p.style.stroke='#f4a261'}
-          else{p.style.fill='';p.style.stroke=''}
-        });
+  // Color past/current/future notes via SVG
+  vexNoteElements.forEach(ne=>{
+    if(!ne.el)return;
+    try{
+      const noteTime=ne.pos*msPerSub;
+      const allPaths=ne.el.querySelectorAll&&ne.el.querySelectorAll('path');
+      if(!allPaths||!allPaths.length)return;
+      allPaths.forEach(p=>{
+        if(noteTime<elapsed-300){p.style.fill='#555';p.style.stroke='#555'}
+        else if(ne===current&&minDist<500){p.style.fill='#f4a261';p.style.stroke='#f4a261'}
+        else{p.style.fill='';p.style.stroke=''}
+      });
+    }catch(e){}
+  });
       }catch(e){}
     });
   }else{
