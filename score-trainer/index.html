@@ -310,7 +310,20 @@ let metronomeOn=true;
 // AUDIO
 // ════════════════════════════════════
 const AC=window.AudioContext||window.webkitAudioContext;let ac;
-function ia(){if(!ac)ac=new AC();if(ac.state==='suspended')ac.resume()}
+function ia(){
+  if(!ac)ac=new AC();
+  if(ac.state==='suspended')ac.resume();
+}
+// Mobile browsers require playing actual audio during a user gesture to unlock
+function unlockAudio(){
+  ia();
+  // Play a tiny silent buffer to unlock the audio context
+  const buf=ac.createBuffer(1,1,22050);
+  const src=ac.createBufferSource();
+  src.buffer=buf;src.connect(ac.destination);src.start(0);
+  // Also play an audible tick so user knows it's working
+  playTick();
+}
 function playTick(){ia();const o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.value=800;g.gain.setValueAtTime(0.15,ac.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.04);o.connect(g).connect(ac.destination);o.start();o.stop(ac.currentTime+0.04)}
 function playDrum(pi){ia();const f=100+pi*40,o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.setValueAtTime(f,ac.currentTime);o.frequency.exponentialRampToValueAtTime(f*0.5,ac.currentTime+0.12);g.gain.setValueAtTime(0.6,ac.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.15);o.connect(g).connect(ac.destination);o.start();o.stop(ac.currentTime+0.15)}
 function playHit(){ia();const o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.setValueAtTime(120,ac.currentTime);o.frequency.exponentialRampToValueAtTime(60,ac.currentTime+0.15);g.gain.setValueAtTime(0.8,ac.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.2);o.connect(g).connect(ac.destination);o.start();o.stop(ac.currentTime+0.2)}
@@ -419,7 +432,7 @@ function toggleMute(i){song.parts[i].mute=!song.parts[i].mute;renderGrid()}
 // ════════════════════════════════════
 // EDITOR PLAYBACK
 // ════════════════════════════════════
-function startPlayback(){ia();isPlaying=true;playPosition=-1;$('btnPlay').classList.add('hidden');$('btnStop').classList.remove('hidden');
+function startPlayback(){unlockAudio();isPlaying=true;playPosition=-1;$('btnPlay').classList.add('hidden');$('btnStop').classList.remove('hidden');
   const ms=(60000/song.bpm)/song.subdivPerBeat,t=totalSubs(),spbt=song.subdivPerBeat,anySolo=song.parts.some(p=>p.solo);
   playInterval=setInterval(()=>{playPosition++;if(playPosition>=t){stopPlayback();return}
     if(playPosition%spbt===0)playTick();
@@ -647,7 +660,8 @@ function showPartSelect(){$('resultsScreen').style.display='none';$('partSelect'
   song.parts.forEach((p,i)=>{const btn=document.createElement('button');btn.className='pbtn';btn.style.borderColor=PC[i];btn.textContent=`${p.name} (${p.beats.length} notes)`;btn.onclick=()=>startPlay(i);b.appendChild(btn)})}
 
 function startPlay(pi){
-  selPart=pi;$('partSelect').style.display='none';$('resultsScreen').style.display='none';resizeCV(cv);ia();
+  selPart=pi;$('partSelect').style.display='none';$('resultsScreen').style.display='none';resizeCV(cv);
+  unlockAudio(); // Must happen during user gesture to enable audio on mobile
   const bpmMod=difficulty==='slow'?0.7:1;
   const msPerSub=(60000/(song.bpm*bpmMod))/song.subdivPerBeat;
   gNotes=[];song.parts[selPart].beats.forEach(b=>{gNotes.push({time:b.pos*msPerSub,durMs:b.dur*msPerSub,dur:b.dur,hit:false,missed:false,ha:0})});gNotes.sort((a,b)=>a.time-b.time);
@@ -710,7 +724,7 @@ const ccv=$('classCanvas');let ccx,classActive=false,classStart=0;
 
 function startClassroom(){
   ccx=ccv.getContext('2d');ccv.width=ccv.clientWidth*devicePixelRatio;ccv.height=ccv.clientHeight*devicePixelRatio;ccx.scale(devicePixelRatio,devicePixelRatio);
-  ia();classActive=true;classStart=performance.now()+2000;
+  unlockAudio();classActive=true;classStart=performance.now()+2000;
   const msPerSub=(60000/song.bpm)/song.subdivPerBeat;
   const allNotes=song.parts.map(p=>p.beats.map(b=>({time:b.pos*msPerSub,durMs:b.dur*msPerSub})).sort((a,b)=>a.time-b.time));
   const beatMs=60000/song.bpm;const mid=setInterval(()=>{if(!classActive){clearInterval(mid);return}if(metronomeOn)playTick()},beatMs);
@@ -814,7 +828,7 @@ function switchTab(t){
   $('classroomPanel').style.display=t==='classroom'?'block':'none';
   if(t==='library')loadLibrary();
   if(t==='play'){showPartSelect();setTimeout(()=>resizeCV(cv),50)}
-  if(t==='classroom'){setTimeout(()=>{ccv.width=ccv.clientWidth*devicePixelRatio;ccv.height=ccv.clientHeight*devicePixelRatio;startClassroom()},50)}
+  if(t==='classroom'){unlockAudio();setTimeout(()=>{ccv.width=ccv.clientWidth*devicePixelRatio;ccv.height=ccv.clientHeight*devicePixelRatio;startClassroom()},50)}
   if(t==='editor'){gameOn=false;classActive=false;stopPlayback()}}
 
 // ════════════════════════════════════
