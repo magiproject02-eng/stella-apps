@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Score Trainer 🎵</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#0f0f14;--surface:#1a1a22;--surface2:#22222e;--border:#2e2e3a;--text:#e8e6f0;--dim:#6b6b80;--red:#e63946;--blue:#457b9d;--green:#2a9d8f;--gold:#f4a261;--purple:#7c3aed;--pink:#ec4899}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100dvh}
+
+/* Header */
+.header{display:flex;align-items:center;justify-content:space-between;padding:0.8rem 1.2rem;border-bottom:1px solid var(--border);background:var(--surface)}
+.header h1{font-size:1.1rem;font-weight:700}
+.header-btns{display:flex;gap:0.5rem}
+.hbtn{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:0.75rem;font-weight:600;padding:0.4rem 0.8rem;border-radius:8px;cursor:pointer;transition:border-color 0.2s}
+.hbtn:hover{border-color:var(--purple)}
+.hbtn.primary{background:var(--purple);border-color:var(--purple);color:#fff}
+.hbtn.play{background:var(--green);border-color:var(--green);color:#fff}
+.hbtn.stop{background:var(--red);border-color:var(--red);color:#fff}
+
+/* Controls bar */
+.controls{display:flex;align-items:center;gap:1rem;padding:0.6rem 1.2rem;border-bottom:1px solid var(--border);background:var(--surface);flex-wrap:wrap}
+.ctrl-group{display:flex;align-items:center;gap:0.4rem}
+.ctrl-group label{font-size:0.7rem;color:var(--dim);text-transform:uppercase;letter-spacing:0.05em}
+.ctrl-group input,.ctrl-group select{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:0.8rem;padding:0.3rem 0.5rem;border-radius:6px;width:auto}
+.ctrl-group input[type=number]{width:60px}
+.ctrl-group input[type=text]{width:140px}
+
+/* Tab nav */
+.tabs{display:flex;border-bottom:1px solid var(--border);background:var(--surface)}
+.tab{padding:0.6rem 1.2rem;font-size:0.8rem;font-weight:600;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;transition:color 0.2s}
+.tab.active{color:var(--text);border-bottom-color:var(--purple)}
+.tab:hover{color:var(--text)}
+
+/* Grid Editor */
+.editor{padding:1rem;overflow-x:auto}
+.grid-container{display:inline-block;min-width:100%}
+
+.part-row{display:flex;align-items:stretch;margin-bottom:2px}
+.part-label{width:80px;min-width:80px;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;border-radius:6px 0 0 6px;cursor:pointer;position:relative;flex-shrink:0}
+.part-label .solo-mute{position:absolute;bottom:2px;display:flex;gap:2px;font-size:0.55rem}
+.part-label .solo-mute span{padding:1px 4px;border-radius:3px;cursor:pointer;opacity:0.5}
+.part-label .solo-mute span:hover{opacity:1}
+.part-label .solo-mute .s-btn{background:#2a9d8f44}
+.part-label .solo-mute .m-btn{background:#e6394644}
+.part-label .solo-mute .s-btn.on{opacity:1;background:var(--green);color:#fff}
+.part-label .solo-mute .m-btn.on{opacity:1;background:var(--red);color:#fff}
+
+.beat-grid{display:flex;flex:1}
+.bar-group{display:flex;margin-right:3px;position:relative}
+.bar-num{position:absolute;top:-16px;left:0;font-size:0.6rem;color:var(--dim)}
+
+.cell{width:22px;height:32px;border:1px solid var(--border);cursor:pointer;transition:background 0.1s;position:relative;flex-shrink:0}
+.cell:hover{border-color:#555}
+.cell.beat-start{border-left:1px solid #444}
+.cell.on{border-radius:2px}
+.cell.playhead{box-shadow:inset 0 0 0 2px var(--gold)}
+
+/* Subdivision shading */
+.cell.sub-0{background:var(--surface2)}
+.cell.sub-1{background:#1e1e28}
+.cell.sub-2{background:var(--surface2)}
+.cell.sub-3{background:#1e1e28}
+
+/* Bar numbers row */
+.bar-numbers{display:flex;margin-left:80px;margin-bottom:4px}
+.bar-numbers .bar-group{height:16px}
+.bar-numbers .bar-num-label{font-size:0.6rem;color:var(--dim);width:22px;text-align:center}
+.bar-numbers .beat-marker{font-size:0.55rem;color:#444;width:22px;text-align:center}
+
+/* Part colors */
+.part-0{--pc:#e63946}.part-1{--pc:#457b9d}.part-2{--pc:#2a9d8f}.part-3{--pc:#f4a261}
+.part-4{--pc:#7c3aed}.part-5{--pc:#ec4899}.part-6{--pc:#06b6d4}.part-7{--pc:#84cc16}
+.part-row .cell.on{background:var(--pc) !important;border-color:var(--pc)}
+
+/* Add part button */
+.add-part{display:flex;align-items:center;justify-content:center;padding:0.5rem;margin-top:0.5rem;border:1px dashed var(--border);border-radius:8px;color:var(--dim);font-size:0.75rem;cursor:pointer;transition:border-color 0.2s}
+.add-part:hover{border-color:var(--purple);color:var(--text)}
+
+/* Play Mode (Taiko view) */
+.play-container{display:none;height:calc(100dvh - 90px);position:relative}
+.play-container canvas{width:100%;height:100%}
+.play-hud{position:absolute;top:0;left:0;right:0;padding:0.8rem 1.2rem;display:flex;justify-content:space-between;pointer-events:none}
+.play-hud .stat{text-align:center}
+.play-hud .stat-val{font-size:1.5rem;font-weight:700}
+.play-hud .stat-label{font-size:0.6rem;color:var(--dim);text-transform:uppercase}
+
+/* Select part overlay */
+.part-select{position:absolute;inset:0;background:rgba(15,15,20,0.95);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;gap:0.5rem;padding:2rem}
+.part-select h2{font-size:1.5rem;font-weight:700;margin-bottom:1rem}
+.part-select .pbtn{width:200px;padding:0.8rem;border:2px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font-family:inherit;font-size:1rem;font-weight:600;cursor:pointer;transition:border-color 0.2s}
+.part-select .pbtn:hover{border-color:var(--purple)}
+.part-select .back-btn{margin-top:1rem;color:var(--dim);font-size:0.85rem;cursor:pointer;text-decoration:underline}
+
+/* Results overlay */
+.results{position:absolute;inset:0;background:rgba(15,15,20,0.95);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:10;padding:2rem;text-align:center}
+.results h2{font-size:1.5rem;font-weight:700;margin-bottom:0.5rem}
+.results .rank{font-size:4rem;font-weight:800;margin-bottom:0.5rem}
+.results .rank.S{color:var(--gold)}.results .rank.A{color:var(--green)}.results .rank.B{color:var(--blue)}.results .rank.C{color:var(--dim)}
+.results .score{font-size:2.5rem;font-weight:800;color:var(--gold)}
+.results .stats{display:flex;gap:1.5rem;margin:1rem 0}
+.results .rs{text-align:center}
+.results .rs .v{font-size:1.3rem;font-weight:700}
+.results .rs .l{font-size:0.65rem;color:var(--dim);text-transform:uppercase}
+
+/* Misc */
+.deployed-badge{position:fixed;bottom:0.3rem;right:0.5rem;font-size:0.55rem;color:var(--dim);opacity:0.3;z-index:200}
+.hidden{display:none !important}
+
+/* Demo songs */
+.demo-bar{padding:0.5rem 1.2rem;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap}
+.demo-bar span{font-size:0.7rem;color:var(--dim)}
+.demo-btn{font-size:0.7rem;padding:0.25rem 0.6rem;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600}
+.demo-btn:hover{border-color:var(--purple)}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🎵 Score Trainer</h1>
+  <div class="header-btns">
+    <button class="hbtn" id="btnSave">Save</button>
+    <button class="hbtn" id="btnLoad">Load</button>
+    <button class="hbtn" id="btnExport">Export JSON</button>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="editor">✏️ Editor</div>
+  <div class="tab" data-tab="play">🎮 Play</div>
+</div>
+
+<div id="editorPanel">
+  <div class="controls">
+    <div class="ctrl-group">
+      <label>Title</label>
+      <input type="text" id="songTitle" value="New Song" placeholder="Song name">
+    </div>
+    <div class="ctrl-group">
+      <label>BPM</label>
+      <input type="number" id="bpmInput" value="100" min="40" max="300">
+    </div>
+    <div class="ctrl-group">
+      <label>Time Sig</label>
+      <select id="timeSigTop"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option></select>
+      /
+      <select id="timeSigBot"><option selected>4</option><option>8</option></select>
+    </div>
+    <div class="ctrl-group">
+      <label>Bars</label>
+      <input type="number" id="barCount" value="4" min="1" max="64">
+    </div>
+    <div class="ctrl-group">
+      <label>Grid</label>
+      <select id="subdivSelect">
+        <option value="4">Quarter</option>
+        <option value="8" selected>8th</option>
+        <option value="16">16th</option>
+        <option value="12">Triplet</option>
+      </select>
+    </div>
+    <button class="hbtn play" id="btnPlay">▶ Play</button>
+    <button class="hbtn stop hidden" id="btnStop">■ Stop</button>
+  </div>
+
+  <div class="demo-bar">
+    <span>Load demo:</span>
+    <button class="demo-btn" onclick="loadDemo('simple')">Simple 4/4</button>
+    <button class="demo-btn" onclick="loadDemo('syncopation')">切分音</button>
+    <button class="demo-btn" onclick="loadDemo('chorale')">SATB Chorale</button>
+  </div>
+
+  <div class="editor" id="editorGrid"></div>
+</div>
+
+<div class="play-container" id="playPanel">
+  <div class="part-select" id="partSelect">
+    <h2>Select Your Part</h2>
+    <div id="partButtons"></div>
+    <div class="back-btn" onclick="switchTab('editor')">← Back to Editor</div>
+  </div>
+  <canvas id="playCanvas"></canvas>
+  <div class="results" id="resultsScreen">
+    <h2>Results</h2>
+    <div class="rank" id="pRank">S</div>
+    <div class="score" id="pScore">0</div>
+    <div style="font-size:0.7rem;color:var(--dim);margin-bottom:0.5rem">POINTS</div>
+    <div class="stats">
+      <div class="rs"><div class="v" id="pPerf" style="color:var(--gold)">0</div><div class="l">Perfect</div></div>
+      <div class="rs"><div class="v" id="pGood" style="color:var(--green)">0</div><div class="l">Good</div></div>
+      <div class="rs"><div class="v" id="pMiss" style="color:var(--red)">0</div><div class="l">Miss</div></div>
+      <div class="rs"><div class="v" id="pCombo" style="color:var(--gold)">0</div><div class="l">Max Combo</div></div>
+    </div>
+    <button class="hbtn primary" onclick="showPartSelect()" style="margin-top:1rem;font-size:0.9rem;padding:0.6rem 2rem">Play Again</button>
+    <div class="back-btn" onclick="switchTab('editor')" style="margin-top:0.8rem;color:var(--dim);cursor:pointer;text-decoration:underline;font-size:0.8rem">← Back to Editor</div>
+  </div>
+</div>
+
+<div class="deployed-badge">Score Trainer · Built by Stella</div>
+
+<script>
+// ═══════════════════════════════
+// STATE
+// ═══════════════════════════════
+const PART_COLORS = ['#e63946','#457b9d','#2a9d8f','#f4a261','#7c3aed','#ec4899','#06b6d4','#84cc16'];
+const PART_NAMES_DEFAULT = ['S1','S2','A','T','B','B2','P1','P2'];
+
+let song = {
+  title: 'New Song',
+  bpm: 100,
+  timeSigTop: 4,
+  timeSigBot: 4,
+  bars: 4,
+  subdivPerBeat: 2, // 2 = 8th notes
+  parts: [
+    { name: 'S1', beats: new Set() },
+    { name: 'S2', beats: new Set() },
+    { name: 'A', beats: new Set() },
+  ]
+};
+
+let isPlaying = false;
+let playInterval = null;
+let playPosition = -1; // current subdivision index
+
+// ═══════════════════════════════
+// GRID EDITOR
+// ═══════════════════════════════
+function getTotalSubs() {
+  return song.bars * song.timeSigTop * song.subdivPerBeat;
+}
+
+function getSubsPerBar() {
+  return song.timeSigTop * song.subdivPerBeat;
+}
+
+function renderGrid() {
+  const grid = document.getElementById('editorGrid');
+  const total = getTotalSubs();
+  const subsPerBar = getSubsPerBar();
+  const subsPerBeat = song.subdivPerBeat;
+
+  let html = '';
+
+  // Bar numbers row
+  html += '<div class="bar-numbers">';
+  for (let b = 0; b < song.bars; b++) {
+    html += `<div class="bar-group"><div class="bar-num-label" style="width:${subsPerBar * 22}px">${b + 1}</div></div>`;
+  }
+  html += '</div>';
+
+  // Beat markers row
+  html += '<div class="bar-numbers">';
+  for (let b = 0; b < song.bars; b++) {
+    html += '<div class="bar-group">';
+    for (let s = 0; s < subsPerBar; s++) {
+      const isBeatStart = s % subsPerBeat === 0;
+      html += `<div class="beat-marker">${isBeatStart ? (s / subsPerBeat + 1) : '·'}</div>`;
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+
+  // Part rows
+  song.parts.forEach((part, pi) => {
+    html += `<div class="part-row part-${pi}">`;
+    html += `<div class="part-label" style="background:${PART_COLORS[pi]}22;color:${PART_COLORS[pi]};border:1px solid ${PART_COLORS[pi]}44">
+      <span>${part.name}</span>
+      <div class="solo-mute">
+        <span class="s-btn ${part.solo ? 'on' : ''}" onclick="toggleSolo(${pi})">S</span>
+        <span class="m-btn ${part.mute ? 'on' : ''}" onclick="toggleMute(${pi})">M</span>
+      </div>
+    </div>`;
+    html += '<div class="beat-grid">';
+    for (let b = 0; b < song.bars; b++) {
+      html += `<div class="bar-group">`;
+      for (let s = 0; s < subsPerBar; s++) {
+        const idx = b * subsPerBar + s;
+        const isOn = part.beats.has(idx);
+        const subClass = `sub-${s % subsPerBeat}`;
+        const beatStart = s % subsPerBeat === 0 ? 'beat-start' : '';
+        const playhead = idx === playPosition ? 'playhead' : '';
+        html += `<div class="cell ${subClass} ${beatStart} ${isOn ? 'on' : ''} ${playhead}" data-part="${pi}" data-idx="${idx}"></div>`;
+      }
+      html += '</div>';
+    }
+    html += '</div></div>';
+  });
+
+  // Add part button
+  if (song.parts.length < 8) {
+    html += `<div class="add-part" onclick="addPart()">+ Add Voice Part</div>`;
+  }
+
+  grid.innerHTML = html;
+
+  // Click handlers
+  grid.querySelectorAll('.cell').forEach(cell => {
+    cell.addEventListener('mousedown', () => toggleCell(cell));
+    cell.addEventListener('mouseover', (e) => { if (e.buttons === 1) toggleCell(cell, true); });
+  });
+}
+
+let lastDragState = null;
+function toggleCell(cell, isDrag = false) {
+  const pi = parseInt(cell.dataset.part);
+  const idx = parseInt(cell.dataset.idx);
+  const part = song.parts[pi];
+
+  if (!isDrag) {
+    lastDragState = !part.beats.has(idx);
+  }
+
+  if (lastDragState) {
+    part.beats.add(idx);
+    cell.classList.add('on');
+  } else {
+    part.beats.delete(idx);
+    cell.classList.remove('on');
+  }
+}
+
+function addPart() {
+  const idx = song.parts.length;
+  song.parts.push({ name: PART_NAMES_DEFAULT[idx] || `P${idx + 1}`, beats: new Set() });
+  renderGrid();
+}
+
+function toggleSolo(pi) {
+  song.parts[pi].solo = !song.parts[pi].solo;
+  renderGrid();
+}
+
+function toggleMute(pi) {
+  song.parts[pi].mute = !song.parts[pi].mute;
+  renderGrid();
+}
+
+// ═══════════════════════════════
+// AUDIO
+// ═══════════════════════════════
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx;
+
+function initAudio() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function playTick() {
+  initAudio();
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = 'sine'; o.frequency.value = 800;
+  g.gain.setValueAtTime(0.15, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
+  o.connect(g).connect(audioCtx.destination);
+  o.start(); o.stop(audioCtx.currentTime + 0.04);
+}
+
+function playDrumForPart(pi) {
+  initAudio();
+  const freq = 100 + pi * 40;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(freq, audioCtx.currentTime);
+  o.frequency.exponentialRampToValueAtTime(freq * 0.5, audioCtx.currentTime + 0.12);
+  g.gain.setValueAtTime(0.6, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+  o.connect(g).connect(audioCtx.destination);
+  o.start(); o.stop(audioCtx.currentTime + 0.15);
+}
+
+function playHitSound() {
+  initAudio();
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(120, audioCtx.currentTime);
+  o.frequency.exponentialRampToValueAtTime(60, audioCtx.currentTime + 0.15);
+  g.gain.setValueAtTime(0.8, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+  o.connect(g).connect(audioCtx.destination);
+  o.start(); o.stop(audioCtx.currentTime + 0.2);
+}
+
+// ═══════════════════════════════
+// EDITOR PLAYBACK
+// ═══════════════════════════════
+function startPlayback() {
+  initAudio();
+  isPlaying = true;
+  playPosition = -1;
+  document.getElementById('btnPlay').classList.add('hidden');
+  document.getElementById('btnStop').classList.remove('hidden');
+
+  const msPerSub = (60000 / song.bpm) / song.subdivPerBeat;
+  const total = getTotalSubs();
+  const subsPerBeat = song.subdivPerBeat;
+
+  playInterval = setInterval(() => {
+    playPosition++;
+    if (playPosition >= total) {
+      stopPlayback();
+      return;
+    }
+
+    // Metronome on beat starts
+    if (playPosition % subsPerBeat === 0) playTick();
+
+    // Check each part
+    const anySolo = song.parts.some(p => p.solo);
+    song.parts.forEach((part, pi) => {
+      if (part.mute) return;
+      if (anySolo && !part.solo) return;
+      if (part.beats.has(playPosition)) playDrumForPart(pi);
+    });
+
+    renderGrid();
+  }, msPerSub);
+}
+
+function stopPlayback() {
+  isPlaying = false;
+  clearInterval(playInterval);
+  playPosition = -1;
+  document.getElementById('btnPlay').classList.remove('hidden');
+  document.getElementById('btnStop').classList.add('hidden');
+  renderGrid();
+}
+
+// ═══════════════════════════════
+// SAVE / LOAD / EXPORT
+// ═══════════════════════════════
+function songToJSON() {
+  return JSON.stringify({
+    title: song.title, bpm: song.bpm,
+    timeSigTop: song.timeSigTop, timeSigBot: song.timeSigBot,
+    bars: song.bars, subdivPerBeat: song.subdivPerBeat,
+    parts: song.parts.map(p => ({ name: p.name, beats: [...p.beats].sort((a, b) => a - b) }))
+  }, null, 2);
+}
+
+function loadFromJSON(json) {
+  const d = JSON.parse(json);
+  song.title = d.title; song.bpm = d.bpm;
+  song.timeSigTop = d.timeSigTop; song.timeSigBot = d.timeSigBot;
+  song.bars = d.bars; song.subdivPerBeat = d.subdivPerBeat;
+  song.parts = d.parts.map(p => ({ name: p.name, beats: new Set(p.beats) }));
+  syncControlsFromSong();
+  renderGrid();
+}
+
+function syncControlsFromSong() {
+  document.getElementById('songTitle').value = song.title;
+  document.getElementById('bpmInput').value = song.bpm;
+  document.getElementById('timeSigTop').value = song.timeSigTop;
+  document.getElementById('timeSigBot').value = song.timeSigBot;
+  document.getElementById('barCount').value = song.bars;
+  const subMap = { 1: '4', 2: '8', 4: '16', 3: '12' };
+  document.getElementById('subdivSelect').value = subMap[song.subdivPerBeat] || '8';
+}
+
+function saveSong() {
+  const key = 'scoreTrainer_' + song.title.replace(/\s+/g, '_');
+  localStorage.setItem(key, songToJSON());
+  const list = JSON.parse(localStorage.getItem('scoreTrainer_list') || '[]');
+  if (!list.includes(key)) { list.push(key); localStorage.setItem('scoreTrainer_list', JSON.stringify(list)); }
+  alert('Saved: ' + song.title);
+}
+
+function loadSong() {
+  const list = JSON.parse(localStorage.getItem('scoreTrainer_list') || '[]');
+  if (list.length === 0) { alert('No saved songs found.'); return; }
+  const name = prompt('Saved songs:\n' + list.map((k, i) => `${i + 1}. ${k.replace('scoreTrainer_', '')}`).join('\n') + '\n\nEnter number:');
+  if (!name) return;
+  const key = list[parseInt(name) - 1];
+  if (!key) return;
+  const json = localStorage.getItem(key);
+  if (json) loadFromJSON(json);
+}
+
+function exportJSON() {
+  const blob = new Blob([songToJSON()], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = song.title.replace(/\s+/g, '_') + '.json';
+  a.click();
+}
+
+// ═══════════════════════════════
+// DEMOS
+// ═══════════════════════════════
+const DEMOS = {
+  simple: {
+    title: 'Simple 4/4', bpm: 100, timeSigTop: 4, timeSigBot: 4, bars: 4, subdivPerBeat: 2,
+    parts: [
+      { name: 'S1', beats: [0,4,8,12,16,20,24,28] },
+      { name: 'A', beats: [2,6,10,14,18,22,26,30] },
+    ]
+  },
+  syncopation: {
+    title: '切分音 Practice', bpm: 90, timeSigTop: 4, timeSigBot: 4, bars: 4, subdivPerBeat: 4,
+    parts: [
+      { name: 'S1', beats: [0,4,6,8,12,14,16,20,22,24,28,30,32,36,38,40,44,46,48,52,54,56,60,62] },
+      { name: 'S2', beats: [0,3,8,11,16,19,24,27,32,35,40,43,48,51,56,59] },
+      { name: 'A',  beats: [0,8,16,24,32,40,48,56] },
+    ]
+  },
+  chorale: {
+    title: 'SATB Chorale', bpm: 72, timeSigTop: 4, timeSigBot: 4, bars: 4, subdivPerBeat: 2,
+    parts: [
+      { name: 'S', beats: [0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30] },
+      { name: 'A', beats: [0,4,6,8,12,14,16,20,22,24,28,30] },
+      { name: 'T', beats: [0,4,8,12,16,20,24,28] },
+      { name: 'B', beats: [0,8,16,24] },
+    ]
+  }
+};
+
+function loadDemo(name) {
+  loadFromJSON(JSON.stringify(DEMOS[name]));
+}
+
+// ═══════════════════════════════
+// PLAY MODE (Taiko game)
+// ═══════════════════════════════
+const canvas = document.getElementById('playCanvas');
+const ctx = canvas.getContext('2d');
+let gameActive = false, selectedPart = -1, gameStartTime = 0;
+let gameNotes = [], gameScore = 0, gameCombo = 0, gameMaxCombo = 0;
+let gamePerfect = 0, gameGood = 0, gameMiss = 0;
+let judgText = '', judgColor = '', judgTime = 0;
+let drumFlash = 0, clapFlash = 0;
+
+const PERFECT_W = 55, GOOD_W = 130, MISS_W = 170;
+const NOTE_SPEED = 350, HIT_X = 0.18;
+
+function resizeCanvas() {
+  canvas.width = canvas.clientWidth * devicePixelRatio;
+  canvas.height = canvas.clientHeight * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+}
+
+function showPartSelect() {
+  document.getElementById('resultsScreen').style.display = 'none';
+  document.getElementById('partSelect').style.display = 'flex';
+  const btns = document.getElementById('partButtons');
+  btns.innerHTML = '';
+  song.parts.forEach((p, i) => {
+    const b = document.createElement('button');
+    b.className = 'pbtn';
+    b.style.borderColor = PART_COLORS[i];
+    b.textContent = `${p.name} (${p.beats.size} notes)`;
+    b.onclick = () => startPlayMode(i);
+    btns.appendChild(b);
+  });
+}
+
+function startPlayMode(partIdx) {
+  selectedPart = partIdx;
+  document.getElementById('partSelect').style.display = 'none';
+  document.getElementById('resultsScreen').style.display = 'none';
+  resizeCanvas();
+  initAudio();
+
+  const msPerSub = (60000 / song.bpm) / song.subdivPerBeat;
+
+  // Generate notes for selected part
+  gameNotes = [];
+  song.parts[selectedPart].beats.forEach(idx => {
+    gameNotes.push({ time: idx * msPerSub, hit: false, missed: false, hitAnim: 0 });
+  });
+  gameNotes.sort((a, b) => a.time - b.time);
+
+  // Ghost notes (other parts)
+  const ghostNotes = [];
+  song.parts.forEach((p, pi) => {
+    if (pi === selectedPart) return;
+    p.beats.forEach(idx => {
+      ghostNotes.push({ time: idx * msPerSub, partIdx: pi });
+    });
+  });
+  ghostNotes.sort((a, b) => a.time - b.time);
+
+  gameScore = 0; gameCombo = 0; gameMaxCombo = 0;
+  gamePerfect = 0; gameGood = 0; gameMiss = 0;
+  gameActive = true; judgText = '';
+  gameStartTime = performance.now() + 2000;
+
+  // Metronome
+  const beatMs = 60000 / song.bpm;
+  const metId = setInterval(() => {
+    if (!gameActive) { clearInterval(metId); return; }
+    playTick();
+  }, beatMs);
+
+  function gameLoop(ts) {
+    if (!gameActive) return;
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    const elapsed = ts - gameStartTime;
+    const hitX = w * HIT_X;
+    const pxPerMs = NOTE_SPEED / 1000;
+    const beltY = h * 0.42, beltH = 80;
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#0f0f14'; ctx.fillRect(0, 0, w, h);
+
+    // Belt
+    ctx.fillStyle = '#1a1a22'; ctx.fillRect(0, beltY - beltH / 2, w, beltH);
+    ctx.strokeStyle = '#2e2e3a'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, beltY - beltH / 2); ctx.lineTo(w, beltY - beltH / 2);
+    ctx.moveTo(0, beltY + beltH / 2); ctx.lineTo(w, beltY + beltH / 2);
+    ctx.stroke();
+
+    // Beat lines
+    const beatDuration = 60000 / song.bpm;
+    for (let i = 0; i < 200; i++) {
+      const x = hitX + (i * beatDuration - elapsed) * pxPerMs;
+      if (x < -10 || x > w + 10) continue;
+      ctx.strokeStyle = i % song.timeSigTop === 0 ? '#444' : '#2e2e3a';
+      ctx.lineWidth = i % song.timeSigTop === 0 ? 2 : 1;
+      ctx.beginPath(); ctx.moveTo(x, beltY - beltH / 2); ctx.lineTo(x, beltY + beltH / 2); ctx.stroke();
+    }
+
+    // Drum circle
+    const drumR = 36;
+    if (clapFlash > 0) {
+      const r = drumR + 10 + (1 - clapFlash) * 30;
+      ctx.beginPath(); ctx.arc(hitX, beltY, r, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(244,162,97,${clapFlash * 0.6})`; ctx.lineWidth = 3; ctx.stroke();
+      clapFlash -= 0.04;
+    }
+    if (drumFlash > 0) {
+      ctx.fillStyle = `rgba(230,57,70,${drumFlash * 0.5})`;
+      ctx.beginPath(); ctx.arc(hitX, beltY, drumR + 12, 0, Math.PI * 2); ctx.fill();
+      drumFlash -= 0.05;
+    }
+    ctx.beginPath(); ctx.arc(hitX, beltY, drumR, 0, Math.PI * 2);
+    ctx.fillStyle = '#1a1a22'; ctx.fill(); ctx.strokeStyle = '#6b6b80'; ctx.lineWidth = 3; ctx.stroke();
+
+    // Ghost notes (other parts)
+    ghostNotes.forEach(gn => {
+      const x = hitX + (gn.time - elapsed) * pxPerMs;
+      if (x < -30 || x > w + 30) return;
+      ctx.globalAlpha = 0.2;
+      ctx.beginPath(); ctx.arc(x, beltY, 14, 0, Math.PI * 2);
+      ctx.fillStyle = PART_COLORS[gn.partIdx]; ctx.fill();
+      ctx.globalAlpha = 1;
+    });
+
+    // Main notes
+    let allDone = true;
+    const pc = PART_COLORS[selectedPart];
+    for (const n of gameNotes) {
+      const nt = n.time - elapsed;
+      const x = hitX + nt * pxPerMs;
+      if (!n.hit && !n.missed) {
+        allDone = false;
+        if (nt < -MISS_W) { n.missed = true; gameMiss++; gameCombo = 0; showJ('MISS', '#e63946'); continue; }
+      }
+      if (x < -50 || x > w + 50) continue;
+      if (n.hit) {
+        if (n.hitAnim > 0) {
+          const r = 20 + (1 - n.hitAnim) * 25;
+          ctx.beginPath(); ctx.arc(hitX, beltY, r, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(42,157,143,${n.hitAnim})`; ctx.lineWidth = 2; ctx.stroke();
+          n.hitAnim -= 0.03;
+        }
+        continue;
+      }
+      const r = 20;
+      if (n.missed) ctx.globalAlpha = 0.25;
+      ctx.beginPath(); ctx.arc(x, beltY, r, 0, Math.PI * 2);
+      const gr = ctx.createRadialGradient(x - 3, beltY - 3, 2, x, beltY, r);
+      gr.addColorStop(0, pc + 'cc'); gr.addColorStop(1, pc);
+      ctx.fillStyle = gr; ctx.fill();
+      ctx.strokeStyle = pc; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.font = "bold 11px 'Outfit'"; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('👏', x, beltY);
+      ctx.globalAlpha = 1;
+    }
+
+    // HUD
+    ctx.fillStyle = '#e8e6f0'; ctx.font = "bold 26px 'Outfit'"; ctx.textAlign = 'left';
+    ctx.fillText(gameScore.toString(), 20, 36);
+    ctx.fillStyle = '#6b6b80'; ctx.font = "600 11px 'Outfit'"; ctx.fillText('SCORE', 20, 52);
+
+    ctx.textAlign = 'right'; ctx.fillStyle = '#444'; ctx.font = "600 13px 'Outfit'";
+    ctx.fillText(`${song.parts[selectedPart].name} · ${song.title} · ${song.bpm} BPM`, w - 20, 28);
+
+    if (gameCombo > 1) {
+      ctx.textAlign = 'center'; ctx.fillStyle = '#f4a261';
+      ctx.font = `bold ${Math.min(44, 26 + gameCombo)}px 'Outfit'`;
+      ctx.fillText(gameCombo.toString(), w / 2, beltY - 65);
+      ctx.fillStyle = '#6b6b80'; ctx.font = "600 11px 'Outfit'"; ctx.fillText('COMBO', w / 2, beltY - 46);
+    }
+
+    if (judgText && performance.now() - judgTime < 500) {
+      const a = 1 - (performance.now() - judgTime) / 500;
+      ctx.globalAlpha = a; ctx.textAlign = 'center'; ctx.fillStyle = judgColor;
+      ctx.font = "bold 20px 'Outfit'";
+      ctx.fillText(judgText, hitX, beltY + 60 - (performance.now() - judgTime) * 0.04);
+      ctx.globalAlpha = 1;
+    }
+
+    // Progress
+    const totalD = gameNotes.length > 0 ? gameNotes[gameNotes.length - 1].time + 1000 : 1;
+    const prog = Math.max(0, Math.min(1, elapsed / totalD));
+    ctx.fillStyle = '#2e2e3a'; ctx.fillRect(0, h - 4, w, 4);
+    ctx.fillStyle = pc; ctx.fillRect(0, h - 4, w * prog, 4);
+
+    const songEnd = gameNotes.length > 0 ? gameNotes[gameNotes.length - 1].time + 2000 : 0;
+    if (elapsed > songEnd && allDone) { endPlayMode(); return; }
+
+    requestAnimationFrame(gameLoop);
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+function showJ(t, c) { judgText = t; judgColor = c; judgTime = performance.now(); }
+
+function onHit() {
+  if (!gameActive) return;
+  const elapsed = performance.now() - gameStartTime;
+  playHitSound(); drumFlash = 1; clapFlash = 1;
+  let closest = null, closestD = Infinity;
+  for (const n of gameNotes) {
+    if (n.hit || n.missed) continue;
+    const d = Math.abs(n.time - elapsed);
+    if (d < closestD && d < MISS_W) { closest = n; closestD = d; }
+  }
+  if (!closest) return;
+  closest.hit = true; closest.hitAnim = 1;
+  if (closestD <= PERFECT_W) { gameScore += 300 + gameCombo * 10; gameCombo++; gamePerfect++; showJ('PERFECT ✨', '#f4a261'); }
+  else if (closestD <= GOOD_W) { gameScore += 100 + gameCombo * 5; gameCombo++; gameGood++; showJ('GOOD', '#2a9d8f'); }
+  else { gameScore += 50; gameCombo = 0; showJ('OK', '#6b6b80'); }
+  gameMaxCombo = Math.max(gameMaxCombo, gameCombo);
+}
+
+function endPlayMode() {
+  gameActive = false;
+  const total = gamePerfect + gameGood + gameMiss;
+  const acc = total > 0 ? ((gamePerfect * 100 + gameGood * 50) / (total * 100)) * 100 : 0;
+  let rank;
+  if (acc >= 95 && gameMiss === 0) rank = 'S';
+  else if (acc >= 80) rank = 'A';
+  else if (acc >= 60) rank = 'B';
+  else rank = 'C';
+  document.getElementById('pRank').textContent = rank;
+  document.getElementById('pRank').className = 'rank ' + rank;
+  document.getElementById('pScore').textContent = gameScore;
+  document.getElementById('pPerf').textContent = gamePerfect;
+  document.getElementById('pGood').textContent = gameGood;
+  document.getElementById('pMiss').textContent = gameMiss;
+  document.getElementById('pCombo').textContent = gameMaxCombo;
+  document.getElementById('resultsScreen').style.display = 'flex';
+}
+
+// ═══════════════════════════════
+// CLAP DETECTION (mic)
+// ═══════════════════════════════
+let micActive = false, micAnalyser = null, micData = null, lastClap = 0;
+async function initMic() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const c = new AudioCtx(), src = c.createMediaStreamSource(stream);
+    micAnalyser = c.createAnalyser(); micAnalyser.fftSize = 512; micAnalyser.smoothingTimeConstant = 0.3;
+    src.connect(micAnalyser); micData = new Uint8Array(micAnalyser.frequencyBinCount);
+    micActive = true; monMic();
+  } catch (e) {}
+}
+
+function monMic() {
+  if (!micActive) return;
+  micAnalyser.getByteFrequencyData(micData);
+  let sum = 0; for (let i = 0; i < micData.length; i++) sum += micData[i] * micData[i];
+  const vol = Math.sqrt(sum / micData.length);
+  const now = performance.now();
+  if (vol > 55 && now - lastClap > 120) { lastClap = now; onHit(); }
+  requestAnimationFrame(monMic);
+}
+
+// ═══════════════════════════════
+// TAB SWITCHING
+// ═══════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.getElementById('editorPanel').style.display = tab === 'editor' ? '' : 'none';
+  const playPanel = document.getElementById('playPanel');
+  playPanel.style.display = tab === 'play' ? '' : 'none';
+  if (tab === 'play') {
+    showPartSelect();
+    resizeCanvas();
+    if (!micActive) initMic();
+  }
+  if (tab === 'editor') { gameActive = false; stopPlayback(); }
+}
+
+// ═══════════════════════════════
+// EVENT LISTENERS
+// ═══════════════════════════════
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+document.getElementById('btnPlay').addEventListener('click', startPlayback);
+document.getElementById('btnStop').addEventListener('click', stopPlayback);
+document.getElementById('btnSave').addEventListener('click', saveSong);
+document.getElementById('btnLoad').addEventListener('click', loadSong);
+document.getElementById('btnExport').addEventListener('click', exportJSON);
+
+// Sync controls → song
+['songTitle','bpmInput','timeSigTop','timeSigBot','barCount','subdivSelect'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () => {
+    song.title = document.getElementById('songTitle').value;
+    song.bpm = parseInt(document.getElementById('bpmInput').value) || 100;
+    song.timeSigTop = parseInt(document.getElementById('timeSigTop').value);
+    song.timeSigBot = parseInt(document.getElementById('timeSigBot').value);
+    song.bars = parseInt(document.getElementById('barCount').value) || 4;
+    const subMap = { '4': 1, '8': 2, '16': 4, '12': 3 };
+    song.subdivPerBeat = subMap[document.getElementById('subdivSelect').value] || 2;
+    renderGrid();
+  });
+});
+
+// Keyboard + touch for play mode
+document.addEventListener('keydown', e => {
+  if (e.repeat) return;
+  if (['d','f','j','k',' '].includes(e.key.toLowerCase())) { e.preventDefault(); onHit(); }
+});
+canvas.addEventListener('touchstart', e => { e.preventDefault(); onHit(); }, { passive: false });
+canvas.addEventListener('mousedown', () => { if (gameActive) onHit(); });
+window.addEventListener('resize', () => { if (document.getElementById('playPanel').style.display !== 'none') resizeCanvas(); });
+
+// Init
+renderGrid();
+</script>
+</body>
+</html>

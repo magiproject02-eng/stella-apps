@@ -18,6 +18,8 @@
   .app-card .tag{display:inline-block;margin-top:0.5rem;padding:0.15rem 0.5rem;border-radius:999px;font-size:0.7rem}
   .tag.game{background:#7c3aed18;border:1px solid #7c3aed33;color:#7c3aed}
   .tag.rhythm{background:#e6394618;border:1px solid #e6394633;color:#e63946}
+  .tag.edu{background:#2a9d8f18;border:1px solid #2a9d8f33;color:#2a9d8f}
+  .tag.new{background:#f4a26118;border:1px solid #f4a26133;color:#f4a261}
   .footer{margin-top:2rem;text-align:center;color:#6b6b8044;font-size:0.7rem}
 </style>
 </head>
@@ -25,10 +27,15 @@
 <div class="container">
   <h1>⚡ Stella Apps</h1>
   <div class="sub">Built in Claude · Deployed via GitHub → Vercel</div>
+  <a class="app-card" href="/score-trainer/">
+    <h3>🎵 Score Trainer</h3>
+    <p>Multi-voice rhythm trainer for choral classrooms. Create beat maps for S1/S2/A/T/B parts, then students practice clapping their own part with a taiko game.</p>
+    <span class="tag edu">education</span> <span class="tag new">new</span>
+  </a>
   <a class="app-card" href="/taiko/">
     <h3>👏🥁 Clap Taiko</h3>
-    <p>Clap-detection rhythm game! Uses your microphone to detect claps. 3 songs, adjustable sensitivity. Keyboard & tap fallback.</p>
-    <span class="tag rhythm">rhythm · mic</span>
+    <p>Clap-detection rhythm game. 3 songs, mic input, keyboard & tap fallback.</p>
+    <span class="tag rhythm">rhythm</span>
   </a>
   <a class="app-card" href="/mini-game/">
     <h3>🎯 Tap Blitz</h3>
