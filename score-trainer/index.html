@@ -271,6 +271,12 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
     <div id="vexScore"></div>
     <div class="score-highlight" id="scoreHighlight" style="display:none"></div>
   </div>
+  <div id="pauseOverlay" style="display:none;position:absolute;inset:0;background:rgba(15,15,20,0.85);z-index:8;display:none;flex-direction:column;align-items:center;justify-content:center">
+    <div style="font-size:2rem;font-weight:800;margin-bottom:0.5rem">⏸ PAUSED</div>
+    <button class="hbtn play" onclick="resumeGame()" style="font-size:1rem;padding:0.6rem 2rem">▶ Resume</button>
+    <div class="back-btn" onclick="quitGame()" style="margin-top:1rem">✕ Quit</div>
+  </div>
+  <button id="pauseBtn" onclick="pauseGame()" style="display:none;position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:7;background:rgba(30,30,40,0.7);border:1px solid #444;color:#e8e6f0;font-family:inherit;font-size:0.7rem;font-weight:600;padding:0.25rem 0.8rem;border-radius:6px;cursor:pointer">⏸ Pause</button>
   <canvas id="playCanvas"></canvas>
   <div class="results" id="resultsScreen">
     <h2>Results</h2>
@@ -681,7 +687,7 @@ Rules:
 // PLAY MODE
 // ════════════════════════════════════
 const cv=$('playCanvas'),cx=cv.getContext('2d');
-let gameOn=false,selPart=-1,gStart=0,gNotes=[],gScore=0,gCombo=0,gMaxCombo=0,gPerf=0,gGood=0,gMiss=0;
+let gameOn=false,gamePaused=false,pauseStart=0,totalPaused=0,gameLoop=null,selPart=-1,gStart=0,gNotes=[],gScore=0,gCombo=0,gMaxCombo=0,gPerf=0,gGood=0,gMiss=0;
 let jT='',jC='',jTime=0,dFlash=0,cFlash=0;
 const PW=55,GW=130,MW=170,NS=350,HX=0.18;
 
@@ -777,8 +783,9 @@ function startPlay(pi){
   backingNotes.sort((a,b)=>a.time-b.time);
   let backingIdx=0;
 
-  gScore=0;gCombo=0;gMaxCombo=0;gPerf=0;gGood=0;gMiss=0;gameOn=true;jT='';gStart=performance.now()+2000;
-  const beatMs=60000/(song.bpm*bpmMod);const mid=setInterval(()=>{if(!gameOn){clearInterval(mid);return}if(metronomeOn)playTick()},beatMs);
+  gScore=0;gCombo=0;gMaxCombo=0;gPerf=0;gGood=0;gMiss=0;gameOn=true;gamePaused=false;totalPaused=0;jT='';gStart=performance.now()+2000;
+  $('pauseBtn').style.display='block';
+  const beatMs=60000/(song.bpm*bpmMod);const mid=setInterval(()=>{if(!gameOn){clearInterval(mid);return}if(gamePaused)return;if(metronomeOn)playTick()},beatMs);
 
   // Render VexFlow score if pitch data available
   const vexAvailable=!!(window.Vex&&window.Vex.Flow);
@@ -788,8 +795,10 @@ function startPlay(pi){
   if(useVex){renderVexScore(pi);setTimeout(()=>resizeCV(cv),100)}
   else{$('scoreContainer').style.display='none'}
 
-  function loop(ts){
-    if(!gameOn)return;const w=cv.clientWidth,h=cv.clientHeight,el=ts-gStart;
+  gameLoop = function loop(ts){
+    if(!gameOn)return;
+    if(gamePaused)return; // stop rendering when paused
+    const w=cv.clientWidth,h=cv.clientHeight,el=ts-gStart-totalPaused;
     const hx=w*HX,px=NS/1000;
 
     // VexFlow highlighting
@@ -919,11 +928,28 @@ function startPlay(pi){
     const td=gNotes.length>0?gNotes[gNotes.length-1].time+1000:1,pr=Math.max(0,Math.min(1,el/td));
     cx.fillStyle='#2e2e3a';cx.fillRect(0,h-3,w,3);cx.fillStyle=pc;cx.fillRect(0,h-3,w*pr,3);
 
-    if(el>td+1000&&allD){endPlay();return}requestAnimationFrame(loop)}
-  requestAnimationFrame(loop)}
+    if(el>td+1000&&allD){endPlay();return}requestAnimationFrame(gameLoop)}
+  requestAnimationFrame(gameLoop)}
 
 function showJ(t,c){jT=t;jC=c;jTime=performance.now()}
-function onHit(fromPitch){if(!gameOn)return;const el=performance.now()-gStart;
+function pauseGame(){
+  if(!gameOn||gamePaused)return;
+  gamePaused=true;pauseStart=performance.now();
+  $('pauseOverlay').style.display='flex';$('pauseBtn').style.display='none';
+}
+function resumeGame(){
+  if(!gamePaused)return;
+  totalPaused+=performance.now()-pauseStart;
+  gamePaused=false;
+  $('pauseOverlay').style.display='none';$('pauseBtn').style.display='block';
+  requestAnimationFrame(gameLoop);
+}
+function quitGame(){
+  gamePaused=false;gameOn=false;
+  $('pauseOverlay').style.display='none';$('pauseBtn').style.display='none';
+  showPartSelect();
+}
+function onHit(fromPitch){if(!gameOn||gamePaused)return;const el=performance.now()-gStart-totalPaused;
   if(!fromPitch)playHit(); // only play drum sound for manual taps, not auto-pitch
   dFlash=1;cFlash=1;
   let cl=null,cd=Infinity;for(const n of gNotes){if(n.hit||n.missed)continue;const d=Math.abs(n.time-el);if(d<cd&&d<MW){cl=n;cd=d}}
@@ -951,7 +977,7 @@ function onHit(fromPitch){if(!gameOn)return;const el=performance.now()-gStart;
   else{gScore+=30;gCombo=0;showJ('OK'+(pitchMsg?' '+pitchMsg:''),'#6b6b80')}
   gMaxCombo=Math.max(gMaxCombo,gCombo)}
 
-function endPlay(){gameOn=false;currentDetectedPitch=0;currentDetectedNote='';$('scoreContainer').style.display='none';const t=gPerf+gGood+gMiss,acc=t>0?((gPerf*100+gGood*50)/(t*100))*100:0;
+function endPlay(){gameOn=false;gamePaused=false;currentDetectedPitch=0;currentDetectedNote='';$('scoreContainer').style.display='none';$('pauseBtn').style.display='none';$('pauseOverlay').style.display='none';const t=gPerf+gGood+gMiss,acc=t>0?((gPerf*100+gGood*50)/(t*100))*100:0;
   let rk;if(acc>=95&&gMiss===0)rk='S';else if(acc>=80)rk='A';else if(acc>=60)rk='B';else rk='C';
   $('pRank').textContent=rk;$('pRank').className='rank '+rk;$('pScore').textContent=gScore;
   $('pPerf').textContent=gPerf;$('pGood').textContent=gGood;$('pMiss').textContent=gMiss;$('pCombo').textContent=gMaxCombo;$('resultsScreen').style.display='flex'}
@@ -1163,25 +1189,39 @@ function highlightVexNote(elapsed){
 
   const msPerSub=(60000/(song.bpm*(difficulty==='slow'?0.7:1)))/song.subdivPerBeat;
 
-  // Find current note
-  let current=null;
+  // Find current and next note for interpolation
+  let current=null,prev=null,next=null;
   let minDist=Infinity;
   for(const ne of vexNoteElements){
     const noteTime=ne.pos*msPerSub;
     const dist=Math.abs(noteTime-elapsed);
     if(dist<minDist){minDist=dist;current=ne}
   }
+  // Find prev and next for smooth x interpolation
+  for(const ne of vexNoteElements){
+    const t=ne.pos*msPerSub;
+    if(t<=elapsed&&(!prev||t>prev.pos*msPerSub))prev=ne;
+    if(t>elapsed&&(!next||t<next.pos*msPerSub))next=ne;
+  }
 
   if(current&&minDist<2000){
+    // Smoothly interpolate x position between prev and next note
+    let smoothX=current.x;
+    if(prev&&next){
+      const prevT=prev.pos*msPerSub,nextT=next.pos*msPerSub;
+      const frac=Math.max(0,Math.min(1,(elapsed-prevT)/(nextT-prevT)));
+      smoothX=prev.x+(next.x-prev.x)*frac;
+    }else if(prev){
+      smoothX=prev.x;
+    }
+
     hl.style.display='block';
-    hl.style.left=(current.x-5)+'px';
+    hl.style.left=(smoothX-5)+'px';
     hl.style.width='40px';
 
-    // Smooth scroll horizontally to keep current note CENTERED
-    const scrollTarget=current.x-sc.clientWidth*0.5;
-    const target=Math.max(0,scrollTarget);
-    // Smooth interpolation instead of jumping
-    sc.scrollLeft+=(target-sc.scrollLeft)*0.08;
+    // Smooth continuous scroll based on interpolated position
+    const scrollTarget=smoothX-sc.clientWidth*0.5;
+    sc.scrollLeft=Math.max(0,scrollTarget);
 
     // Color past/current/future notes via SVG (if elements available)
     vexNoteElements.forEach(ne=>{
@@ -1401,7 +1441,9 @@ $('btnShare').addEventListener('click',shareSong);$('btnAI').addEventListener('c
 ['songTitle','bpmInput','timeSigTop','timeSigBot','barCount','subdivSelect'].forEach(id=>{$(id).addEventListener('change',()=>{
   song.title=$('songTitle').value;song.bpm=+$('bpmInput').value||100;song.timeSigTop=+$('timeSigTop').value;song.timeSigBot=+$('timeSigBot').value;song.bars=+$('barCount').value||4;
   const m={'4':1,'8':2,'16':4,'12':3};song.subdivPerBeat=m[$('subdivSelect').value]||2;renderGrid()})});
-document.addEventListener('keydown',e=>{if(e.repeat)return;if(['d','f','j','k',' '].includes(e.key.toLowerCase())){e.preventDefault();onHit()}});
+document.addEventListener('keydown',e=>{if(e.repeat)return;
+  if(e.key==='Escape'&&gameOn){e.preventDefault();gamePaused?resumeGame():pauseGame();return}
+  if(['d','f','j','k',' '].includes(e.key.toLowerCase())){e.preventDefault();onHit()}});
 // Use document-level touch/click so it works even over canvas overlay issues
 document.addEventListener('touchstart',e=>{
   if(!gameOn)return;
