@@ -209,8 +209,22 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
       <button class="diff-btn" data-diff="hard" onclick="setDifficulty('hard',this)">Hard (no ghost)</button>
       <button class="diff-btn" data-diff="slow" onclick="setDifficulty('slow',this)">Slow (70%)</button>
     </div>
+    <div class="sub">Input method:</div>
+    <div class="diff-row">
+      <button class="diff-btn active" data-input="tap" onclick="setInputMode('tap',this)">📱 Tap / Keyboard</button>
+      <button class="diff-btn" data-input="clap" onclick="setInputMode('clap',this)">👏 Clap (Mic)</button>
+    </div>
+    <div id="micSetup" style="display:none;margin-bottom:0.8rem;text-align:center">
+      <div id="micStatusPlay" style="font-size:0.7rem;padding:0.3rem 0.6rem;border-radius:6px;margin-bottom:0.5rem;background:#f4a26122;color:var(--gold);border:1px solid #f4a26144">🎤 Mic not active yet</div>
+      <button class="hbtn" onclick="initMicManual()" style="background:var(--green);border-color:var(--green);color:#fff">Allow Microphone 🎤</button>
+      <div style="margin-top:0.4rem;display:flex;align-items:center;gap:0.5rem;justify-content:center">
+        <span style="font-size:0.65rem;color:var(--dim)">Sensitivity</span>
+        <input type="range" id="sensSlider" min="1" max="20" value="8" style="width:100px;accent-color:var(--red)">
+        <span style="font-size:0.65rem;color:var(--gold)" id="sensVal">8</span>
+      </div>
+    </div>
     <div id="partButtons"></div>
-    <div class="back-btn" onclick="switchTab('editor')">← Back to Editor</div>
+    <div class="back-btn" onclick="switchTab('library')">← Back to Library</div>
   </div>
   <canvas id="playCanvas"></canvas>
   <div class="results" id="resultsScreen">
@@ -283,6 +297,8 @@ let song={title:'New Song',bpm:100,timeSigTop:4,timeSigBot:4,bars:4,subdivPerBea
   parts:[{name:'S1',beats:[]},{name:'S2',beats:[]},{name:'A',beats:[]}]};
 let isPlaying=false,playInterval=null,playPosition=-1;
 let difficulty='normal';
+let inputMode='tap'; // 'tap' or 'clap'
+let micSensitivity=8;
 
 // ════════════════════════════════════
 // AUDIO
@@ -605,7 +621,16 @@ let jT='',jC='',jTime=0,dFlash=0,cFlash=0;
 const PW=55,GW=130,MW=170,NS=350,HX=0.18;
 
 function resizeCV(c){c.width=c.clientWidth*devicePixelRatio;c.height=c.clientHeight*devicePixelRatio;cx.scale(devicePixelRatio,devicePixelRatio)}
-function setDifficulty(d,el){difficulty=d;document.querySelectorAll('.diff-btn').forEach(b=>b.classList.toggle('active',b.dataset.diff===d))}
+function setDifficulty(d,el){difficulty=d;document.querySelectorAll('[data-diff]').forEach(b=>b.classList.toggle('active',b.dataset.diff===d))}
+function setInputMode(m,el){
+  inputMode=m;
+  document.querySelectorAll('[data-input]').forEach(b=>b.classList.toggle('active',b.dataset.input===m));
+  $('micSetup').style.display=m==='clap'?'block':'none';
+}
+function initMicManual(){initMic().then(()=>{
+  if(micOn){$('micStatusPlay').textContent='✅ Mic active — try clapping!';$('micStatusPlay').style.background='#2a9d8f22';$('micStatusPlay').style.color='var(--green)';$('micStatusPlay').style.borderColor='#2a9d8f44'}
+}).catch(()=>{$('micStatusPlay').textContent='❌ Mic denied';$('micStatusPlay').style.background='#e6394622';$('micStatusPlay').style.color='var(--red)'})}
+
 
 function showPartSelect(){$('resultsScreen').style.display='none';$('partSelect').style.display='flex';
   const b=$('partButtons');b.innerHTML='';
@@ -646,7 +671,7 @@ function startPlay(pi){
       cx.fillStyle='#fff';cx.font="13px 'Outfit'";cx.textAlign='center';cx.textBaseline='middle';cx.fillText('👏',x+8,by);
       cx.globalAlpha=1}
     cx.fillStyle='#e8e6f0';cx.font="bold 24px 'Outfit'";cx.textAlign='left';cx.fillText(gScore+'',20,34);cx.fillStyle='#6b6b80';cx.font="600 10px 'Outfit'";cx.fillText('SCORE',20,48);
-    cx.textAlign='right';cx.fillStyle='#444';cx.font="600 12px 'Outfit'";cx.fillText(`${song.parts[selPart].name} · ${song.title} · ${song.bpm} BPM${difficulty!=='normal'?' ['+difficulty+']':''}`,w-15,24);
+    cx.textAlign='right';cx.fillStyle='#444';cx.font="600 12px 'Outfit'";cx.fillText(`${song.parts[selPart].name} · ${song.title} · ${song.bpm} BPM${difficulty!=='normal'?' ['+difficulty+']':''} · ${inputMode==='clap'?'👏 Clap':'📱 Tap'}`,w-15,24);
     if(gCombo>1){cx.textAlign='center';cx.fillStyle='#f4a261';cx.font=`bold ${Math.min(44,24+gCombo)}px 'Outfit'`;cx.fillText(gCombo+'',w/2,by-60);cx.fillStyle='#6b6b80';cx.font="600 10px 'Outfit'";cx.fillText('COMBO',w/2,by-42)}
     if(jT&&performance.now()-jTime<500){const a=1-(performance.now()-jTime)/500;cx.globalAlpha=a;cx.textAlign='center';cx.fillStyle=jC;cx.font="bold 18px 'Outfit'";cx.fillText(jT,hx,by+58-(performance.now()-jTime)*0.04);cx.globalAlpha=1}
     const td=gNotes.length>0?gNotes[gNotes.length-1].time+1000:1,pr=Math.max(0,Math.min(1,el/td));
@@ -722,8 +747,9 @@ function startClassroom(){
 // MIC CLAP DETECTION
 // ════════════════════════════════════
 let micOn=false,micAn=null,micD=null,lastClap=0;
-async function initMic(){try{const s=await navigator.mediaDevices.getUserMedia({audio:true});const c=new AC(),src=c.createMediaStreamSource(s);micAn=c.createAnalyser();micAn.fftSize=512;micAn.smoothingTimeConstant=0.3;src.connect(micAn);micD=new Uint8Array(micAn.frequencyBinCount);micOn=true;monMic()}catch(e){}}
-function monMic(){if(!micOn)return;micAn.getByteFrequencyData(micD);let s=0;for(let i=0;i<micD.length;i++)s+=micD[i]*micD[i];const v=Math.sqrt(s/micD.length);const now=performance.now();if(v>55&&now-lastClap>120){lastClap=now;onHit()}requestAnimationFrame(monMic)}
+function getMicThreshold(){return(21-micSensitivity)*5}
+async function initMic(){try{const s=await navigator.mediaDevices.getUserMedia({audio:true});const c=new AC(),src=c.createMediaStreamSource(s);micAn=c.createAnalyser();micAn.fftSize=512;micAn.smoothingTimeConstant=0.3;src.connect(micAn);micD=new Uint8Array(micAn.frequencyBinCount);micOn=true;monMic()}catch(e){throw e}}
+function monMic(){if(!micOn)return;micAn.getByteFrequencyData(micD);let s=0;for(let i=0;i<micD.length;i++)s+=micD[i]*micD[i];const v=Math.sqrt(s/micD.length);const now=performance.now();if(inputMode==='clap'&&v>getMicThreshold()&&now-lastClap>120){lastClap=now;onHit()}requestAnimationFrame(monMic)}
 
 // ════════════════════════════════════
 // SONG LIBRARY
@@ -777,7 +803,7 @@ function switchTab(t){
   $('playPanel').style.display=t==='play'?'block':'none';
   $('classroomPanel').style.display=t==='classroom'?'block':'none';
   if(t==='library')loadLibrary();
-  if(t==='play'){showPartSelect();setTimeout(()=>resizeCV(cv),50);if(!micOn)initMic()}
+  if(t==='play'){showPartSelect();setTimeout(()=>resizeCV(cv),50)}
   if(t==='classroom'){setTimeout(()=>{ccv.width=ccv.clientWidth*devicePixelRatio;ccv.height=ccv.clientHeight*devicePixelRatio;startClassroom()},50)}
   if(t==='editor'){gameOn=false;classActive=false;stopPlayback()}}
 
@@ -795,7 +821,9 @@ $('btnShare').addEventListener('click',shareSong);$('btnAI').addEventListener('c
   song.title=$('songTitle').value;song.bpm=+$('bpmInput').value||100;song.timeSigTop=+$('timeSigTop').value;song.timeSigBot=+$('timeSigBot').value;song.bars=+$('barCount').value||4;
   const m={'4':1,'8':2,'16':4,'12':3};song.subdivPerBeat=m[$('subdivSelect').value]||2;renderGrid()})});
 document.addEventListener('keydown',e=>{if(e.repeat)return;if(['d','f','j','k',' '].includes(e.key.toLowerCase())){e.preventDefault();onHit()}});
-cv.addEventListener('touchstart',e=>{e.preventDefault();onHit()},{passive:false});cv.addEventListener('mousedown',()=>{if(gameOn)onHit()});
+cv.addEventListener('touchstart',e=>{if(inputMode==='tap'){e.preventDefault();onHit()}},{passive:false});
+cv.addEventListener('mousedown',()=>{if(gameOn&&inputMode==='tap')onHit()});
+$('sensSlider').addEventListener('input',()=>{micSensitivity=parseInt($('sensSlider').value);$('sensVal').textContent=micSensitivity});
 window.addEventListener('resize',()=>{if($('playPanel').style.display!=='none')resizeCV(cv);if($('classroomPanel').style.display!=='none'){ccv.width=ccv.clientWidth*devicePixelRatio;ccv.height=ccv.clientHeight*devicePixelRatio}});
 
 // Init
