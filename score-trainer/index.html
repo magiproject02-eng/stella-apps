@@ -1188,39 +1188,51 @@ function highlightVexNote(elapsed){
   if(!showScore||!hl||vexNoteElements.length===0){if(hl)hl.style.display='none';return}
 
   const msPerSub=(60000/(song.bpm*(difficulty==='slow'?0.7:1)))/song.subdivPerBeat;
-  const totalSubs=song.bars*song.timeSigTop*song.subdivPerBeat;
-  const totalMs=totalSubs*msPerSub;
 
-  // Time-based scroll: map elapsed time to x position across the entire SVG
-  const firstNote=vexNoteElements[0];
-  const lastNote=vexNoteElements[vexNoteElements.length-1];
-  const startX=firstNote.x;
-  const endX=lastNote.x+lastNote.w;
-  const startT=firstNote.pos*msPerSub;
-  const endT=lastNote.pos*msPerSub;
-  // Linear interpolation: time → x position
-  const frac=Math.max(0,Math.min(1,(elapsed-startT)/(endT-startT||1)));
-  const smoothX=startX+(endX-startX)*frac;
+  // Find the two adjacent notes (prev and next) surrounding current elapsed time
+  let prev=null,next=null;
+  for(const ne of vexNoteElements){
+    const t=ne.pos*msPerSub;
+    if(t<=elapsed)prev=ne;
+    if(t>elapsed&&!next)next=ne;
+  }
 
-  // Always show playhead and scroll, even during rests
+  // Calculate smooth x by interpolating between prev and next
+  let smoothX;
+  if(prev&&next){
+    const prevT=prev.pos*msPerSub,nextT=next.pos*msPerSub;
+    const frac=Math.max(0,Math.min(1,(elapsed-prevT)/(nextT-prevT)));
+    smoothX=prev.x+prev.w*0.5+(next.x+next.w*0.5-(prev.x+prev.w*0.5))*frac;
+  }else if(prev){
+    // Past last note — keep moving right slowly
+    const lastT=prev.pos*msPerSub;
+    smoothX=prev.x+prev.w*0.5+(elapsed-lastT)*0.02;
+  }else if(next){
+    // Before first note — approach from left
+    const firstT=next.pos*msPerSub;
+    const frac=Math.max(0,Math.min(1,(elapsed+2000)/(firstT+2000)));
+    smoothX=(next.x+next.w*0.5)*frac;
+  }else{
+    smoothX=0;
+  }
+
+  // Show playhead and scroll
   hl.style.display='block';
-  hl.style.left=(smoothX-5)+'px';
-  hl.style.width='3px'; // thin line like a real playhead
+  hl.style.left=(smoothX-1)+'px';
+  hl.style.width='3px';
 
-  // Smooth continuous scroll
+  // Scroll to keep playhead centered
   const scrollTarget=smoothX-sc.clientWidth*0.5;
   sc.scrollLeft=Math.max(0,scrollTarget);
 
   // Find nearest note for coloring
-  let current=null;
-  let minDist=Infinity;
+  let current=null,minDist=Infinity;
   for(const ne of vexNoteElements){
-    const noteTime=ne.pos*msPerSub;
-    const dist=Math.abs(noteTime-elapsed);
-    if(dist<minDist){minDist=dist;current=ne}
+    const d=Math.abs(ne.pos*msPerSub-elapsed);
+    if(d<minDist){minDist=d;current=ne}
   }
 
-  // Color past/current/future notes via SVG
+  // Color notes
   vexNoteElements.forEach(ne=>{
     if(!ne.el)return;
     try{
