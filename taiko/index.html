@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Taiko Blitz 🥁</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --bg: #1a0a0a;
+    --surface: #2a1515;
+    --border: #3d2222;
+    --text: #f5e6e0;
+    --dim: #8a6b6b;
+    --red: #e63946;
+    --red-glow: #e6394666;
+    --blue: #457b9d;
+    --blue-glow: #457b9d66;
+    --gold: #f4a261;
+    --gold-glow: #f4a26166;
+    --green: #2a9d8f;
+  }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    height: 100dvh;
+    width: 100vw;
+    position: relative;
+  }
+
+  /* Canvas fills screen */
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Overlay screens */
+  .screen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(26, 10, 10, 0.95);
+    z-index: 100;
+    padding: 2rem;
+    text-align: center;
+    transition: opacity 0.3s;
+  }
+
+  .screen.hidden { opacity: 0; pointer-events: none; }
+
+  .screen h1 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+  }
+
+  .screen h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+
+  .screen p {
+    color: var(--dim);
+    max-width: 340px;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+  }
+
+  .controls-hint {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.85rem;
+    line-height: 1.8;
+    text-align: left;
+  }
+
+  .controls-hint .key {
+    display: inline-block;
+    background: #3d2222;
+    border: 1px solid #5a3333;
+    border-radius: 6px;
+    padding: 0.1rem 0.5rem;
+    font-weight: 600;
+    font-size: 0.8rem;
+    min-width: 2rem;
+    text-align: center;
+  }
+
+  .controls-hint .red-dot { color: var(--red); font-weight: 700; }
+  .controls-hint .blue-dot { color: var(--blue); font-weight: 700; }
+
+  .song-select {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .song-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.8rem 1rem;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.1s;
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .song-btn:hover, .song-btn.selected { border-color: var(--red); }
+  .song-btn:active { transform: scale(0.97); }
+  .song-btn .bpm { color: var(--dim); font-size: 0.8rem; }
+
+  .btn {
+    padding: 0.9rem 2.5rem;
+    border: none;
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+    color: white;
+    background: linear-gradient(135deg, var(--red), #c1121f);
+    box-shadow: 0 4px 15px var(--red-glow);
+    transition: transform 0.1s;
+  }
+
+  .btn:active { transform: scale(0.96); }
+
+  .final-score {
+    font-size: 3.5rem;
+    font-weight: 800;
+    color: var(--gold);
+    margin-bottom: 0.25rem;
+  }
+
+  .final-label {
+    color: var(--dim);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 1rem;
+  }
+
+  .result-stats {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .result-stat {
+    text-align: center;
+  }
+
+  .result-stat .val {
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+
+  .result-stat .label {
+    font-size: 0.7rem;
+    color: var(--dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .result-stat .val.perfect { color: var(--gold); }
+  .result-stat .val.good { color: var(--green); }
+  .result-stat .val.miss { color: var(--red); }
+
+  .rank {
+    font-size: 5rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 0 30px var(--gold-glow);
+  }
+
+  .rank.S { color: var(--gold); }
+  .rank.A { color: var(--green); }
+  .rank.B { color: var(--blue); }
+  .rank.C { color: var(--dim); }
+
+  /* Mobile tap zones */
+  .tap-zones {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: none;
+    height: 120px;
+    z-index: 50;
+  }
+
+  .tap-zone {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 800;
+    opacity: 0.6;
+    transition: opacity 0.1s;
+    user-select: none;
+  }
+
+  .tap-zone:active { opacity: 1; }
+  .tap-zone.red-zone { background: rgba(230, 57, 70, 0.2); color: var(--red); }
+  .tap-zone.blue-zone { background: rgba(69, 123, 157, 0.2); color: var(--blue); }
+
+  @media (pointer: coarse) {
+    .tap-zones { display: flex; }
+  }
+
+  .deployed-badge {
+    position: fixed;
+    bottom: 0.5rem;
+    right: 0.5rem;
+    font-size: 0.6rem;
+    color: var(--dim);
+    opacity: 0.3;
+    z-index: 200;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<div class="tap-zones" id="tapZones">
+  <div class="tap-zone blue-zone" id="tapBlue">カ</div>
+  <div class="tap-zone red-zone" id="tapRed1">ドン</div>
+  <div class="tap-zone red-zone" id="tapRed2">ドン</div>
+  <div class="tap-zone blue-zone" id="tapBlue2">カ</div>
+</div>
+
+<!-- Start screen -->
+<div class="screen" id="startScreen">
+  <h1>🥁 太鼓 Blitz</h1>
+  <p>Hit the drums in rhythm! Red = Don (center), Blue = Ka (rim).</p>
+
+  <div class="controls-hint">
+    <span class="red-dot">● ドン (Don)</span> — <span class="key">D</span> <span class="key">F</span> or tap center<br>
+    <span class="blue-dot">● カ (Ka)</span> — <span class="key">J</span> <span class="key">K</span> or tap sides
+  </div>
+
+  <div class="song-select" id="songSelect"></div>
+
+  <button class="btn" id="startBtn">Start 🥁</button>
+</div>
+
+<!-- End screen -->
+<div class="screen hidden" id="endScreen">
+  <h2>Result</h2>
+  <div class="rank" id="rank">S</div>
+  <div class="final-score" id="finalScore">0</div>
+  <div class="final-label">points</div>
+  <div class="result-stats">
+    <div class="result-stat"><div class="val perfect" id="rPerfect">0</div><div class="label">Perfect</div></div>
+    <div class="result-stat"><div class="val good" id="rGood">0</div><div class="label">Good</div></div>
+    <div class="result-stat"><div class="val miss" id="rMiss">0</div><div class="label">Miss</div></div>
+  </div>
+  <div style="color:var(--dim);font-size:0.85rem;margin-bottom:1.5rem">
+    Max Combo: <span id="rCombo" style="color:var(--gold);font-weight:700">0</span>
+  </div>
+  <button class="btn" onclick="showStart()">Play Again</button>
+</div>
+
+<div class="deployed-badge">Built by Stella · Deployed via GitHub → Vercel</div>
+
+<script>
+// ─── Audio Engine ───
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx;
+
+function initAudio() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function playDon() {
+  initAudio();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(60, audioCtx.currentTime + 0.15);
+  gain.gain.setValueAtTime(0.8, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+}
+
+function playKa() {
+  initAudio();
+  const bufSize = audioCtx.sampleRate * 0.08;
+  const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufSize, 3);
+  const src = audioCtx.createBufferSource();
+  const filter = audioCtx.createBiquadFilter();
+  const gain = audioCtx.createGain();
+  filter.type = 'highpass'; filter.frequency.value = 800;
+  gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+  src.buffer = buf;
+  src.connect(filter).connect(gain).connect(audioCtx.destination);
+  src.start();
+}
+
+function playMetronome() {
+  initAudio();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine'; osc.frequency.value = 800;
+  gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(); osc.stop(audioCtx.currentTime + 0.05);
+}
+
+// ─── Songs (beat patterns) ───
+// R = don (red), B = ka (blue), _ = rest, L = big don, X = big ka
+const SONGS = [
+  {
+    name: "Starter Beat",
+    bpm: 100,
+    difficulty: "★",
+    pattern: "R_R_B_B_R_R_B___R_R_B_B_R___B_R_" +
+             "R_R_B_B_R_R_B___R_B_R_B_R_B_R___" +
+             "R___R___B___B___R_R_R_R_B_B_____" +
+             "R_B_R_B_R___B___R_R_B_B_R_______"
+  },
+  {
+    name: "Festival Drums",
+    bpm: 140,
+    difficulty: "★★",
+    pattern: "RRR_BB_RR_BB_R__RRR_BB_RR__B_B_" +
+             "R_RRB_B_RR_B__R_R_RRB_B_RRBB___" +
+             "RRRR__BB__RRRR__BB__R_B_R_B_R_B_" +
+             "RR_BB_RR_BB_RRRR_BB_RR_B_______"
+  },
+  {
+    name: "Oni Challenge",
+    bpm: 170,
+    difficulty: "★★★",
+    pattern: "RRBBRRBBRR_BB_RRRRBBRRBBRR__BB__" +
+             "R_RRBBRR_BBRR_RR_BBRRBBRR_BB_R_" +
+             "RRRRBBBBRRRR_B_RRRRBBBBRRRRBB___" +
+             "RBRBRBRBRB_RB_RBRBRBRBRBRB_R____" +
+             "RRRRBBRRRRBB_RRRBBRRRRBB__R_B___" +
+             "RBRBRR_BBRBRR_BBRBRR_BB_RRRR___"
+  }
+];
+
+// ─── Game State ───
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+let notes = [];
+let score = 0;
+let combo = 0;
+let maxCombo = 0;
+let perfect = 0;
+let good = 0;
+let miss = 0;
+let gameActive = false;
+let selectedSong = 0;
+let startTime = 0;
+let lastBeat = -1;
+let judgmentText = '';
+let judgmentColor = '';
+let judgmentTime = 0;
+let drumFlashRed = 0;
+let drumFlashBlue = 0;
+
+// Timing windows (ms)
+const PERFECT_WINDOW = 50;
+const GOOD_WINDOW = 120;
+const MISS_THRESHOLD = 160;
+
+// Layout
+const NOTE_SPEED = 400; // px per second
+const HIT_X_RATIO = 0.18;
+
+function resize() {
+  canvas.width = canvas.clientWidth * devicePixelRatio;
+  canvas.height = canvas.clientHeight * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+}
+
+window.addEventListener('resize', resize);
+resize();
+
+// ─── Song Select ───
+const songSelectEl = document.getElementById('songSelect');
+SONGS.forEach((s, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'song-btn' + (i === 0 ? ' selected' : '');
+  btn.innerHTML = `<span>${s.difficulty} ${s.name}</span><span class="bpm">${s.bpm} BPM</span>`;
+  btn.onclick = () => {
+    selectedSong = i;
+    document.querySelectorAll('.song-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  };
+  songSelectEl.appendChild(btn);
+});
+
+// ─── Game Logic ───
+function generateNotes(song) {
+  const beatDuration = 60000 / song.bpm / 2; // 8th notes
+  const notes = [];
+  for (let i = 0; i < song.pattern.length; i++) {
+    const ch = song.pattern[i];
+    if (ch === '_') continue;
+    const type = (ch === 'R' || ch === 'L') ? 'don' : 'ka';
+    const big = (ch === 'L' || ch === 'X');
+    notes.push({
+      time: i * beatDuration,
+      type,
+      big,
+      hit: false,
+      missed: false,
+      x: 0
+    });
+  }
+  return notes;
+}
+
+function startGame() {
+  initAudio();
+  const song = SONGS[selectedSong];
+  notes = generateNotes(song);
+  score = 0; combo = 0; maxCombo = 0;
+  perfect = 0; good = 0; miss = 0;
+  gameActive = true;
+  lastBeat = -1;
+  judgmentText = '';
+  startTime = performance.now() + 2000; // 2s lead-in
+
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('endScreen').classList.add('hidden');
+
+  // Start metronome
+  const beatInterval = 60000 / song.bpm;
+  const metroId = setInterval(() => {
+    if (!gameActive) { clearInterval(metroId); return; }
+    playMetronome();
+  }, beatInterval);
+
+  requestAnimationFrame(gameLoop);
+}
+
+function gameLoop(timestamp) {
+  if (!gameActive) return;
+
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  const elapsed = timestamp - startTime; // can be negative during lead-in
+  const hitX = w * HIT_X_RATIO;
+
+  // Clear
+  ctx.clearRect(0, 0, w, h);
+
+  // Background
+  ctx.fillStyle = '#1a0a0a';
+  ctx.fillRect(0, 0, w, h);
+
+  // Conveyor belt
+  const beltY = h * 0.42;
+  const beltH = 80;
+
+  // Belt background
+  ctx.fillStyle = '#2a1515';
+  ctx.fillRect(0, beltY - beltH / 2, w, beltH);
+  ctx.strokeStyle = '#3d2222';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, beltY - beltH / 2);
+  ctx.lineTo(w, beltY - beltH / 2);
+  ctx.moveTo(0, beltY + beltH / 2);
+  ctx.lineTo(w, beltY + beltH / 2);
+  ctx.stroke();
+
+  // Measure lines
+  const song = SONGS[selectedSong];
+  const beatDuration = 60000 / song.bpm;
+  const pxPerMs = NOTE_SPEED / 1000;
+  for (let i = 0; i < 200; i++) {
+    const beatTime = i * beatDuration * 2;
+    const x = hitX + (beatTime - elapsed) * pxPerMs;
+    if (x < -10 || x > w + 10) continue;
+    ctx.strokeStyle = i % 4 === 0 ? '#5a3333' : '#3d2222';
+    ctx.lineWidth = i % 4 === 0 ? 2 : 1;
+    ctx.beginPath();
+    ctx.moveTo(x, beltY - beltH / 2);
+    ctx.lineTo(x, beltY + beltH / 2);
+    ctx.stroke();
+  }
+
+  // Hit zone (drum)
+  const drumR = 38;
+
+  // Drum flash
+  if (drumFlashRed > 0) {
+    ctx.fillStyle = `rgba(230, 57, 70, ${drumFlashRed * 0.4})`;
+    ctx.beginPath();
+    ctx.arc(hitX, beltY, drumR + 15, 0, Math.PI * 2);
+    ctx.fill();
+    drumFlashRed -= 0.05;
+  }
+  if (drumFlashBlue > 0) {
+    ctx.fillStyle = `rgba(69, 123, 157, ${drumFlashBlue * 0.4})`;
+    ctx.beginPath();
+    ctx.arc(hitX, beltY, drumR + 15, 0, Math.PI * 2);
+    ctx.fill();
+    drumFlashBlue -= 0.05;
+  }
+
+  // Drum circle
+  ctx.beginPath();
+  ctx.arc(hitX, beltY, drumR, 0, Math.PI * 2);
+  ctx.fillStyle = '#2a1515';
+  ctx.fill();
+  ctx.strokeStyle = '#8a6b6b';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // Inner drum
+  ctx.beginPath();
+  ctx.arc(hitX, beltY, drumR * 0.55, 0, Math.PI * 2);
+  ctx.strokeStyle = '#5a3333';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Draw notes
+  let allDone = true;
+  for (const note of notes) {
+    const noteTime = note.time - elapsed;
+    const x = hitX + noteTime * pxPerMs;
+    note.x = x;
+
+    if (!note.hit && !note.missed) {
+      allDone = false;
+
+      // Auto-miss check
+      if (noteTime < -MISS_THRESHOLD) {
+        note.missed = true;
+        miss++;
+        combo = 0;
+        showJudgment('MISS', '#e63946');
+        continue;
+      }
+    }
+
+    if (x < -50 || x > w + 50) continue;
+    if (note.hit) continue;
+
+    // Draw note
+    const r = note.big ? 30 : 22;
+    const color = note.type === 'don' ? '#e63946' : '#457b9d';
+    const borderColor = note.type === 'don' ? '#ff6b6b' : '#6bb3d9';
+
+    if (note.missed) {
+      ctx.globalAlpha = 0.3;
+    }
+
+    // Shadow
+    ctx.beginPath();
+    ctx.arc(x, beltY, r + 3, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fill();
+
+    // Main circle
+    ctx.beginPath();
+    ctx.arc(x, beltY, r, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Inner highlight
+    ctx.beginPath();
+    ctx.arc(x - r * 0.15, beltY - r * 0.15, r * 0.35, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.fill();
+
+    // Label
+    ctx.fillStyle = '#fff';
+    ctx.font = `${note.big ? 14 : 11}px 'Outfit', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(note.type === 'don' ? 'ドン' : 'カ', x, beltY + 1);
+
+    ctx.globalAlpha = 1;
+  }
+
+  // ─── HUD ───
+  // Score
+  ctx.fillStyle = var_text();
+  ctx.font = "bold 28px 'Outfit', sans-serif";
+  ctx.textAlign = 'left';
+  ctx.fillText(score.toString(), 20, 40);
+
+  ctx.fillStyle = '#8a6b6b';
+  ctx.font = "600 12px 'Outfit', sans-serif";
+  ctx.fillText('SCORE', 20, 58);
+
+  // Combo
+  if (combo > 1) {
+    ctx.textAlign = 'center';
+    ctx.fillStyle = var_gold();
+    ctx.font = `bold ${Math.min(48, 28 + combo * 0.5)}px 'Outfit', sans-serif`;
+    ctx.fillText(combo.toString(), w / 2, beltY - 70);
+    ctx.fillStyle = '#8a6b6b';
+    ctx.font = "600 12px 'Outfit', sans-serif";
+    ctx.fillText('COMBO', w / 2, beltY - 48);
+  }
+
+  // Judgment text
+  if (judgmentText && performance.now() - judgmentTime < 500) {
+    const alpha = 1 - (performance.now() - judgmentTime) / 500;
+    const yOff = (performance.now() - judgmentTime) * 0.05;
+    ctx.globalAlpha = alpha;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = judgmentColor;
+    ctx.font = "bold 22px 'Outfit', sans-serif";
+    ctx.fillText(judgmentText, hitX, beltY + 65 - yOff);
+    ctx.globalAlpha = 1;
+  }
+
+  // Song info
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#5a3333';
+  ctx.font = "600 14px 'Outfit', sans-serif";
+  ctx.fillText(`${SONGS[selectedSong].name} — ${SONGS[selectedSong].bpm} BPM`, w - 20, 30);
+
+  // Progress bar
+  const totalDuration = notes.length > 0 ? notes[notes.length - 1].time + 1000 : 1;
+  const progress = Math.max(0, Math.min(1, elapsed / totalDuration));
+  ctx.fillStyle = '#3d2222';
+  ctx.fillRect(0, h - 4, w, 4);
+  ctx.fillStyle = '#e63946';
+  ctx.fillRect(0, h - 4, w * progress, 4);
+
+  // Check if song is done
+  const songEnd = notes.length > 0 ? notes[notes.length - 1].time + 2000 : 0;
+  if (elapsed > songEnd && allDone) {
+    endGame();
+    return;
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+function var_text() { return '#f5e6e0'; }
+function var_gold() { return '#f4a261'; }
+
+function showJudgment(text, color) {
+  judgmentText = text;
+  judgmentColor = color;
+  judgmentTime = performance.now();
+}
+
+function hitNote(type) {
+  if (!gameActive) return;
+  const elapsed = performance.now() - startTime;
+
+  if (type === 'don') { playDon(); drumFlashRed = 1; }
+  else { playKa(); drumFlashBlue = 1; }
+
+  // Find closest unhit note of matching type
+  let closest = null;
+  let closestDist = Infinity;
+
+  for (const note of notes) {
+    if (note.hit || note.missed) continue;
+    if (note.type !== type) continue;
+    const dist = Math.abs(note.time - elapsed);
+    if (dist < closestDist && dist < MISS_THRESHOLD) {
+      closest = note;
+      closestDist = dist;
+    }
+  }
+
+  if (!closest) return;
+
+  closest.hit = true;
+
+  if (closestDist <= PERFECT_WINDOW) {
+    score += 300 + combo * 10;
+    combo++;
+    perfect++;
+    showJudgment('PERFECT ✨', '#f4a261');
+  } else if (closestDist <= GOOD_WINDOW) {
+    score += 100 + combo * 5;
+    combo++;
+    good++;
+    showJudgment('GOOD', '#2a9d8f');
+  } else {
+    score += 50;
+    combo = 0;
+    showJudgment('OK', '#8a6b6b');
+  }
+
+  maxCombo = Math.max(maxCombo, combo);
+}
+
+function endGame() {
+  gameActive = false;
+
+  const total = perfect + good + miss;
+  const accuracy = total > 0 ? ((perfect * 100 + good * 50) / (total * 100)) * 100 : 0;
+
+  let rank, rankClass;
+  if (accuracy >= 95 && miss === 0) { rank = 'S'; rankClass = 'S'; }
+  else if (accuracy >= 80) { rank = 'A'; rankClass = 'A'; }
+  else if (accuracy >= 60) { rank = 'B'; rankClass = 'B'; }
+  else { rank = 'C'; rankClass = 'C'; }
+
+  document.getElementById('rank').textContent = rank;
+  document.getElementById('rank').className = 'rank ' + rankClass;
+  document.getElementById('finalScore').textContent = score;
+  document.getElementById('rPerfect').textContent = perfect;
+  document.getElementById('rGood').textContent = good;
+  document.getElementById('rMiss').textContent = miss;
+  document.getElementById('rCombo').textContent = maxCombo;
+  document.getElementById('endScreen').classList.remove('hidden');
+}
+
+function showStart() {
+  document.getElementById('startScreen').classList.remove('hidden');
+  document.getElementById('endScreen').classList.add('hidden');
+}
+
+// ─── Input ───
+document.addEventListener('keydown', (e) => {
+  if (e.repeat) return;
+  if (e.key === 'd' || e.key === 'D' || e.key === 'f' || e.key === 'F') {
+    hitNote('don');
+  } else if (e.key === 'j' || e.key === 'J' || e.key === 'k' || e.key === 'K') {
+    hitNote('ka');
+  }
+});
+
+// Mobile tap zones
+document.getElementById('tapRed1').addEventListener('touchstart', (e) => { e.preventDefault(); hitNote('don'); }, { passive: false });
+document.getElementById('tapRed2').addEventListener('touchstart', (e) => { e.preventDefault(); hitNote('don'); }, { passive: false });
+document.getElementById('tapBlue').addEventListener('touchstart', (e) => { e.preventDefault(); hitNote('ka'); }, { passive: false });
+document.getElementById('tapBlue2').addEventListener('touchstart', (e) => { e.preventDefault(); hitNote('ka'); }, { passive: false });
+
+// Start button
+document.getElementById('startBtn').addEventListener('click', startGame);
+</script>
+</body>
+</html>

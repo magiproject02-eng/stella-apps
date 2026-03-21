@@ -15,7 +15,9 @@
   .app-card:hover{border-color:#7c3aed;transform:translateY(-1px)}
   .app-card h3{font-size:1rem;font-weight:600;margin-bottom:0.3rem}
   .app-card p{color:#6b6b80;font-size:0.8rem}
-  .app-card .tag{display:inline-block;margin-top:0.5rem;padding:0.15rem 0.5rem;background:#7c3aed18;border:1px solid #7c3aed33;border-radius:999px;font-size:0.7rem;color:#7c3aed}
+  .app-card .tag{display:inline-block;margin-top:0.5rem;padding:0.15rem 0.5rem;border-radius:999px;font-size:0.7rem}
+  .tag.game{background:#7c3aed18;border:1px solid #7c3aed33;color:#7c3aed}
+  .tag.rhythm{background:#e6394618;border:1px solid #e6394633;color:#e63946}
   .footer{margin-top:2rem;text-align:center;color:#6b6b8044;font-size:0.7rem}
 </style>
 </head>
@@ -23,11 +25,19 @@
 <div class="container">
   <h1>⚡ Stella Apps</h1>
   <div class="sub">Built in Claude · Deployed via GitHub → Vercel</div>
+
+  <a class="app-card" href="/taiko/">
+    <h3>🥁 太鼓 Blitz</h3>
+    <p>Taiko rhythm game — hit Don and Ka in time! 3 songs, 3 difficulties. Desktop keys or mobile tap.</p>
+    <span class="tag rhythm">rhythm</span>
+  </a>
+
   <a class="app-card" href="/mini-game/">
     <h3>🎯 Tap Blitz</h3>
     <p>Reaction-speed mini game. Tap targets, avoid traps, chase combos.</p>
-    <span class="tag">game</span>
+    <span class="tag game">game</span>
   </a>
+
   <div class="footer">stella-apps.vercel.app · March 2026</div>
 </div>
 </body>
