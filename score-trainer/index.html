@@ -8,6 +8,7 @@
 <script>if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/vexflow/3.0.9/vexflow-min.js"></script>
 <script>console.log('VexFlow check:',typeof Vex,window.Vex?'OK':'MISSING');</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -255,6 +256,14 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
         <button class="diff-btn active" data-score="on" onclick="setScoreView('on',this)">📋 Score On</button>
         <button class="diff-btn" data-score="off" onclick="setScoreView('off',this)">📋 Score Off</button>
       </div>
+      <div class="sub">Game mode:</div>
+      <div class="diff-row">
+        <button class="diff-btn active" data-gmode="clap" onclick="setGameMode('clap',this)">👏 Clap/Tap</button>
+        <button class="diff-btn" data-gmode="pitch" onclick="setGameMode('pitch',this)">🎤 Pitch + Beat</button>
+      </div>
+      <div id="pitchInfo" style="display:none;font-size:0.65rem;color:var(--dim);text-align:center;margin-bottom:0.5rem">
+        Sing the correct pitch — mic detects your note. Timing + pitch accuracy scored!
+      </div>
     </div>
     <div class="back-btn" onclick="switchTab('library')">← Back to Library</div>
   </div>
@@ -338,6 +347,11 @@ let micSensitivity=8;
 let metronomeOn=true;
 let showScore=true;
 let backingPartIndices=[];
+let gameMode='clap'; // 'clap' or 'pitch'
+let pitchDetector=null;
+let currentDetectedPitch=0;
+let currentDetectedNote='';
+let toneSynths={}; // Tone.js synths per part
 
 // ════════════════════════════════════
 // AUDIO
@@ -686,6 +700,13 @@ function setScoreView(m,el){
   showScore=(m==='on');
   document.querySelectorAll('[data-score]').forEach(b=>b.classList.toggle('active',b.dataset.score===m));
 }
+function setGameMode(m,el){
+  gameMode=m;
+  document.querySelectorAll('[data-gmode]').forEach(b=>b.classList.toggle('active',b.dataset.gmode===m));
+  $('pitchInfo').style.display=m==='pitch'?'block':'none';
+  // Pitch mode requires mic
+  if(m==='pitch')$('micSetup').style.display='block';
+}
 function initMicManual(){initMic().then(()=>{
   if(micOn){$('micStatusPlay').textContent='✅ Mic active — try clapping!';$('micStatusPlay').style.background='#2a9d8f22';$('micStatusPlay').style.color='var(--green)';$('micStatusPlay').style.borderColor='#2a9d8f44'}
 }).catch(()=>{$('micStatusPlay').textContent='❌ Mic denied';$('micStatusPlay').style.background='#e6394622';$('micStatusPlay').style.color='var(--red)'})}
@@ -708,6 +729,9 @@ function showPartSelect(){$('resultsScreen').style.display='none';$('partSelect'
 function startPlay(pi){
   selPart=pi;$('partSelect').style.display='none';$('resultsScreen').style.display='none';resizeCV(cv);
   unlockAudio();
+  if(window.Tone){Tone.start().catch(()=>{});initToneSynths()}
+  if(gameMode==='pitch'&&!micOn)initMicManual();
+  if(gameMode==='pitch')setTimeout(()=>startPitchDetection(),500);
   const bpmMod=difficulty==='slow'?0.7:1;
   const msPerSub=(60000/(song.bpm*bpmMod))/song.subdivPerBeat;
 
@@ -719,7 +743,7 @@ function startPlay(pi){
   });
 
   // Build main notes
-  gNotes=[];song.parts[selPart].beats.forEach(b=>{gNotes.push({time:b.pos*msPerSub,durMs:b.dur*msPerSub,dur:b.dur,hit:false,missed:false,ha:0})});gNotes.sort((a,b)=>a.time-b.time);
+  gNotes=[];song.parts[selPart].beats.forEach(b=>{gNotes.push({time:b.pos*msPerSub,durMs:b.dur*msPerSub,dur:b.dur,pitch:b.pitch||null,hit:false,missed:false,ha:0})});gNotes.sort((a,b)=>a.time-b.time);
 
   // Build ghost notes (visual)
   const ghost=[];if(difficulty!=='hard'){song.parts.forEach((p,ppi)=>{if(ppi===selPart)return;p.beats.forEach(b=>{ghost.push({time:b.pos*msPerSub,durMs:b.dur*msPerSub,pi:ppi})})});ghost.sort((a,b)=>a.time-b.time)}
@@ -734,11 +758,11 @@ function startPlay(pi){
   const backingNotes=[];
   backingPartIndices.forEach(bpi=>{
     song.parts[bpi].beats.forEach(b=>{
-      backingNotes.push({time:b.pos*msPerSub,pi:bpi});
+      backingNotes.push({time:b.pos*msPerSub,durMs:b.dur*msPerSub,pi:bpi,pitch:b.pitch||null});
     });
   });
   backingNotes.sort((a,b)=>a.time-b.time);
-  let backingIdx=0; // pointer for scheduling
+  let backingIdx=0;
 
   gScore=0;gCombo=0;gMaxCombo=0;gPerf=0;gGood=0;gMiss=0;gameOn=true;jT='';gStart=performance.now()+2000;
   const beatMs=60000/(song.bpm*bpmMod);const mid=setInterval(()=>{if(!gameOn){clearInterval(mid);return}if(metronomeOn)playTick()},beatMs);
@@ -806,10 +830,28 @@ function startPlay(pi){
       cx.strokeStyle='#2e2e3a';cx.lineWidth=1;cx.beginPath();cx.moveTo(0,scoreH);cx.lineTo(w,scoreH);cx.stroke();
     }
 
+    // ─── PITCH MODE AUTO-HIT ───
+    if(gameMode==='pitch'&&currentDetectedPitch>0){
+      const nextNote=gNotes.find(n=>!n.hit&&!n.missed);
+      if(nextNote&&nextNote.pitch){
+        const expectedFreq=pitchNameToFreq(nextNote.pitch);
+        if(expectedFreq>0){
+          const semitones=Math.abs(12*Math.log2(currentDetectedPitch/expectedFreq));
+          const timeDist=Math.abs(nextNote.time-el);
+          if(semitones<2&&timeDist<GW){onHit()}
+        }
+      }
+    }
+
     // ─── PLAY BACKING PARTS AUDIO ───
     while(backingIdx<backingNotes.length&&backingNotes[backingIdx].time<=el+10){
       if(backingNotes[backingIdx].time>=el-30){
-        playDrum(backingNotes[backingIdx].pi);
+        const bn=backingNotes[backingIdx];
+        if(bn.pitch&&window.Tone&&toneSynths.backing){
+          playBackingNote(bn.pitch,bn.durMs);
+        }else{
+          playDrum(bn.pi);
+        }
       }
       backingIdx++;
     }
@@ -836,12 +878,27 @@ function startPlay(pi){
       cx.fillStyle=pc;rRect(cx,x,by-nh/2,nw,nh,6);cx.fill();
       cx.strokeStyle=pc;cx.lineWidth=2;rRect(cx,x,by-nh/2,nw,nh,6);cx.stroke();
       cx.fillStyle='rgba(255,255,255,0.2)';rRect(cx,x,by-nh/2,Math.min(10,nw),nh,3);cx.fill();
-      cx.fillStyle='#fff';cx.font="12px 'Outfit'";cx.textAlign='center';cx.textBaseline='middle';cx.fillText('👏',x+8,by);
+      cx.fillStyle='#fff';cx.font="12px 'Outfit'";cx.textAlign='center';cx.textBaseline='middle';
+      if(gameMode==='pitch'&&n.pitch){cx.font="bold 10px 'Outfit'";cx.fillText(n.pitch.replace(/(\d)/,'$1'),x+nw/2,by)}
+      else{cx.fillText('👏',x+8,by)}
       cx.globalAlpha=1}
 
     // HUD
     cx.fillStyle='#e8e6f0';cx.font="bold 22px 'Outfit'";cx.textAlign='left';cx.fillText(gScore+'',20,scoreH+20);cx.fillStyle='#6b6b80';cx.font="600 9px 'Outfit'";cx.fillText('SCORE',20,scoreH+34);
-    cx.textAlign='right';cx.fillStyle='#444';cx.font="600 11px 'Outfit'";cx.fillText(`${song.parts[selPart].name} · ${song.title} · ${song.bpm} BPM${difficulty!=='normal'?' ['+difficulty+']':''} · ${inputMode==='clap'?'👏':'📱'}`,w-15,scoreH+16);
+    cx.textAlign='right';cx.fillStyle='#444';cx.font="600 11px 'Outfit'";cx.fillText(`${song.parts[selPart].name} · ${song.title} · ${song.bpm} BPM${difficulty!=='normal'?' ['+difficulty+']':''} · ${gameMode==='pitch'?'🎤 Pitch':'📱'}`,w-15,scoreH+16);
+
+    // Pitch mode: show detected note and expected note
+    if(gameMode==='pitch'){
+      cx.textAlign='left';cx.font="bold 16px 'Outfit'";
+      cx.fillStyle=currentDetectedNote?'#2a9d8f':'#555';
+      cx.fillText('🎤 '+(currentDetectedNote||'—'),20,h-25);
+      // Show expected pitch for next note
+      const nextNote=gNotes.find(n=>!n.hit&&!n.missed);
+      if(nextNote&&nextNote.pitch){
+        cx.fillStyle='#6b6b80';cx.font="600 10px 'Outfit'";
+        cx.fillText('Target: '+nextNote.pitch,20,h-10);
+      }
+    }
     if(gCombo>1){cx.textAlign='center';cx.fillStyle='#f4a261';cx.font=`bold ${Math.min(40,22+gCombo)}px 'Outfit'`;cx.fillText(gCombo+'',w/2,by-55);cx.fillStyle='#6b6b80';cx.font="600 9px 'Outfit'";cx.fillText('COMBO',w/2,by-38)}
     if(jT&&performance.now()-jTime<500){const a=1-(performance.now()-jTime)/500;cx.globalAlpha=a;cx.textAlign='center';cx.fillStyle=jC;cx.font="bold 18px 'Outfit'";cx.fillText(jT,hx,by+55-(performance.now()-jTime)*0.04);cx.globalAlpha=1}
 
@@ -856,9 +913,27 @@ function showJ(t,c){jT=t;jC=c;jTime=performance.now()}
 function onHit(){if(!gameOn)return;const el=performance.now()-gStart;playHit();dFlash=1;cFlash=1;
   let cl=null,cd=Infinity;for(const n of gNotes){if(n.hit||n.missed)continue;const d=Math.abs(n.time-el);if(d<cd&&d<MW){cl=n;cd=d}}
   if(!cl)return;cl.hit=true;cl.ha=1;
-  if(cd<=PW){gScore+=300+gCombo*10;gCombo++;gPerf++;showJ('PERFECT ✨','#f4a261')}
-  else if(cd<=GW){gScore+=100+gCombo*5;gCombo++;gGood++;showJ('GOOD','#2a9d8f')}
-  else{gScore+=50;gCombo=0;showJ('OK','#6b6b80')}
+
+  // Pitch accuracy check (pitch mode only)
+  let pitchAccurate=true;
+  let pitchMsg='';
+  if(gameMode==='pitch'&&cl.pitch){
+    const expectedFreq=pitchNameToFreq(cl.pitch);
+    if(currentDetectedPitch>0&&expectedFreq>0){
+      const semitones=12*Math.log2(currentDetectedPitch/expectedFreq);
+      const absSemitones=Math.abs(semitones);
+      if(absSemitones<=0.5){pitchAccurate=true;pitchMsg='🎯'}
+      else if(absSemitones<=1.5){pitchAccurate=true;pitchMsg='~'}
+      else{pitchAccurate=false;pitchMsg='✗ '+currentDetectedNote}
+    }else{
+      pitchAccurate=false;pitchMsg='🔇';
+    }
+  }
+
+  if(cd<=PW&&pitchAccurate){gScore+=300+gCombo*10;gCombo++;gPerf++;showJ('PERFECT ✨'+(pitchMsg?' '+pitchMsg:''),'#f4a261')}
+  else if(cd<=GW&&pitchAccurate){gScore+=100+gCombo*5;gCombo++;gGood++;showJ('GOOD'+(pitchMsg?' '+pitchMsg:''),'#2a9d8f')}
+  else if(cd<=GW&&!pitchAccurate){gScore+=50;gCombo=0;showJ('TIMING OK '+pitchMsg,'#6b6b80')}
+  else{gScore+=30;gCombo=0;showJ('OK'+(pitchMsg?' '+pitchMsg:''),'#6b6b80')}
   gMaxCombo=Math.max(gMaxCombo,gCombo)}
 
 function endPlay(){gameOn=false;$('scoreContainer').style.display='none';const t=gPerf+gGood+gMiss,acc=t>0?((gPerf*100+gGood*50)/(t*100))*100:0;
@@ -1087,9 +1162,11 @@ function highlightVexNote(elapsed){
     hl.style.left=(current.x-5)+'px';
     hl.style.width='40px';
 
-    // Auto-scroll horizontally to keep current note CENTERED
+    // Smooth scroll horizontally to keep current note CENTERED
     const scrollTarget=current.x-sc.clientWidth*0.5;
-    sc.scrollLeft=Math.max(0,scrollTarget);
+    const target=Math.max(0,scrollTarget);
+    // Smooth interpolation instead of jumping
+    sc.scrollLeft+=(target-sc.scrollLeft)*0.08;
 
     // Color past/current/future notes via SVG (if elements available)
     vexNoteElements.forEach(ne=>{
@@ -1123,11 +1200,122 @@ function highlightVexNote(elapsed){
 }
 
 // ════════════════════════════════════
+// PITCH DETECTION (autocorrelation)
+// ════════════════════════════════════
+const NOTE_NAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+function freqToNote(freq){
+  if(freq<50||freq>2000)return{note:'',octave:0,cents:0};
+  const n=12*(Math.log2(freq/440));
+  const midi=Math.round(n)+69;
+  const noteIdx=((midi%12)+12)%12;
+  const octave=Math.floor(midi/12)-1;
+  const cents=Math.round((n-(midi-69))*100);
+  return{note:NOTE_NAMES[noteIdx],octave,cents,name:NOTE_NAMES[noteIdx]+octave};
+}
+
+function pitchNameToFreq(name){
+  if(!name)return 0;
+  const m=name.match(/^([A-Ga-g][#b]?)(\d)$/);
+  if(!m)return 0;
+  let note=m[1].toUpperCase();
+  const oct=parseInt(m[2]);
+  const idx={'C':0,'C#':1,'DB':1,'D':2,'D#':3,'EB':3,'E':4,'F':5,'F#':6,'GB':6,'G':7,'G#':8,'AB':8,'A':9,'A#':10,'BB':10,'B':11}[note.replace('b','B')];
+  if(idx===undefined)return 0;
+  return 440*Math.pow(2,(idx-9)/12+(oct-4));
+}
+
+function autoCorrelate(buf,sampleRate){
+  let SIZE=buf.length;
+  let rms=0;
+  for(let i=0;i<SIZE;i++)rms+=buf[i]*buf[i];
+  rms=Math.sqrt(rms/SIZE);
+  if(rms<0.01)return -1; // not enough signal
+
+  let r1=0,r2=SIZE-1;
+  const thresh=0.2;
+  for(let i=0;i<SIZE/2;i++){if(Math.abs(buf[i])<thresh){r1=i;break}}
+  for(let i=1;i<SIZE/2;i++){if(Math.abs(buf[SIZE-i])<thresh){r2=SIZE-i;break}}
+
+  buf=buf.slice(r1,r2);
+  SIZE=buf.length;
+
+  const c=new Float32Array(SIZE);
+  for(let i=0;i<SIZE;i++){
+    let val=0;
+    for(let j=0;j<SIZE-i;j++)val+=buf[j]*buf[j+i];
+    c[i]=val;
+  }
+
+  let d=0;
+  while(c[d]>c[d+1])d++;
+  let maxval=-1,maxpos=-1;
+  for(let i=d;i<SIZE;i++){if(c[i]>maxval){maxval=c[i];maxpos=i}}
+
+  let T0=maxpos;
+  // Parabolic interpolation
+  const x1=c[T0-1]||0,x2=c[T0],x3=c[T0+1]||0;
+  const a=(x1+x3-2*x2)/2;
+  const b=(x3-x1)/2;
+  if(a)T0=T0-b/(2*a);
+
+  return sampleRate/T0;
+}
+
+let pitchBuf=null,pitchAnalyser=null;
+function startPitchDetection(){
+  if(!micOn||!micAn)return;
+  // Use a separate analyser for pitch with larger FFT
+  pitchAnalyser=micAn;
+  pitchBuf=new Float32Array(pitchAnalyser.fftSize);
+  detectPitchLoop();
+}
+
+function detectPitchLoop(){
+  if(!gameOn||gameMode!=='pitch')return;
+  if(!pitchAnalyser)return;
+  pitchAnalyser.getFloatTimeDomainData(pitchBuf);
+  const sr=pitchAnalyser._ctx?pitchAnalyser._ctx.sampleRate:44100;
+  const freq=autoCorrelate(pitchBuf,sr);
+  if(freq>0){
+    currentDetectedPitch=freq;
+    const info=freqToNote(freq);
+    currentDetectedNote=info.name;
+  }else{
+    currentDetectedPitch=0;
+    currentDetectedNote='';
+  }
+  requestAnimationFrame(detectPitchLoop);
+}
+
+// ════════════════════════════════════
+// TONE.JS BACKING SYNTH
+// ════════════════════════════════════
+function initToneSynths(){
+  if(!window.Tone)return;
+  // Create a polyphonic synth for backing parts
+  toneSynths.backing=new Tone.PolySynth(Tone.Synth,{
+    oscillator:{type:'sine'},
+    envelope:{attack:0.05,decay:0.3,sustain:0.4,release:0.5},
+    volume:-12
+  }).toDestination();
+}
+
+function playBackingNote(pitchName,duration){
+  if(!window.Tone||!toneSynths.backing)return;
+  if(!pitchName)return;
+  try{
+    // Convert "D5" to "D5", "F#5" to "F#5" — Tone.js understands this format
+    const dur=Math.max(0.1,duration/1000);
+    toneSynths.backing.triggerAttackRelease(pitchName,dur);
+  }catch(e){}
+}
+
+// ════════════════════════════════════
 // MIC CLAP DETECTION
 // ════════════════════════════════════
 let micOn=false,micAn=null,micD=null,lastClap=0;
 function getMicThreshold(){return(21-micSensitivity)*5}
-async function initMic(){try{const s=await navigator.mediaDevices.getUserMedia({audio:true});const c=new AC(),src=c.createMediaStreamSource(s);micAn=c.createAnalyser();micAn.fftSize=512;micAn.smoothingTimeConstant=0.3;src.connect(micAn);micD=new Uint8Array(micAn.frequencyBinCount);micOn=true;monMic()}catch(e){throw e}}
+async function initMic(){try{const s=await navigator.mediaDevices.getUserMedia({audio:true});const c=new AC(),src=c.createMediaStreamSource(s);micAn=c.createAnalyser();micAn.fftSize=2048;micAn.smoothingTimeConstant=0.3;micAn._ctx=c;src.connect(micAn);micD=new Uint8Array(micAn.frequencyBinCount);micOn=true;monMic()}catch(e){throw e}}
 function monMic(){if(!micOn)return;micAn.getByteFrequencyData(micD);let s=0;for(let i=0;i<micD.length;i++)s+=micD[i]*micD[i];const v=Math.sqrt(s/micD.length);const now=performance.now();if(inputMode==='clap'&&v>getMicThreshold()&&now-lastClap>120){lastClap=now;onHit()}requestAnimationFrame(monMic)}
 
 // ════════════════════════════════════

@@ -1,13 +1,22 @@
 {
   "songs": [
     {
+      "id": "dragon-dance",
+      "title": "Dragon Dance of Shang (Darius Lim) — Opening",
+      "bpm": 80,
+      "timeSig": "4/4",
+      "parts": ["S1","S2","A1","A2"],
+      "bars": 12,
+      "tags": ["SSAA","choral","Mandarin","pitch"]
+    },
+    {
       "id": "marys-song",
       "title": "Mary's Song (Jools Scott & Sue Curtis)",
       "bpm": 92,
       "timeSig": "3/4",
       "parts": ["S","A","T","B"],
       "bars": 48,
-      "tags": ["choral","SATB","Christmas"]
+      "tags": ["SATB","choral","Christmas","pitch"]
     },
     {
       "id": "test",

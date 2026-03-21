@@ -1,0 +1,79 @@
+{
+  "title": "Dragon Dance of Shang (Darius Lim) — Opening",
+  "bpm": 80,
+  "timeSigTop": 4,
+  "timeSigBot": 4,
+  "bars": 12,
+  "subdivPerBeat": 2,
+  "keySig": "D",
+  "parts": [
+    {
+      "name": "S1",
+      "clef": "treble",
+      "beats": [
+        {"pos":16,"dur":1,"pitch":"F#5"},{"pos":17,"dur":1,"pitch":"E5"},{"pos":18,"dur":1,"pitch":"D5"},
+        {"pos":19,"dur":1,"pitch":"E5"},{"pos":20,"dur":4,"pitch":"D5"},{"pos":24,"dur":2,"pitch":"D5"},
+        {"pos":26,"dur":1,"pitch":"D5"},{"pos":27,"dur":3,"pitch":"E5"},{"pos":30,"dur":2,"pitch":"D5"},
+        {"pos":32,"dur":8,"pitch":"D5"},
+        {"pos":40,"dur":1,"pitch":"F#5"},{"pos":41,"dur":1,"pitch":"E5"},{"pos":42,"dur":1,"pitch":"D5"},
+        {"pos":43,"dur":1,"pitch":"E5"},{"pos":44,"dur":4,"pitch":"D5"},
+        {"pos":48,"dur":2,"pitch":"E5"},{"pos":50,"dur":1,"pitch":"E5"},{"pos":51,"dur":1,"pitch":"E5"},
+        {"pos":52,"dur":1,"pitch":"D5"},{"pos":53,"dur":8,"pitch":"D5"},
+        {"pos":64,"dur":2,"pitch":"E5"},{"pos":66,"dur":2,"pitch":"E5"},{"pos":68,"dur":1,"pitch":"D5"},
+        {"pos":69,"dur":8,"pitch":"D5"},
+        {"pos":80,"dur":4,"pitch":"D5"},{"pos":84,"dur":4,"pitch":"E5"},{"pos":88,"dur":8,"pitch":"D5"}
+      ]
+    },
+    {
+      "name": "S2",
+      "clef": "treble",
+      "beats": [
+        {"pos":16,"dur":1,"pitch":"D5"},{"pos":17,"dur":1,"pitch":"C#5"},{"pos":18,"dur":1,"pitch":"B4"},
+        {"pos":19,"dur":1,"pitch":"C#5"},{"pos":20,"dur":4,"pitch":"B4"},{"pos":24,"dur":2,"pitch":"B4"},
+        {"pos":26,"dur":1,"pitch":"B4"},{"pos":27,"dur":3,"pitch":"C#5"},{"pos":30,"dur":2,"pitch":"B4"},
+        {"pos":32,"dur":8,"pitch":"B4"},
+        {"pos":40,"dur":1,"pitch":"D5"},{"pos":41,"dur":1,"pitch":"C#5"},{"pos":42,"dur":1,"pitch":"B4"},
+        {"pos":43,"dur":1,"pitch":"C#5"},{"pos":44,"dur":4,"pitch":"B4"},
+        {"pos":48,"dur":2,"pitch":"C#5"},{"pos":50,"dur":1,"pitch":"C#5"},{"pos":51,"dur":1,"pitch":"C#5"},
+        {"pos":52,"dur":1,"pitch":"B4"},{"pos":53,"dur":8,"pitch":"B4"},
+        {"pos":64,"dur":2,"pitch":"C#5"},{"pos":66,"dur":2,"pitch":"C#5"},{"pos":68,"dur":1,"pitch":"B4"},
+        {"pos":69,"dur":8,"pitch":"B4"},
+        {"pos":80,"dur":4,"pitch":"B4"},{"pos":84,"dur":4,"pitch":"C#5"},{"pos":88,"dur":8,"pitch":"B4"}
+      ]
+    },
+    {
+      "name": "A1",
+      "clef": "treble",
+      "beats": [
+        {"pos":16,"dur":1,"pitch":"A4"},{"pos":17,"dur":1,"pitch":"G#4"},{"pos":18,"dur":1,"pitch":"F#4"},
+        {"pos":19,"dur":1,"pitch":"G#4"},{"pos":20,"dur":4,"pitch":"F#4"},{"pos":24,"dur":2,"pitch":"F#4"},
+        {"pos":26,"dur":1,"pitch":"F#4"},{"pos":27,"dur":3,"pitch":"G#4"},{"pos":30,"dur":2,"pitch":"F#4"},
+        {"pos":32,"dur":8,"pitch":"F#4"},
+        {"pos":40,"dur":1,"pitch":"A4"},{"pos":41,"dur":1,"pitch":"G#4"},{"pos":42,"dur":1,"pitch":"F#4"},
+        {"pos":43,"dur":1,"pitch":"G#4"},{"pos":44,"dur":4,"pitch":"F#4"},
+        {"pos":48,"dur":2,"pitch":"G#4"},{"pos":50,"dur":1,"pitch":"G#4"},{"pos":51,"dur":1,"pitch":"G#4"},
+        {"pos":52,"dur":1,"pitch":"F#4"},{"pos":53,"dur":8,"pitch":"F#4"},
+        {"pos":64,"dur":2,"pitch":"G#4"},{"pos":66,"dur":2,"pitch":"G#4"},{"pos":68,"dur":1,"pitch":"F#4"},
+        {"pos":69,"dur":8,"pitch":"F#4"},
+        {"pos":80,"dur":4,"pitch":"F#4"},{"pos":84,"dur":4,"pitch":"G#4"},{"pos":88,"dur":8,"pitch":"F#4"}
+      ]
+    },
+    {
+      "name": "A2",
+      "clef": "treble",
+      "beats": [
+        {"pos":16,"dur":1,"pitch":"D4"},{"pos":17,"dur":1,"pitch":"C#4"},{"pos":18,"dur":1,"pitch":"B3"},
+        {"pos":19,"dur":1,"pitch":"C#4"},{"pos":20,"dur":4,"pitch":"B3"},{"pos":24,"dur":2,"pitch":"B3"},
+        {"pos":26,"dur":1,"pitch":"B3"},{"pos":27,"dur":3,"pitch":"C#4"},{"pos":30,"dur":2,"pitch":"B3"},
+        {"pos":32,"dur":8,"pitch":"B3"},
+        {"pos":40,"dur":1,"pitch":"D4"},{"pos":41,"dur":1,"pitch":"C#4"},{"pos":42,"dur":1,"pitch":"B3"},
+        {"pos":43,"dur":1,"pitch":"C#4"},{"pos":44,"dur":4,"pitch":"B3"},
+        {"pos":48,"dur":2,"pitch":"C#4"},{"pos":50,"dur":1,"pitch":"C#4"},{"pos":51,"dur":1,"pitch":"C#4"},
+        {"pos":52,"dur":1,"pitch":"B3"},{"pos":53,"dur":8,"pitch":"B3"},
+        {"pos":64,"dur":2,"pitch":"C#4"},{"pos":66,"dur":2,"pitch":"C#4"},{"pos":68,"dur":1,"pitch":"B3"},
+        {"pos":69,"dur":8,"pitch":"B3"},
+        {"pos":80,"dur":4,"pitch":"B3"},{"pos":84,"dur":4,"pitch":"C#4"},{"pos":88,"dur":8,"pitch":"B3"}
+      ]
+    }
+  ]
+}
