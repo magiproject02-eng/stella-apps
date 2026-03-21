@@ -114,7 +114,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 .score-container .vf-clef path{fill:#888!important;stroke:#888!important}
 .score-container .vf-keysignature path{fill:#999!important;stroke:#999!important}
 .score-container .vf-timesignature path{fill:#999!important;stroke:#999!important}
-.score-highlight{position:absolute;background:rgba(244,162,97,0.2);border:2px solid var(--gold);border-radius:4px;pointer-events:none;z-index:5;transition:left 0.08s,top 0.08s}
+.score-highlight{position:absolute;background:rgba(244,162,97,0.25);border-left:3px solid var(--gold);pointer-events:none;z-index:5;top:0;bottom:0;width:40px;transition:left 0.08s}
 .play-container canvas{flex:1;width:100%;min-height:0}
 .part-select{position:absolute;inset:0;background:rgba(15,15,20,0.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;gap:0.4rem;padding:1.5rem}
 .part-select h2{font-size:1.3rem;font-weight:700;margin-bottom:0.5rem}
@@ -1084,14 +1084,12 @@ function highlightVexNote(elapsed){
 
   if(current&&minDist<2000){
     hl.style.display='block';
-    hl.style.left=(current.x-4)+'px';
-    hl.style.top=(current.y-4)+'px';
-    hl.style.width=(current.w+8)+'px';
-    hl.style.height=(current.h+8)+'px';
+    hl.style.left=(current.x-5)+'px';
+    hl.style.width='40px';
 
-    // Auto-scroll horizontally to keep current note visible
-    const scrollTarget=current.x-sc.clientWidth*0.3;
-    sc.scrollTo({left:Math.max(0,scrollTarget),behavior:'smooth'});
+    // Auto-scroll horizontally to keep current note CENTERED
+    const scrollTarget=current.x-sc.clientWidth*0.5;
+    sc.scrollLeft=Math.max(0,scrollTarget);
 
     // Color past/current/future notes via SVG (if elements available)
     vexNoteElements.forEach(ne=>{
