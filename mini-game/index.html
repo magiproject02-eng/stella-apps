@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Tap Blitz</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --bg: #0a0a12;
+    --surface: #14141f;
+    --border: #222233;
+    --text: #e8e6f0;
+    --dim: #6b6b80;
+    --accent: #7c3aed;
+    --accent-glow: #7c3aed66;
+    --green: #22c55e;
+    --red: #ef4444;
+    --yellow: #eab308;
+    --blue: #3b82f6;
+  }
+
+  body {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Ambient background */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at 30% 20%, #7c3aed08 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, #3b82f608 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 420px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100dvh;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    padding: 1.5rem 0 1rem;
+    width: 100%;
+  }
+
+  .header h1 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    background: linear-gradient(135deg, #7c3aed, #3b82f6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .header .sub {
+    color: var(--dim);
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
+  }
+
+  /* Stats bar */
+  .stats {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 1rem;
+  }
+
+  .stat {
+    text-align: center;
+  }
+
+  .stat-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--dim);
+  }
+
+  .stat-value {
+    font-size: 1.3rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stat-value.score { color: var(--accent); }
+  .stat-value.time { color: var(--yellow); }
+  .stat-value.combo { color: var(--green); }
+
+  /* Game grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+    gap: 8px;
+    width: 100%;
+    aspect-ratio: 1;
+    margin-bottom: 1rem;
+  }
+
+  .cell {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    cursor: pointer;
+    transition: transform 0.1s, background 0.15s;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cell:active { transform: scale(0.92); }
+
+  .cell.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 20px var(--accent-glow), inset 0 0 20px #ffffff15;
+    animation: pop 0.2s ease-out;
+  }
+
+  .cell.active.bonus {
+    background: linear-gradient(135deg, #eab308, #f97316);
+    border-color: #eab308;
+    box-shadow: 0 0 25px #eab30844;
+  }
+
+  .cell.active.trap {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    border-color: #ef4444;
+    box-shadow: 0 0 25px #ef444444;
+  }
+
+  .cell.hit {
+    animation: hitFlash 0.3s ease-out;
+  }
+
+  .cell.miss {
+    animation: missFlash 0.3s ease-out;
+  }
+
+  .cell .emoji {
+    pointer-events: none;
+    font-size: 1.8rem;
+    line-height: 1;
+  }
+
+  @keyframes pop {
+    0% { transform: scale(0.5); opacity: 0; }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  @keyframes hitFlash {
+    0% { background: var(--green); transform: scale(1.1); }
+    100% { background: var(--surface); transform: scale(1); }
+  }
+
+  @keyframes missFlash {
+    0% { background: var(--red); transform: scale(0.9); }
+    100% { background: var(--surface); transform: scale(1); }
+  }
+
+  /* Float score animation */
+  .float-score {
+    position: absolute;
+    font-size: 1rem;
+    font-weight: 700;
+    pointer-events: none;
+    animation: floatUp 0.8s ease-out forwards;
+    z-index: 10;
+  }
+
+  .float-score.positive { color: var(--green); }
+  .float-score.negative { color: var(--red); }
+  .float-score.bonus-float { color: var(--yellow); }
+
+  @keyframes floatUp {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-50px) scale(1.3); }
+  }
+
+  /* Screens */
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+    background: var(--bg);
+    transition: opacity 0.3s;
+    padding: 2rem;
+    text-align: center;
+  }
+
+  .screen.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .screen h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+
+  .screen p {
+    color: var(--dim);
+    margin-bottom: 2rem;
+    line-height: 1.6;
+    max-width: 300px;
+  }
+
+  .final-score {
+    font-size: 4rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #7c3aed, #3b82f6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.25rem;
+  }
+
+  .final-label {
+    color: var(--dim);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 2rem;
+  }
+
+  .best-score {
+    color: var(--yellow);
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .btn {
+    padding: 0.9rem 2.5rem;
+    border: none;
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.2s;
+    color: white;
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    box-shadow: 0 4px 15px var(--accent-glow);
+  }
+
+  .btn:active { transform: scale(0.96); }
+  .btn:hover { box-shadow: 0 6px 25px var(--accent-glow); }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    font-size: 0.75rem;
+    color: var(--dim);
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+
+  .legend-dot.purple { background: var(--accent); }
+  .legend-dot.gold { background: var(--yellow); }
+  .legend-dot.red { background: var(--red); }
+
+  /* Progress bar */
+  .timer-bar {
+    width: 100%;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+  }
+
+  .timer-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--blue));
+    border-radius: 2px;
+    transition: width 0.1s linear;
+  }
+
+  .deployed-badge {
+    position: fixed;
+    bottom: 1rem;
+    font-size: 0.7rem;
+    color: var(--dim);
+    opacity: 0.5;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>⚡ Tap Blitz</h1>
+    <div class="sub">Tap the targets. Avoid the traps. Chase the combo.</div>
+  </div>
+
+  <div class="timer-bar"><div class="timer-bar-fill" id="timerBar" style="width:100%"></div></div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Score</div>
+      <div class="stat-value score" id="score">0</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Time</div>
+      <div class="stat-value time" id="timer">30</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Combo</div>
+      <div class="stat-value combo" id="combo">x1</div>
+    </div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot purple"></div> Target (+10)</div>
+    <div class="legend-item"><div class="legend-dot gold"></div> Bonus (+25)</div>
+    <div class="legend-item"><div class="legend-dot red"></div> Trap (-15)</div>
+  </div>
+
+  <!-- Start screen -->
+  <div class="screen" id="startScreen">
+    <h2>⚡ Tap Blitz</h2>
+    <p>Tap glowing cells to score points. Gold cells give bonus points. Red cells are traps — avoid them! Build combos by hitting consecutive targets.</p>
+    <div class="legend" style="margin-bottom:2rem">
+      <div class="legend-item"><div class="legend-dot purple"></div> +10 pts</div>
+      <div class="legend-item"><div class="legend-dot gold"></div> +25 pts</div>
+      <div class="legend-item"><div class="legend-dot red"></div> -15 pts</div>
+    </div>
+    <button class="btn" onclick="startGame()">Start Game</button>
+  </div>
+
+  <!-- End screen -->
+  <div class="screen hidden" id="endScreen">
+    <h2>Time's Up!</h2>
+    <div class="final-score" id="finalScore">0</div>
+    <div class="final-label">points</div>
+    <div class="best-score" id="bestScore"></div>
+    <div id="endStats" style="color:var(--dim);font-size:0.85rem;margin-bottom:1.5rem;line-height:1.8"></div>
+    <button class="btn" onclick="startGame()">Play Again</button>
+  </div>
+</div>
+
+<div class="deployed-badge">Built by Stella · Deployed via GitHub → Vercel</div>
+
+<script>
+const GAME_DURATION = 30;
+const GRID_SIZE = 16;
+const NORMAL_SCORE = 10;
+const BONUS_SCORE = 25;
+const TRAP_PENALTY = 15;
+const MISS_PENALTY = 2;
+
+let score = 0;
+let combo = 0;
+let maxCombo = 0;
+let timeLeft = GAME_DURATION;
+let gameActive = false;
+let spawnInterval = null;
+let timerInterval = null;
+let totalHits = 0;
+let totalMisses = 0;
+let totalTraps = 0;
+let bestScore = parseInt(localStorage.getItem('tapblitz_best') || '0');
+
+const grid = document.getElementById('grid');
+const scoreEl = document.getElementById('score');
+const timerEl = document.getElementById('timer');
+const comboEl = document.getElementById('combo');
+const timerBar = document.getElementById('timerBar');
+const startScreen = document.getElementById('startScreen');
+const endScreen = document.getElementById('endScreen');
+
+// Build grid
+for (let i = 0; i < GRID_SIZE; i++) {
+  const cell = document.createElement('div');
+  cell.className = 'cell';
+  cell.dataset.index = i;
+  cell.addEventListener('click', () => tapCell(i));
+  cell.addEventListener('touchstart', (e) => { e.preventDefault(); tapCell(i); }, { passive: false });
+  grid.appendChild(cell);
+}
+
+const cells = grid.querySelectorAll('.cell');
+
+function tapCell(index) {
+  if (!gameActive) return;
+  const cell = cells[index];
+
+  if (cell.classList.contains('active')) {
+    const isTrap = cell.classList.contains('trap');
+    const isBonus = cell.classList.contains('bonus');
+
+    cell.classList.remove('active', 'bonus', 'trap');
+    cell.innerHTML = '';
+
+    if (isTrap) {
+      score = Math.max(0, score - TRAP_PENALTY);
+      combo = 0;
+      totalTraps++;
+      cell.classList.add('miss');
+      showFloat(cell, `-${TRAP_PENALTY}`, 'negative');
+      setTimeout(() => cell.classList.remove('miss'), 300);
+    } else {
+      const points = isBonus ? BONUS_SCORE : NORMAL_SCORE;
+      combo++;
+      maxCombo = Math.max(maxCombo, combo);
+      const multiplier = Math.min(1 + Math.floor(combo / 5) * 0.5, 3);
+      const earned = Math.round(points * multiplier);
+      score += earned;
+      totalHits++;
+      cell.classList.add('hit');
+      showFloat(cell, `+${earned}`, isBonus ? 'bonus-float' : 'positive');
+      setTimeout(() => cell.classList.remove('hit'), 300);
+    }
+
+    updateDisplay();
+  } else {
+    // Tapped empty cell
+    combo = 0;
+    score = Math.max(0, score - MISS_PENALTY);
+    totalMisses++;
+    cell.classList.add('miss');
+    showFloat(cell, `-${MISS_PENALTY}`, 'negative');
+    setTimeout(() => cell.classList.remove('miss'), 300);
+    updateDisplay();
+  }
+}
+
+function showFloat(cell, text, cls) {
+  const el = document.createElement('div');
+  el.className = `float-score ${cls}`;
+  el.textContent = text;
+  cell.appendChild(el);
+  setTimeout(() => el.remove(), 800);
+}
+
+function spawnTarget() {
+  if (!gameActive) return;
+
+  // Clear expired targets
+  const activeCells = grid.querySelectorAll('.cell.active');
+  
+  // Difficulty ramp: more targets, faster spawn as time decreases
+  const difficulty = 1 - (timeLeft / GAME_DURATION);
+  const maxActive = Math.floor(2 + difficulty * 3);
+  
+  if (activeCells.length >= maxActive) {
+    // Remove oldest
+    const oldest = activeCells[0];
+    oldest.classList.remove('active', 'bonus', 'trap');
+    oldest.innerHTML = '';
+  }
+
+  // Find empty cell
+  const emptyCells = [];
+  cells.forEach((cell, i) => {
+    if (!cell.classList.contains('active')) emptyCells.push(i);
+  });
+  
+  if (emptyCells.length === 0) return;
+  
+  const idx = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+  const cell = cells[idx];
+  
+  // Determine type
+  const rand = Math.random();
+  const trapChance = 0.12 + difficulty * 0.12;
+  const bonusChance = 0.08 + difficulty * 0.04;
+  
+  cell.classList.add('active');
+  
+  if (rand < trapChance) {
+    cell.classList.add('trap');
+    cell.innerHTML = '<span class="emoji">💀</span>';
+  } else if (rand < trapChance + bonusChance) {
+    cell.classList.add('bonus');
+    cell.innerHTML = '<span class="emoji">⭐</span>';
+  } else {
+    cell.innerHTML = '<span class="emoji">🎯</span>';
+  }
+
+  // Auto-remove after timeout (shorter at higher difficulty)
+  const lifetime = Math.max(800, 2000 - difficulty * 1200);
+  setTimeout(() => {
+    if (cell.classList.contains('active') && gameActive) {
+      cell.classList.remove('active', 'bonus', 'trap');
+      cell.innerHTML = '';
+    }
+  }, lifetime);
+}
+
+function updateDisplay() {
+  scoreEl.textContent = score;
+  timerEl.textContent = timeLeft;
+  const comboMult = Math.min(1 + Math.floor(combo / 5) * 0.5, 3);
+  comboEl.textContent = combo > 0 ? `x${comboMult.toFixed(1)}` : 'x1';
+  comboEl.style.color = combo >= 10 ? 'var(--yellow)' : combo >= 5 ? 'var(--green)' : 'var(--dim)';
+  timerBar.style.width = `${(timeLeft / GAME_DURATION) * 100}%`;
+  
+  if (timeLeft <= 5) {
+    timerBar.style.background = 'var(--red)';
+  } else if (timeLeft <= 10) {
+    timerBar.style.background = 'var(--yellow)';
+  } else {
+    timerBar.style.background = 'linear-gradient(90deg, var(--accent), var(--blue))';
+  }
+}
+
+function startGame() {
+  score = 0;
+  combo = 0;
+  maxCombo = 0;
+  timeLeft = GAME_DURATION;
+  totalHits = 0;
+  totalMisses = 0;
+  totalTraps = 0;
+  gameActive = true;
+
+  // Clear grid
+  cells.forEach(c => {
+    c.classList.remove('active', 'bonus', 'trap', 'hit', 'miss');
+    c.innerHTML = '';
+  });
+
+  startScreen.classList.add('hidden');
+  endScreen.classList.add('hidden');
+  updateDisplay();
+
+  // Dynamic spawn rate
+  function scheduleSpawn() {
+    if (!gameActive) return;
+    const difficulty = 1 - (timeLeft / GAME_DURATION);
+    const delay = Math.max(300, 900 - difficulty * 500);
+    spawnInterval = setTimeout(() => {
+      spawnTarget();
+      scheduleSpawn();
+    }, delay);
+  }
+
+  // Spawn first target immediately
+  setTimeout(() => spawnTarget(), 300);
+  scheduleSpawn();
+
+  // Timer
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    updateDisplay();
+    if (timeLeft <= 0) {
+      endGame();
+    }
+  }, 1000);
+}
+
+function endGame() {
+  gameActive = false;
+  clearTimeout(spawnInterval);
+  clearInterval(timerInterval);
+
+  // Clear grid
+  cells.forEach(c => {
+    c.classList.remove('active', 'bonus', 'trap');
+    c.innerHTML = '';
+  });
+
+  // Update best
+  if (score > bestScore) {
+    bestScore = score;
+    localStorage.setItem('tapblitz_best', bestScore.toString());
+  }
+
+  // Show end screen
+  document.getElementById('finalScore').textContent = score;
+  document.getElementById('bestScore').textContent = score >= bestScore ? '🏆 New Best Score!' : `Best: ${bestScore}`;
+  document.getElementById('endStats').innerHTML = 
+    `Hits: ${totalHits} · Misses: ${totalMisses} · Traps: ${totalTraps}<br>Max Combo: x${Math.min(1 + Math.floor(maxCombo / 5) * 0.5, 3).toFixed(1)} (${maxCombo} streak)`;
+  
+  endScreen.classList.remove('hidden');
+}
+</script>
+</body>
+</html>
