@@ -708,7 +708,14 @@ function setGameMode(m,el){
   if(m==='pitch')$('micSetup').style.display='block';
 }
 function initMicManual(){initMic().then(()=>{
-  if(micOn){$('micStatusPlay').textContent='✅ Mic active — try clapping!';$('micStatusPlay').style.background='#2a9d8f22';$('micStatusPlay').style.color='var(--green)';$('micStatusPlay').style.borderColor='#2a9d8f44'}
+  if(micOn){
+    $('micStatusPlay').textContent='✅ Mic active — try clapping!';
+    $('micStatusPlay').style.background='#2a9d8f22';
+    $('micStatusPlay').style.color='var(--green)';
+    $('micStatusPlay').style.borderColor='#2a9d8f44';
+    // Auto-start pitch detection if in pitch mode
+    if(gameMode==='pitch')startPitchDetection();
+  }
 }).catch(()=>{$('micStatusPlay').textContent='❌ Mic denied';$('micStatusPlay').style.background='#e6394622';$('micStatusPlay').style.color='var(--red)'})}
 
 
@@ -730,8 +737,14 @@ function startPlay(pi){
   selPart=pi;$('partSelect').style.display='none';$('resultsScreen').style.display='none';resizeCV(cv);
   unlockAudio();
   if(window.Tone){Tone.start().catch(()=>{});initToneSynths()}
-  if(gameMode==='pitch'&&!micOn)initMicManual();
-  if(gameMode==='pitch')setTimeout(()=>startPitchDetection(),500);
+  // Init mic for pitch mode — pitch detection starts after mic is ready
+  if(gameMode==='pitch'){
+    if(!micOn){
+      initMic().then(()=>{if(micOn)startPitchDetection()}).catch(()=>{});
+    }else{
+      startPitchDetection();
+    }
+  }
   const bpmMod=difficulty==='slow'?0.7:1;
   const msPerSub=(60000/(song.bpm*bpmMod))/song.subdivPerBeat;
 
@@ -838,7 +851,7 @@ function startPlay(pi){
         if(expectedFreq>0){
           const semitones=Math.abs(12*Math.log2(currentDetectedPitch/expectedFreq));
           const timeDist=Math.abs(nextNote.time-el);
-          if(semitones<2&&timeDist<GW){onHit()}
+          if(semitones<2&&timeDist<GW){onHit(true)}
         }
       }
     }
@@ -910,7 +923,9 @@ function startPlay(pi){
   requestAnimationFrame(loop)}
 
 function showJ(t,c){jT=t;jC=c;jTime=performance.now()}
-function onHit(){if(!gameOn)return;const el=performance.now()-gStart;playHit();dFlash=1;cFlash=1;
+function onHit(fromPitch){if(!gameOn)return;const el=performance.now()-gStart;
+  if(!fromPitch)playHit(); // only play drum sound for manual taps, not auto-pitch
+  dFlash=1;cFlash=1;
   let cl=null,cd=Infinity;for(const n of gNotes){if(n.hit||n.missed)continue;const d=Math.abs(n.time-el);if(d<cd&&d<MW){cl=n;cd=d}}
   if(!cl)return;cl.hit=true;cl.ha=1;
 
@@ -936,7 +951,7 @@ function onHit(){if(!gameOn)return;const el=performance.now()-gStart;playHit();d
   else{gScore+=30;gCombo=0;showJ('OK'+(pitchMsg?' '+pitchMsg:''),'#6b6b80')}
   gMaxCombo=Math.max(gMaxCombo,gCombo)}
 
-function endPlay(){gameOn=false;$('scoreContainer').style.display='none';const t=gPerf+gGood+gMiss,acc=t>0?((gPerf*100+gGood*50)/(t*100))*100:0;
+function endPlay(){gameOn=false;currentDetectedPitch=0;currentDetectedNote='';$('scoreContainer').style.display='none';const t=gPerf+gGood+gMiss,acc=t>0?((gPerf*100+gGood*50)/(t*100))*100:0;
   let rk;if(acc>=95&&gMiss===0)rk='S';else if(acc>=80)rk='A';else if(acc>=60)rk='B';else rk='C';
   $('pRank').textContent=rk;$('pRank').className='rank '+rk;$('pScore').textContent=gScore;
   $('pPerf').textContent=gPerf;$('pGood').textContent=gGood;$('pMiss').textContent=gMiss;$('pCombo').textContent=gMaxCombo;$('resultsScreen').style.display='flex'}
@@ -1271,8 +1286,7 @@ function startPitchDetection(){
 }
 
 function detectPitchLoop(){
-  if(!gameOn||gameMode!=='pitch')return;
-  if(!pitchAnalyser)return;
+  if(gameMode!=='pitch'||!pitchAnalyser){currentDetectedPitch=0;currentDetectedNote='';return}
   pitchAnalyser.getFloatTimeDomainData(pitchBuf);
   const sr=pitchAnalyser._ctx?pitchAnalyser._ctx.sampleRate:44100;
   const freq=autoCorrelate(pitchBuf,sr);
@@ -1292,7 +1306,7 @@ function detectPitchLoop(){
 // ════════════════════════════════════
 function initToneSynths(){
   if(!window.Tone)return;
-  // Create a polyphonic synth for backing parts
+  if(toneSynths.backing)return; // already initialized
   toneSynths.backing=new Tone.PolySynth(Tone.Synth,{
     oscillator:{type:'sine'},
     envelope:{attack:0.05,decay:0.3,sustain:0.4,release:0.5},
