@@ -271,7 +271,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
     <div id="vexScore"></div>
     <div class="score-highlight" id="scoreHighlight" style="display:none"></div>
   </div>
-  <div id="pauseOverlay" style="display:none;position:absolute;inset:0;background:rgba(15,15,20,0.85);z-index:8;display:none;flex-direction:column;align-items:center;justify-content:center">
+  <div id="pauseOverlay" style="display:none;position:absolute;inset:0;background:rgba(15,15,20,0.85);z-index:8;flex-direction:column;align-items:center;justify-content:center">
     <div style="font-size:2rem;font-weight:800;margin-bottom:0.5rem">⏸ PAUSED</div>
     <button class="hbtn play" onclick="resumeGame()" style="font-size:1rem;padding:0.6rem 2rem">▶ Resume</button>
     <div class="back-btn" onclick="quitGame()" style="margin-top:1rem">✕ Quit</div>
@@ -1440,14 +1440,13 @@ document.addEventListener('keydown',e=>{if(e.repeat)return;
   if(['d','f','j','k',' '].includes(e.key.toLowerCase())){e.preventDefault();onHit()}});
 // Use document-level touch/click so it works even over canvas overlay issues
 document.addEventListener('touchstart',e=>{
-  if(!gameOn)return;
-  // Don't trigger on UI buttons
-  if(e.target.closest('.part-select,.results,.hbtn,.diff-btn,.pbtn,.back-btn,.tab'))return;
+  if(!gameOn||gamePaused)return;
+  if(e.target.closest('.part-select,.results,.hbtn,.diff-btn,.pbtn,.back-btn,.tab,.score-container,#pauseOverlay,#pauseBtn'))return;
   e.preventDefault();onHit();
 },{passive:false});
 document.addEventListener('mousedown',e=>{
-  if(!gameOn)return;
-  if(e.target.closest('.part-select,.results,.hbtn,.diff-btn,.pbtn,.back-btn,.tab'))return;
+  if(!gameOn||gamePaused)return;
+  if(e.target.closest('.part-select,.results,.hbtn,.diff-btn,.pbtn,.back-btn,.tab,.score-container,#pauseOverlay,#pauseBtn'))return;
   onHit();
 });
 $('sensSlider').addEventListener('input',()=>{micSensitivity=parseInt($('sensSlider').value);$('sensVal').textContent=micSensitivity});
