@@ -6,7 +6,8 @@
 <title>Score Trainer 🎵</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
-<script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.6/build/cjs/vexflow.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vexflow/3.0.9/vexflow-min.js"></script>
+<script>console.log('VexFlow check:',typeof Vex,window.Vex?'OK':'MISSING');</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -958,7 +959,7 @@ function renderVexScore(partIdx){
   const renderer=new VF.Renderer(container,VF.Renderer.Backends.SVG);
   renderer.resize(w,h);
   const ctx=renderer.getContext();
-  ctx.setFont('Outfit',10);
+  if(ctx.setFont)ctx.setFont('Outfit',10);
 
   // Group beats into measures
   const measures=[];
@@ -1020,8 +1021,8 @@ function renderVexScore(partIdx){
       if(isDotted(vd))note.addDotToAll();
       // Add accidentals if needed
       const pitchStr=(beat.pitch||'').toLowerCase();
-      if(pitchStr.includes('#'))note.addModifier(new VF.Accidental('#'));
-      else if(pitchStr.includes('b')&&!pitchStr.startsWith('b'))note.addModifier(new VF.Accidental('b'));
+      if(pitchStr.includes('#'))note.addAccidental(0,new VF.Accidental('#'));
+      else if(pitchStr.includes('b')&&!pitchStr.startsWith('b'))note.addAccidental(0,new VF.Accidental('b'));
       note._scorePos=beat.pos; // store for highlighting
       notes.push(note);
       pos=relPos+beat.dur;
@@ -1041,11 +1042,14 @@ function renderVexScore(partIdx){
       new VF.Formatter().joinVoices([voice]).format([voice],staveWidth-40);
       voice.draw(ctx,stave);
 
-      // Store note elements for highlighting
+      // Store note positions for highlighting (works with VF3 and VF4)
       notes.forEach(n=>{
-        if(n._scorePos!==undefined&&n.attrs&&n.attrs.el){
-          const bb=n.getBoundingBox();
-          vexNoteElements.push({pos:n._scorePos,el:n.attrs.el,x:bb.x,y:bb.y,w:bb.w,h:bb.h,lineY:y});
+        if(n._scorePos!==undefined){
+          try{
+            const bb=n.getBoundingBox();
+            const el=(n.attrs&&n.attrs.el)||null;
+            vexNoteElements.push({pos:n._scorePos,el:el,x:bb.x,y:bb.y,w:bb.w,h:bb.h,lineY:y});
+          }catch(e){}
         }
       });
     }catch(e){
@@ -1084,16 +1088,19 @@ function highlightVexNote(elapsed){
       sc.scrollTo({top:scrollTarget,behavior:'smooth'});
     }
 
-    // Color past/current/future notes
+    // Color past/current/future notes via SVG (if elements available)
     vexNoteElements.forEach(ne=>{
       if(!ne.el)return;
-      const noteTime=ne.pos*msPerSub;
-      const heads=ne.el.querySelectorAll('.vf-notehead path');
-      heads.forEach(p=>{
-        if(noteTime<=elapsed-500)p.style.fill='#555';
-        else if(ne===current)p.style.fill='#f4a261';
-        else p.style.fill='';
-      });
+      try{
+        const noteTime=ne.pos*msPerSub;
+        const heads=ne.el.querySelectorAll&&ne.el.querySelectorAll('.vf-notehead path');
+        if(!heads||!heads.length)return;
+        heads.forEach(p=>{
+          if(noteTime<=elapsed-500)p.style.fill='#555';
+          else if(ne===current)p.style.fill='#f4a261';
+          else p.style.fill='';
+        });
+      }catch(e){}
     });
   }else{
     hl.style.display='none';
