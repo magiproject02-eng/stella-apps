@@ -214,6 +214,11 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
       <button class="diff-btn active" data-input="tap" onclick="setInputMode('tap',this)">📱 Tap / Keyboard</button>
       <button class="diff-btn" data-input="clap" onclick="setInputMode('clap',this)">👏 Clap (Mic)</button>
     </div>
+    <div class="sub">Metronome:</div>
+    <div class="diff-row">
+      <button class="diff-btn active" data-metro="on" onclick="setMetronome('on',this)">🔊 Beat On</button>
+      <button class="diff-btn" data-metro="off" onclick="setMetronome('off',this)">🔇 Beat Off</button>
+    </div>
     <div id="micSetup" style="display:none;margin-bottom:0.8rem;text-align:center">
       <div id="micStatusPlay" style="font-size:0.7rem;padding:0.3rem 0.6rem;border-radius:6px;margin-bottom:0.5rem;background:#f4a26122;color:var(--gold);border:1px solid #f4a26144">🎤 Mic not active yet</div>
       <button class="hbtn" onclick="initMicManual()" style="background:var(--green);border-color:var(--green);color:#fff">Allow Microphone 🎤</button>
@@ -299,6 +304,7 @@ let isPlaying=false,playInterval=null,playPosition=-1;
 let difficulty='normal';
 let inputMode='tap'; // 'tap' or 'clap'
 let micSensitivity=8;
+let metronomeOn=true;
 
 // ════════════════════════════════════
 // AUDIO
@@ -627,6 +633,10 @@ function setInputMode(m,el){
   document.querySelectorAll('[data-input]').forEach(b=>b.classList.toggle('active',b.dataset.input===m));
   $('micSetup').style.display=m==='clap'?'block':'none';
 }
+function setMetronome(m,el){
+  metronomeOn=(m==='on');
+  document.querySelectorAll('[data-metro]').forEach(b=>b.classList.toggle('active',b.dataset.metro===m));
+}
 function initMicManual(){initMic().then(()=>{
   if(micOn){$('micStatusPlay').textContent='✅ Mic active — try clapping!';$('micStatusPlay').style.background='#2a9d8f22';$('micStatusPlay').style.color='var(--green)';$('micStatusPlay').style.borderColor='#2a9d8f44'}
 }).catch(()=>{$('micStatusPlay').textContent='❌ Mic denied';$('micStatusPlay').style.background='#e6394622';$('micStatusPlay').style.color='var(--red)'})}
@@ -643,7 +653,7 @@ function startPlay(pi){
   gNotes=[];song.parts[selPart].beats.forEach(b=>{gNotes.push({time:b.pos*msPerSub,durMs:b.dur*msPerSub,dur:b.dur,hit:false,missed:false,ha:0})});gNotes.sort((a,b)=>a.time-b.time);
   const ghost=[];if(difficulty!=='hard'){song.parts.forEach((p,ppi)=>{if(ppi===selPart)return;p.beats.forEach(b=>{ghost.push({time:b.pos*msPerSub,durMs:b.dur*msPerSub,pi:ppi})})});ghost.sort((a,b)=>a.time-b.time)}
   gScore=0;gCombo=0;gMaxCombo=0;gPerf=0;gGood=0;gMiss=0;gameOn=true;jT='';gStart=performance.now()+2000;
-  const beatMs=60000/(song.bpm*bpmMod);const mid=setInterval(()=>{if(!gameOn){clearInterval(mid);return}playTick()},beatMs);
+  const beatMs=60000/(song.bpm*bpmMod);const mid=setInterval(()=>{if(!gameOn){clearInterval(mid);return}if(metronomeOn)playTick()},beatMs);
 
   function loop(ts){
     if(!gameOn)return;const w=cv.clientWidth,h=cv.clientHeight,el=ts-gStart,hx=w*HX,px=NS/1000,by=h*0.42,bh=80;
@@ -703,7 +713,7 @@ function startClassroom(){
   ia();classActive=true;classStart=performance.now()+2000;
   const msPerSub=(60000/song.bpm)/song.subdivPerBeat;
   const allNotes=song.parts.map(p=>p.beats.map(b=>({time:b.pos*msPerSub,durMs:b.dur*msPerSub})).sort((a,b)=>a.time-b.time));
-  const beatMs=60000/song.bpm;const mid=setInterval(()=>{if(!classActive){clearInterval(mid);return}playTick()},beatMs);
+  const beatMs=60000/song.bpm;const mid=setInterval(()=>{if(!classActive){clearInterval(mid);return}if(metronomeOn)playTick()},beatMs);
 
   function loop(ts){
     if(!classActive)return;
