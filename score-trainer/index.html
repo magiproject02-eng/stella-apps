@@ -821,8 +821,18 @@ $('btnShare').addEventListener('click',shareSong);$('btnAI').addEventListener('c
   song.title=$('songTitle').value;song.bpm=+$('bpmInput').value||100;song.timeSigTop=+$('timeSigTop').value;song.timeSigBot=+$('timeSigBot').value;song.bars=+$('barCount').value||4;
   const m={'4':1,'8':2,'16':4,'12':3};song.subdivPerBeat=m[$('subdivSelect').value]||2;renderGrid()})});
 document.addEventListener('keydown',e=>{if(e.repeat)return;if(['d','f','j','k',' '].includes(e.key.toLowerCase())){e.preventDefault();onHit()}});
-cv.addEventListener('touchstart',e=>{if(inputMode==='tap'){e.preventDefault();onHit()}},{passive:false});
-cv.addEventListener('mousedown',()=>{if(gameOn&&inputMode==='tap')onHit()});
+// Use document-level touch/click so it works even over canvas overlay issues
+document.addEventListener('touchstart',e=>{
+  if(!gameOn)return;
+  // Don't trigger on UI buttons
+  if(e.target.closest('.part-select,.results,.hbtn,.diff-btn,.pbtn,.back-btn,.tab'))return;
+  e.preventDefault();onHit();
+},{passive:false});
+document.addEventListener('mousedown',e=>{
+  if(!gameOn)return;
+  if(e.target.closest('.part-select,.results,.hbtn,.diff-btn,.pbtn,.back-btn,.tab'))return;
+  onHit();
+});
 $('sensSlider').addEventListener('input',()=>{micSensitivity=parseInt($('sensSlider').value);$('sensVal').textContent=micSensitivity});
 window.addEventListener('resize',()=>{if($('playPanel').style.display!=='none')resizeCV(cv);if($('classroomPanel').style.display!=='none'){ccv.width=ccv.clientWidth*devicePixelRatio;ccv.height=ccv.clientHeight*devicePixelRatio}});
 
