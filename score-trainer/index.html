@@ -6,6 +6,7 @@
 <title>Score Trainer 🎵</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+<script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.6/build/cjs/vexflow.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -96,8 +97,12 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 .modal-btns{display:flex;gap:0.5rem;justify-content:flex-end}
 
 /* Play Mode */
-.play-container{display:none;height:calc(100dvh - 80px);position:relative}
-.play-container canvas{width:100%;height:100%}
+.play-container{display:none;height:calc(100dvh - 80px);position:relative;flex-direction:column}
+.score-container{overflow-x:auto;overflow-y:auto;background:#12121a;border-bottom:1px solid var(--border);flex-shrink:0;max-height:35vh;position:relative}
+.score-container svg{display:block}
+.score-container .vf-note .vf-notehead path{transition:fill 0.1s}
+.score-highlight{position:absolute;background:rgba(244,162,97,0.2);border:2px solid var(--gold);border-radius:4px;pointer-events:none;z-index:5;transition:left 0.08s,top 0.08s}
+.play-container canvas{flex:1;width:100%;min-height:0}
 .part-select{position:absolute;inset:0;background:rgba(15,15,20,0.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;gap:0.4rem;padding:1.5rem}
 .part-select h2{font-size:1.3rem;font-weight:700;margin-bottom:0.5rem}
 .part-select .sub{font-size:0.8rem;color:var(--dim);margin-bottom:0.5rem}
@@ -239,6 +244,10 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
       </div>
     </div>
     <div class="back-btn" onclick="switchTab('library')">← Back to Library</div>
+  </div>
+  <div class="score-container" id="scoreContainer" style="display:none">
+    <div id="vexScore"></div>
+    <div class="score-highlight" id="scoreHighlight" style="display:none"></div>
   </div>
   <canvas id="playCanvas"></canvas>
   <div class="results" id="resultsScreen">
@@ -670,7 +679,7 @@ function initMicManual(){initMic().then(()=>{
 }).catch(()=>{$('micStatusPlay').textContent='❌ Mic denied';$('micStatusPlay').style.background='#e6394622';$('micStatusPlay').style.color='var(--red)'})}
 
 
-function showPartSelect(){$('resultsScreen').style.display='none';$('partSelect').style.display='flex';
+function showPartSelect(){$('resultsScreen').style.display='none';$('partSelect').style.display='flex';$('scoreContainer').style.display='none';
   const b=$('partButtons');b.innerHTML='';
   song.parts.forEach((p,i)=>{const btn=document.createElement('button');btn.className='pbtn';btn.style.borderColor=PC[i];btn.textContent=`${p.name} (${p.beats.length} notes)`;btn.onclick=()=>startPlay(i);b.appendChild(btn)});
   // Build backing parts checkboxes
@@ -722,19 +731,28 @@ function startPlay(pi){
   gScore=0;gCombo=0;gMaxCombo=0;gPerf=0;gGood=0;gMiss=0;gameOn=true;jT='';gStart=performance.now()+2000;
   const beatMs=60000/(song.bpm*bpmMod);const mid=setInterval(()=>{if(!gameOn){clearInterval(mid);return}if(metronomeOn)playTick()},beatMs);
 
+  // Render VexFlow score if pitch data available
+  const hasVex=window.Vex&&song.parts[selPart].beats.length>0&&song.parts[selPart].beats[0].pitch;
+  if(hasVex&&showScore){renderVexScore(pi);setTimeout(()=>resizeCV(cv),100)}
+  else{$('scoreContainer').style.display='none'}
+
   function loop(ts){
     if(!gameOn)return;const w=cv.clientWidth,h=cv.clientHeight,el=ts-gStart;
     const hx=w*HX,px=NS/1000;
 
-    // Layout: score view on top, taiko belt below
-    const scoreH=showScore?Math.min(140,h*0.25):0;
+    // VexFlow highlighting
+    if(hasVex&&showScore)highlightVexNote(el);
+
+    // Layout: no canvas score when VexFlow is active
+    const canvasScore=showScore&&!hasVex;
+    const scoreH=canvasScore?Math.min(140,h*0.25):0;
     const by=scoreH+(h-scoreH)*0.38;
     const bh=70;
 
     cx.clearRect(0,0,w,h);cx.fillStyle='#0f0f14';cx.fillRect(0,0,w,h);
 
-    // ─── SCORE VIEW (above belt) ───
-    if(showScore&&allPartsData.length>0){
+    // ─── CANVAS SCORE VIEW (fallback when no pitch data) ───
+    if(canvasScore&&allPartsData.length>0){
       const partH=Math.max(16,Math.min(28,(scoreH-10)/allPartsData.length));
       const sy=5;
       // Beat grid lines
@@ -828,7 +846,7 @@ function onHit(){if(!gameOn)return;const el=performance.now()-gStart;playHit();d
   else{gScore+=50;gCombo=0;showJ('OK','#6b6b80')}
   gMaxCombo=Math.max(gMaxCombo,gCombo)}
 
-function endPlay(){gameOn=false;const t=gPerf+gGood+gMiss,acc=t>0?((gPerf*100+gGood*50)/(t*100))*100:0;
+function endPlay(){gameOn=false;$('scoreContainer').style.display='none';const t=gPerf+gGood+gMiss,acc=t>0?((gPerf*100+gGood*50)/(t*100))*100:0;
   let rk;if(acc>=95&&gMiss===0)rk='S';else if(acc>=80)rk='A';else if(acc>=60)rk='B';else rk='C';
   $('pRank').textContent=rk;$('pRank').className='rank '+rk;$('pScore').textContent=gScore;
   $('pPerf').textContent=gPerf;$('pGood').textContent=gGood;$('pMiss').textContent=gMiss;$('pCombo').textContent=gMaxCombo;$('resultsScreen').style.display='flex'}
@@ -882,6 +900,203 @@ function startClassroom(){
     if(el>td+2000){classActive=false;return}
     requestAnimationFrame(loop)}
   requestAnimationFrame(loop)}
+
+// ════════════════════════════════════
+// VEXFLOW SCORE RENDERER
+// ════════════════════════════════════
+let vexNoteElements=[]; // [{pos, el, x, y, measureIdx}]
+let vexMeasureYs=[]; // y position of each measure line
+
+function pitchToVex(p){
+  if(!p)return'c/4';
+  // "D5" → "d/5", "F#5" → "f#/5", "Bb3" → "bb/3"
+  const m=p.match(/^([A-Ga-g][#b]?)(\d)$/);
+  if(!m)return'c/4';
+  return m[1].toLowerCase()+'/'+m[2];
+}
+
+function durToVex(dur,subdivPerBeat){
+  if(subdivPerBeat===2){
+    const map={1:'8',2:'q',3:'qd',4:'h',5:'h',6:'hd',8:'w',12:'wd'};
+    return map[dur]||'q';
+  }else if(subdivPerBeat===4){
+    const map={1:'16',2:'8',3:'8d',4:'q',6:'qd',8:'h',12:'hd',16:'w'};
+    return map[dur]||'q';
+  }
+  return'q';
+}
+
+function isDotted(vexDur){return vexDur.endsWith('d')}
+function vexDurBase(vexDur){return vexDur.replace(/d$/,'')}
+
+function renderVexScore(partIdx){
+  const container=$('vexScore');
+  const scoreC=$('scoreContainer');
+  container.innerHTML='';
+  vexNoteElements=[];
+  vexMeasureYs=[];
+
+  if(!showScore||!window.Vex){scoreC.style.display='none';return}
+  scoreC.style.display='block';
+
+  const VF=Vex.Flow;
+  const part=song.parts[partIdx];
+  if(!part||!part.beats.length){scoreC.style.display='none';return}
+  const hasPitch=part.beats[0].pitch;
+  if(!hasPitch){scoreC.style.display='none';return} // fallback to canvas score view
+
+  const subsPerBar=song.timeSigTop*song.subdivPerBeat;
+  const staveWidth=220;
+  const stavesPerLine=Math.max(1,Math.floor((window.innerWidth-80)/staveWidth));
+  const totalLines=Math.ceil(song.bars/stavesPerLine);
+  const lineH=120;
+  const w=80+stavesPerLine*staveWidth;
+  const h=totalLines*lineH+40;
+
+  const renderer=new VF.Renderer(container,VF.Renderer.Backends.SVG);
+  renderer.resize(w,h);
+  const ctx=renderer.getContext();
+  ctx.setFont('Outfit',10);
+
+  // Group beats into measures
+  const measures=[];
+  for(let bar=0;bar<song.bars;bar++){
+    const barStart=bar*subsPerBar;
+    const barEnd=barStart+subsPerBar;
+    const barBeats=part.beats.filter(b=>b.pos>=barStart&&b.pos<barEnd);
+    measures.push(barBeats);
+  }
+
+  // Render each measure
+  for(let bar=0;bar<song.bars;bar++){
+    const lineIdx=Math.floor(bar/stavesPerLine);
+    const posInLine=bar%stavesPerLine;
+    const x=80+posInLine*staveWidth;
+    const y=20+lineIdx*lineH;
+
+    if(posInLine===0)vexMeasureYs.push(y);
+
+    const stave=new VF.Stave(x,y,staveWidth);
+    if(posInLine===0){
+      stave.addClef(part.clef||'treble');
+      if(song.keySig)stave.addKeySignature(song.keySig);
+      if(bar===0)stave.addTimeSignature(`${song.timeSigTop}/${song.timeSigBot}`);
+    }
+    stave.setContext(ctx).draw();
+
+    const barBeats=measures[bar];
+    if(barBeats.length===0){
+      // Whole bar rest
+      const restDur=song.timeSigBot===4?(song.timeSigTop===3?'hd':'w'):'w';
+      const rest=new VF.StaveNote({keys:['b/4'],duration:restDur+'r'});
+      if(isDotted(restDur))rest.addDotToAll();
+      const voice=new VF.Voice({num_beats:song.timeSigTop,beat_value:song.timeSigBot}).setStrict(false);
+      voice.addTickables([rest]);
+      new VF.Formatter().joinVoices([voice]).format([voice],staveWidth-40);
+      voice.draw(ctx,stave);
+      continue;
+    }
+
+    // Build notes for this bar
+    const barStart=bar*subsPerBar;
+    const notes=[];
+    let pos=0;
+    for(const beat of barBeats){
+      const relPos=beat.pos-barStart;
+      // Add rest if gap
+      if(relPos>pos){
+        const restSubs=relPos-pos;
+        const rd=durToVex(restSubs,song.subdivPerBeat);
+        const rest=new VF.StaveNote({keys:['b/4'],duration:vexDurBase(rd)+'r'});
+        if(isDotted(rd))rest.addDotToAll();
+        notes.push(rest);
+      }
+      // Add note
+      const vd=durToVex(beat.dur,song.subdivPerBeat);
+      const vp=pitchToVex(beat.pitch);
+      const note=new VF.StaveNote({keys:[vp],duration:vexDurBase(vd),clef:part.clef||'treble'});
+      if(isDotted(vd))note.addDotToAll();
+      // Add accidentals if needed
+      const pitchStr=(beat.pitch||'').toLowerCase();
+      if(pitchStr.includes('#'))note.addModifier(new VF.Accidental('#'));
+      else if(pitchStr.includes('b')&&!pitchStr.startsWith('b'))note.addModifier(new VF.Accidental('b'));
+      note._scorePos=beat.pos; // store for highlighting
+      notes.push(note);
+      pos=relPos+beat.dur;
+    }
+    // Trailing rest
+    if(pos<subsPerBar){
+      const restSubs=subsPerBar-pos;
+      const rd=durToVex(restSubs,song.subdivPerBeat);
+      const rest=new VF.StaveNote({keys:['b/4'],duration:vexDurBase(rd)+'r'});
+      if(isDotted(rd))rest.addDotToAll();
+      notes.push(rest);
+    }
+
+    try{
+      const voice=new VF.Voice({num_beats:song.timeSigTop,beat_value:song.timeSigBot}).setStrict(false);
+      voice.addTickables(notes);
+      new VF.Formatter().joinVoices([voice]).format([voice],staveWidth-40);
+      voice.draw(ctx,stave);
+
+      // Store note elements for highlighting
+      notes.forEach(n=>{
+        if(n._scorePos!==undefined&&n.attrs&&n.attrs.el){
+          const bb=n.getBoundingBox();
+          vexNoteElements.push({pos:n._scorePos,el:n.attrs.el,x:bb.x,y:bb.y,w:bb.w,h:bb.h,lineY:y});
+        }
+      });
+    }catch(e){
+      // VexFlow formatting error — skip this measure silently
+      console.warn('VexFlow measure',bar,'error:',e.message);
+    }
+  }
+}
+
+function highlightVexNote(elapsed){
+  const hl=$('scoreHighlight');
+  const sc=$('scoreContainer');
+  if(!showScore||!hl||vexNoteElements.length===0){if(hl)hl.style.display='none';return}
+
+  const msPerSub=(60000/(song.bpm*(difficulty==='slow'?0.7:1)))/song.subdivPerBeat;
+
+  // Find current note
+  let current=null;
+  let minDist=Infinity;
+  for(const ne of vexNoteElements){
+    const noteTime=ne.pos*msPerSub;
+    const dist=Math.abs(noteTime-elapsed);
+    if(dist<minDist){minDist=dist;current=ne}
+  }
+
+  if(current&&minDist<2000){
+    hl.style.display='block';
+    hl.style.left=(current.x-4)+'px';
+    hl.style.top=(current.y-4)+'px';
+    hl.style.width=(current.w+8)+'px';
+    hl.style.height=(current.h+8)+'px';
+
+    // Auto-scroll to keep current measure visible
+    const scrollTarget=current.lineY-40;
+    if(Math.abs(sc.scrollTop-scrollTarget)>60){
+      sc.scrollTo({top:scrollTarget,behavior:'smooth'});
+    }
+
+    // Color past/current/future notes
+    vexNoteElements.forEach(ne=>{
+      if(!ne.el)return;
+      const noteTime=ne.pos*msPerSub;
+      const heads=ne.el.querySelectorAll('.vf-notehead path');
+      heads.forEach(p=>{
+        if(noteTime<=elapsed-500)p.style.fill='#555';
+        else if(ne===current)p.style.fill='#f4a261';
+        else p.style.fill='';
+      });
+    });
+  }else{
+    hl.style.display='none';
+  }
+}
 
 // ════════════════════════════════════
 // MIC CLAP DETECTION
@@ -940,7 +1155,7 @@ function switchTab(t){
   document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('active',el.dataset.tab===t));
   $('libraryPanel').style.display=t==='library'?'':'none';
   $('editorPanel').style.display=t==='editor'?'':'none';
-  $('playPanel').style.display=t==='play'?'block':'none';
+  $('playPanel').style.display=t==='play'?'flex':'none';
   $('classroomPanel').style.display=t==='classroom'?'block':'none';
   if(t==='library')loadLibrary();
   if(t==='play'){showPartSelect();setTimeout(()=>resizeCV(cv),50)}
