@@ -1,0 +1,46 @@
+{
+  "title": "Santa Lucia (Cottrau)",
+  "bpm": 76,
+  "timeSigTop": 3,
+  "timeSigBot": 4,
+  "bars": 34,
+  "subdivPerBeat": 2,
+  "keySig": "C",
+  "parts": [
+    {
+      "name": "Voice",
+      "clef": "treble",
+      "beats": [
+        {"pos":36,"dur":2,"pitch":"E4"},{"pos":38,"dur":3,"pitch":"E4"},
+        {"pos":42,"dur":2,"pitch":"E4"},{"pos":44,"dur":1,"pitch":"E4"},{"pos":45,"dur":1,"pitch":"E4"},{"pos":46,"dur":4,"pitch":"F4"},
+        {"pos":50,"dur":2,"pitch":"E4"},{"pos":52,"dur":3,"pitch":"E4"},
+        {"pos":56,"dur":1,"pitch":"E4"},{"pos":57,"dur":1,"pitch":"E4"},{"pos":58,"dur":1,"pitch":"E4"},{"pos":59,"dur":1,"pitch":"E4"},{"pos":60,"dur":4,"pitch":"D4"},
+        {"pos":64,"dur":2,"pitch":"E4"},{"pos":66,"dur":3,"pitch":"E4"},
+        {"pos":70,"dur":1,"pitch":"F4"},{"pos":71,"dur":1,"pitch":"E4"},{"pos":72,"dur":1,"pitch":"F#4"},{"pos":73,"dur":1,"pitch":"G4"},{"pos":74,"dur":4,"pitch":"A4"},
+
+        {"pos":78,"dur":2,"pitch":"E4"},{"pos":80,"dur":2,"pitch":"E4"},{"pos":82,"dur":2,"pitch":"E4"},
+        {"pos":84,"dur":2,"pitch":"E4"},{"pos":86,"dur":4,"pitch":"F4"},
+        {"pos":90,"dur":2,"pitch":"E4"},{"pos":92,"dur":2,"pitch":"E4"},
+        {"pos":96,"dur":1,"pitch":"E4"},{"pos":97,"dur":1,"pitch":"E4"},{"pos":98,"dur":1,"pitch":"E4"},{"pos":99,"dur":1,"pitch":"E4"},{"pos":100,"dur":4,"pitch":"D4"},
+        {"pos":104,"dur":2,"pitch":"E4"},{"pos":106,"dur":3,"pitch":"E4"},
+        {"pos":110,"dur":1,"pitch":"F4"},{"pos":111,"dur":1,"pitch":"E4"},{"pos":112,"dur":1,"pitch":"F#4"},{"pos":113,"dur":1,"pitch":"G4"},{"pos":114,"dur":4,"pitch":"A4"},
+
+        {"pos":120,"dur":2,"pitch":"C5"},{"pos":122,"dur":2,"pitch":"C5"},{"pos":124,"dur":4,"pitch":"B4"},
+        {"pos":128,"dur":2,"pitch":"A4"},{"pos":130,"dur":2,"pitch":"A4"},{"pos":132,"dur":4,"pitch":"A4"},
+        {"pos":136,"dur":1,"pitch":"F#4"},{"pos":137,"dur":1,"pitch":"A4"},{"pos":138,"dur":2,"pitch":"G4"},
+        {"pos":140,"dur":2,"pitch":"E4"},{"pos":142,"dur":2,"pitch":"E4"},{"pos":144,"dur":1,"pitch":"E4"},{"pos":145,"dur":1,"pitch":"E4"},{"pos":146,"dur":1,"pitch":"E4"},{"pos":147,"dur":1,"pitch":"E4"},{"pos":148,"dur":2,"pitch":"E4"},{"pos":150,"dur":4,"pitch":"D4"},
+
+        {"pos":154,"dur":2,"pitch":"E4"},{"pos":156,"dur":3,"pitch":"E4"},
+        {"pos":160,"dur":2,"pitch":"A4"},{"pos":162,"dur":3,"pitch":"A4"},
+        {"pos":166,"dur":2,"pitch":"A4"},{"pos":168,"dur":2,"pitch":"E4"},{"pos":170,"dur":2,"pitch":"E4"},
+        {"pos":172,"dur":2,"pitch":"A4"},{"pos":174,"dur":2,"pitch":"A4"},{"pos":176,"dur":4,"pitch":"G4"},
+
+        {"pos":180,"dur":2,"pitch":"C5"},{"pos":182,"dur":2,"pitch":"C5"},{"pos":184,"dur":4,"pitch":"B4"},
+        {"pos":188,"dur":2,"pitch":"A4"},{"pos":190,"dur":2,"pitch":"A4"},{"pos":192,"dur":4,"pitch":"A4"},
+        {"pos":196,"dur":1,"pitch":"F#4"},{"pos":197,"dur":1,"pitch":"A4"},{"pos":198,"dur":2,"pitch":"G4"},
+        {"pos":200,"dur":2,"pitch":"E4"},{"pos":202,"dur":3,"pitch":"E4"},
+        {"pos":206,"dur":2,"pitch":"E4"},{"pos":208,"dur":2,"pitch":"E4"},{"pos":210,"dur":4,"pitch":"D4"}
+      ]
+    }
+  ]
+}

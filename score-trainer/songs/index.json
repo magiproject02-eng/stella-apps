@@ -1,6 +1,15 @@
 {
   "songs": [
     {
+      "id": "santa-lucia",
+      "title": "Santa Lucia (Cottrau)",
+      "bpm": 76,
+      "timeSig": "3/4",
+      "parts": ["Voice"],
+      "bars": 34,
+      "tags": ["solo","Italian","pitch"]
+    },
+    {
       "id": "dragon-dance",
       "title": "Dragon Dance of Shang (Darius Lim) — Opening",
       "bpm": 80,
@@ -11,7 +20,7 @@
     },
     {
       "id": "marys-song",
-      "title": "Mary's Song (Jools Scott & Sue Curtis)",
+      "title": "Mary's Song (Scott & Curtis)",
       "bpm": 92,
       "timeSig": "3/4",
       "parts": ["S","A","T","B"],
