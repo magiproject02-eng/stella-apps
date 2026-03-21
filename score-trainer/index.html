@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Score Trainer 🎵</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -215,7 +216,12 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
       <input type="file" id="fileInput" accept="image/*,.pdf,application/pdf" style="display:none">
     </div>
     <div id="pageSelectArea"></div>
-    <textarea id="aiContext" placeholder="Optional: describe the score (e.g. '4-part SATB, 4/4 time, 8 bars, starts at measure 5')"></textarea>
+    <textarea id="aiContext" placeholder="Optional: describe the score (e.g. '4-part SATB, 4/4 time, 8 bars')"></textarea>
+    <div class="ctrl-group" style="margin-bottom:0.8rem;width:100%">
+      <label style="min-width:60px">API Key</label>
+      <input type="password" id="aiApiKey" style="flex:1;width:100%" placeholder="sk-ant-... (needed when running from Vercel)">
+    </div>
+    <div style="font-size:0.65rem;color:var(--dim);margin-bottom:0.8rem">API key is required when running from the deployed site. Not needed when previewing inside Claude chat. Key stays in your browser — never sent anywhere except Anthropic's API.</div>
     <div class="status hidden" id="aiStatus"></div>
     <div class="modal-btns">
       <button class="hbtn" onclick="closeAIModal()">Cancel</button>
@@ -330,9 +336,6 @@ let selectedPages=new Set();
 function openAIModal(){$('aiModal').classList.add('show');aiImageData=null;aiImagePages=[];selectedPages.clear();$('uploadLabel').innerHTML='📄 Upload score (image or PDF)<br><span style="font-size:0.7rem;color:var(--dim)">JPG, PNG, PDF — photo, scan, or digital score</span>';$('uploadZone').classList.remove('has-file');$('btnAnalyze').disabled=true;$('aiStatus').classList.add('hidden');$('aiContext').value='';$('pageSelectArea').innerHTML=''}
 function closeAIModal(){$('aiModal').classList.remove('show')}
 
-// PDF.js worker
-if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
 async function renderPDFPage(pdf,pageNum,scale=2){
   const page=await pdf.getPage(pageNum);
   const vp=page.getViewport({scale});
@@ -350,6 +353,7 @@ $('fileInput').addEventListener('change',async e=>{
     // Handle PDF
     const status=$('aiStatus');status.classList.remove('hidden','error','ok');status.classList.add('loading');status.textContent='📄 Reading PDF pages...';
     try{
+      if(!window.pdfjsLib)throw new Error('PDF.js library failed to load. Try uploading an image (JPG/PNG) instead.');
       const arrayBuf=await f.arrayBuffer();
       const pdf=await pdfjsLib.getDocument({data:arrayBuf}).promise;
       const numPages=pdf.numPages;
@@ -443,9 +447,20 @@ Rules:
 - Return ONLY the JSON object, nothing else`;
 
   try{
+    const apiKey=$('aiApiKey').value.trim();
+    const headers={"Content-Type":"application/json","anthropic-version":"2023-06-01"};
+    if(apiKey)headers["x-api-key"]=apiKey;
     const msgContent=[...imageContent,{type:"text",text:prompt}];
-    const resp=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:4000,messages:[{role:"user",content:msgContent}]})});
+    const resp=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers,body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:4000,messages:[{role:"user",content:msgContent}]})});
+    if(!resp.ok){
+      const errBody=await resp.text().catch(()=>'');
+      if(resp.status===401||resp.status===403){
+        throw new Error('API key required. Paste your Anthropic API key (sk-ant-...) in the field above.');
+      }
+      throw new Error(`API error ${resp.status}: ${errBody.slice(0,200)}`);
+    }
     const data=await resp.json();
+    if(data.error)throw new Error(data.error.message||'API returned error');
     const text=data.content.map(c=>c.text||'').join('');
     const clean=text.replace(/```json|```/g,'').trim();
     const parsed=JSON.parse(clean);
@@ -453,7 +468,13 @@ Rules:
     status.classList.remove('loading');status.classList.add('ok');status.textContent=`✅ Extracted ${parsed.parts.length} parts, ${parsed.bars} bars. Check the editor!`;
     setTimeout(()=>closeAIModal(),1500);
   }catch(e){
-    status.classList.remove('loading');status.classList.add('error');status.textContent='❌ Error: '+e.message+'. Try again or adjust the image.';$('btnAnalyze').disabled=false;
+    status.classList.remove('loading');status.classList.add('error');
+    let msg=e.message;
+    if(msg.includes('Failed to fetch')||msg.includes('NetworkError')||msg.includes('CORS')){
+      msg='Cannot reach Anthropic API from this domain. Please paste your API key (sk-ant-...) in the field above, or use this feature inside Claude chat.';
+    }
+    status.textContent='❌ '+msg;
+    $('btnAnalyze').disabled=false;
   }
 });
 
