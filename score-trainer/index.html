@@ -632,7 +632,26 @@ cv.addEventListener('touchstart',e=>{e.preventDefault();onHit()},{passive:false}
 window.addEventListener('resize',()=>{if($('playPanel').style.display!=='none')resizeCV(cv);if($('classroomPanel').style.display!=='none'){ccv.width=ccv.clientWidth*devicePixelRatio;ccv.height=ccv.clientHeight*devicePixelRatio}});
 
 // Init
-loadFromHash();renderGrid();
+async function init(){
+  // Check for ?song= parameter (loads JSON from songs/ folder)
+  const params=new URLSearchParams(location.search);
+  const songFile=params.get('song');
+  const mode=params.get('mode'); // 'play' or 'classroom'
+  if(songFile){
+    try{
+      const resp=await fetch(`songs/${encodeURIComponent(songFile)}.json`);
+      if(!resp.ok)throw new Error('Song not found');
+      const json=await resp.text();
+      fromJSON(json);
+      toast('Loaded: '+song.title);
+      if(mode==='play'){switchTab('play')}
+      else if(mode==='classroom'){switchTab('classroom')}
+    }catch(e){console.error('Failed to load song:',e);loadFromHash();renderGrid()}
+  }else{
+    loadFromHash();renderGrid();
+  }
+}
+init();
 </script>
 </body>
 </html>
