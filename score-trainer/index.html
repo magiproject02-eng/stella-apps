@@ -124,6 +124,19 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 .toast.show{opacity:1}
 
 .hidden{display:none!important}
+
+/* Song cards */
+.song-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:0.8rem 1rem;cursor:pointer;transition:border-color 0.2s,transform 0.1s}
+.song-card:hover{border-color:var(--purple);transform:translateY(-1px)}
+.song-card .sc-title{font-size:0.9rem;font-weight:700;margin-bottom:0.3rem}
+.song-card .sc-meta{font-size:0.65rem;color:var(--dim);display:flex;gap:0.8rem;flex-wrap:wrap;margin-bottom:0.5rem}
+.song-card .sc-parts{display:flex;gap:0.3rem;flex-wrap:wrap;margin-bottom:0.5rem}
+.song-card .sc-part{font-size:0.6rem;padding:0.1rem 0.4rem;border-radius:4px;font-weight:600}
+.song-card .sc-actions{display:flex;gap:0.4rem}
+.song-card .sc-btn{font-size:0.65rem;padding:0.25rem 0.6rem;border:1px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--text);font-family:inherit;font-weight:600;cursor:pointer;transition:border-color 0.15s}
+.song-card .sc-btn:hover{border-color:var(--purple)}
+.song-card .sc-btn.play-btn{background:var(--green);border-color:var(--green);color:#fff}
+.song-card .sc-btn.class-btn{background:var(--purple);border-color:var(--purple);color:#fff}
 .deployed-badge{position:fixed;bottom:0.3rem;right:0.5rem;font-size:0.5rem;color:var(--dim);opacity:0.2;z-index:200}
 </style>
 </head>
@@ -142,12 +155,23 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 </div>
 
 <div class="tabs">
-  <div class="tab active" data-tab="editor">✏️ Editor</div>
+  <div class="tab active" data-tab="library">📚 Library</div>
+  <div class="tab" data-tab="editor">✏️ Editor</div>
   <div class="tab" data-tab="play">🎮 Play</div>
   <div class="tab" data-tab="classroom">🏫 Classroom</div>
 </div>
 
-<div id="editorPanel">
+<div id="libraryPanel">
+  <div style="padding:1rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <div><span style="font-size:1.1rem;font-weight:700">Song Library</span><br><span style="font-size:0.7rem;color:var(--dim)">Tap a song to start practicing</span></div>
+    </div>
+    <div id="songList" style="display:flex;flex-direction:column;gap:0.5rem"></div>
+    <div id="libraryLoading" style="text-align:center;padding:2rem;color:var(--dim);font-size:0.8rem">Loading songs...</div>
+  </div>
+</div>
+
+<div id="editorPanel" style="display:none">
   <div class="controls">
     <div class="ctrl-group"><label>Title</label><input type="text" id="songTitle" value="New Song"></div>
     <div class="ctrl-group"><label>BPM</label><input type="number" id="bpmInput" value="100" min="40" max="300"></div>
@@ -603,13 +627,57 @@ async function initMic(){try{const s=await navigator.mediaDevices.getUserMedia({
 function monMic(){if(!micOn)return;micAn.getByteFrequencyData(micD);let s=0;for(let i=0;i<micD.length;i++)s+=micD[i]*micD[i];const v=Math.sqrt(s/micD.length);const now=performance.now();if(v>55&&now-lastClap>120){lastClap=now;onHit()}requestAnimationFrame(monMic)}
 
 // ════════════════════════════════════
+// SONG LIBRARY
+// ════════════════════════════════════
+let libraryLoaded=false;
+async function loadLibrary(){
+  if(libraryLoaded)return;
+  try{
+    const resp=await fetch('songs/index.json');
+    if(!resp.ok)throw new Error('No index');
+    const data=await resp.json();
+    const list=$('songList');
+    list.innerHTML='';
+    data.songs.forEach(s=>{
+      const card=document.createElement('div');
+      card.className='song-card';
+      const partsHTML=s.parts.map((p,i)=>`<span class="sc-part" style="background:${PC[i%PC.length]}33;color:${PC[i%PC.length]}">${p}</span>`).join('');
+      card.innerHTML=`<div class="sc-title">${s.title}</div>
+        <div class="sc-meta"><span>♩ ${s.bpm}</span><span>${s.timeSig}</span><span>${s.bars} bars</span></div>
+        <div class="sc-parts">${partsHTML}</div>
+        <div class="sc-actions">
+          <button class="sc-btn" onclick="event.stopPropagation();loadSongFile('${s.id}','editor')">✏️ Edit</button>
+          <button class="sc-btn play-btn" onclick="event.stopPropagation();loadSongFile('${s.id}','play')">🎮 Play</button>
+          <button class="sc-btn class-btn" onclick="event.stopPropagation();loadSongFile('${s.id}','classroom')">🏫 Class</button>
+        </div>`;
+      list.appendChild(card);
+    });
+    $('libraryLoading').style.display='none';
+    libraryLoaded=true;
+  }catch(e){$('libraryLoading').textContent='No songs found yet. Ask your teacher for a link, or switch to Editor to create your own!'}
+}
+
+async function loadSongFile(id,mode){
+  try{
+    const resp=await fetch(`songs/${id}.json`);
+    if(!resp.ok)throw new Error('Song not found');
+    const json=await resp.text();
+    fromJSON(json);
+    toast('Loaded: '+song.title);
+    switchTab(mode);
+  }catch(e){toast('Failed to load song: '+e.message)}
+}
+
+// ════════════════════════════════════
 // TAB SWITCHING
 // ════════════════════════════════════
 function switchTab(t){
   document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('active',el.dataset.tab===t));
+  $('libraryPanel').style.display=t==='library'?'':'none';
   $('editorPanel').style.display=t==='editor'?'':'none';
   $('playPanel').style.display=t==='play'?'':'none';
   $('classroomPanel').style.display=t==='classroom'?'':'none';
+  if(t==='library')loadLibrary();
   if(t==='play'){showPartSelect();resizeCV(cv);if(!micOn)initMic()}
   if(t==='classroom'){ccv.width=ccv.clientWidth*devicePixelRatio;ccv.height=ccv.clientHeight*devicePixelRatio;startClassroom()}
   if(t==='editor'){gameOn=false;classActive=false;stopPlayback()}}
@@ -633,10 +701,9 @@ window.addEventListener('resize',()=>{if($('playPanel').style.display!=='none')r
 
 // Init
 async function init(){
-  // Check for ?song= parameter (loads JSON from songs/ folder)
   const params=new URLSearchParams(location.search);
   const songFile=params.get('song');
-  const mode=params.get('mode'); // 'play' or 'classroom'
+  const mode=params.get('mode');
   if(songFile){
     try{
       const resp=await fetch(`songs/${encodeURIComponent(songFile)}.json`);
@@ -646,9 +713,10 @@ async function init(){
       toast('Loaded: '+song.title);
       if(mode==='play'){switchTab('play')}
       else if(mode==='classroom'){switchTab('classroom')}
-    }catch(e){console.error('Failed to load song:',e);loadFromHash();renderGrid()}
+      else{switchTab('editor')}
+    }catch(e){console.error(e);loadFromHash();renderGrid();loadLibrary()}
   }else{
-    loadFromHash();renderGrid();
+    loadFromHash();renderGrid();loadLibrary();
   }
 }
 init();

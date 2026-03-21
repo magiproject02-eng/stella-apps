@@ -1,0 +1,22 @@
+{
+  "songs": [
+    {
+      "id": "marys-song",
+      "title": "Mary's Song (Jools Scott & Sue Curtis)",
+      "bpm": 92,
+      "timeSig": "3/4",
+      "parts": ["S","A","T","B"],
+      "bars": 48,
+      "tags": ["choral","SATB","Christmas"]
+    },
+    {
+      "id": "test",
+      "title": "Test Song",
+      "bpm": 100,
+      "timeSig": "4/4",
+      "parts": ["S1","A"],
+      "bars": 4,
+      "tags": ["demo"]
+    }
+  ]
+}
