@@ -99,9 +99,21 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 
 /* Play Mode */
 .play-container{display:none;height:calc(100dvh - 80px);position:relative;flex-direction:column}
-.score-container{overflow-x:auto;overflow-y:auto;background:#12121a;border-bottom:1px solid var(--border);flex-shrink:0;max-height:35vh;position:relative}
+.score-container{overflow-x:auto;overflow-y:hidden;background:#12121a;border-bottom:1px solid var(--border);flex-shrink:0;height:140px;position:relative;white-space:nowrap}
 .score-container svg{display:block}
-.score-container .vf-note .vf-notehead path{transition:fill 0.1s}
+.score-container svg path{stroke:#ccc}
+.score-container svg text{fill:#ccc}
+.score-container svg .vf-stave .vf-stave-section rect{fill:none}
+.score-container svg rect.vf-stave-section{fill:none}
+.score-container .vf-notehead path{fill:#e8e6f0!important;stroke:#e8e6f0!important}
+.score-container .vf-stem path{stroke:#ccc!important}
+.score-container .vf-beam path{fill:#ccc!important;stroke:#ccc!important}
+.score-container .vf-flag path{fill:#ccc!important;stroke:#ccc!important}
+.score-container .vf-stave path{stroke:#555!important}
+.score-container .vf-stave-section text{fill:#888!important}
+.score-container .vf-clef path{fill:#888!important;stroke:#888!important}
+.score-container .vf-keysignature path{fill:#999!important;stroke:#999!important}
+.score-container .vf-timesignature path{fill:#999!important;stroke:#999!important}
 .score-highlight{position:absolute;background:rgba(244,162,97,0.2);border:2px solid var(--gold);border-radius:4px;pointer-events:none;z-index:5;transition:left 0.08s,top 0.08s}
 .play-container canvas{flex:1;width:100%;min-height:0}
 .part-select{position:absolute;inset:0;background:rgba(15,15,20,0.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;gap:0.4rem;padding:1.5rem}
@@ -949,12 +961,10 @@ function renderVexScore(partIdx){
   if(!hasPitch){scoreC.style.display='none';return} // fallback to canvas score view
 
   const subsPerBar=song.timeSigTop*song.subdivPerBeat;
-  const staveWidth=220;
-  const stavesPerLine=Math.max(1,Math.floor((window.innerWidth-80)/staveWidth));
-  const totalLines=Math.ceil(song.bars/stavesPerLine);
-  const lineH=120;
-  const w=80+stavesPerLine*staveWidth;
-  const h=totalLines*lineH+40;
+  const staveWidth=200;
+  const firstStaveExtra=80; // extra width for clef+key+time sig
+  const w=firstStaveExtra+song.bars*staveWidth+100;
+  const h=130;
 
   const renderer=new VF.Renderer(container,VF.Renderer.Backends.SVG);
   renderer.resize(w,h);
@@ -972,18 +982,15 @@ function renderVexScore(partIdx){
 
   // Render each measure
   for(let bar=0;bar<song.bars;bar++){
-    const lineIdx=Math.floor(bar/stavesPerLine);
-    const posInLine=bar%stavesPerLine;
-    const x=80+posInLine*staveWidth;
-    const y=20+lineIdx*lineH;
+    const x=bar===0?10:firstStaveExtra+(bar-1)*staveWidth+staveWidth;
+    const thisW=bar===0?firstStaveExtra+staveWidth:staveWidth;
+    const y=10;
 
-    if(posInLine===0)vexMeasureYs.push(y);
-
-    const stave=new VF.Stave(x,y,staveWidth);
-    if(posInLine===0){
+    const stave=new VF.Stave(x,y,thisW);
+    if(bar===0){
       stave.addClef(part.clef||'treble');
       if(song.keySig)stave.addKeySignature(song.keySig);
-      if(bar===0)stave.addTimeSignature(`${song.timeSigTop}/${song.timeSigBot}`);
+      stave.addTimeSignature(`${song.timeSigTop}/${song.timeSigBot}`);
     }
     stave.setContext(ctx).draw();
 
@@ -1082,11 +1089,9 @@ function highlightVexNote(elapsed){
     hl.style.width=(current.w+8)+'px';
     hl.style.height=(current.h+8)+'px';
 
-    // Auto-scroll to keep current measure visible
-    const scrollTarget=current.lineY-40;
-    if(Math.abs(sc.scrollTop-scrollTarget)>60){
-      sc.scrollTo({top:scrollTarget,behavior:'smooth'});
-    }
+    // Auto-scroll horizontally to keep current note visible
+    const scrollTarget=current.x-sc.clientWidth*0.3;
+    sc.scrollTo({left:Math.max(0,scrollTarget),behavior:'smooth'});
 
     // Color past/current/future notes via SVG (if elements available)
     vexNoteElements.forEach(ne=>{
@@ -1094,11 +1099,23 @@ function highlightVexNote(elapsed){
       try{
         const noteTime=ne.pos*msPerSub;
         const heads=ne.el.querySelectorAll&&ne.el.querySelectorAll('.vf-notehead path');
-        if(!heads||!heads.length)return;
+        if(!heads||!heads.length){
+          // Try alternate selectors for VF3
+          const allPaths=ne.el.querySelectorAll&&ne.el.querySelectorAll('path');
+          if(allPaths&&allPaths.length){
+            allPaths.forEach(p=>{
+              const noteTime=ne.pos*msPerSub;
+              if(noteTime<=elapsed-500){p.style.fill='#555';p.style.stroke='#555'}
+              else if(ne===current){p.style.fill='#f4a261';p.style.stroke='#f4a261'}
+              else{p.style.fill='';p.style.stroke=''}
+            });
+          }
+          return;
+        }
         heads.forEach(p=>{
-          if(noteTime<=elapsed-500)p.style.fill='#555';
-          else if(ne===current)p.style.fill='#f4a261';
-          else p.style.fill='';
+          if(noteTime<=elapsed-500){p.style.fill='#555';p.style.stroke='#555'}
+          else if(ne===current){p.style.fill='#f4a261';p.style.stroke='#f4a261'}
+          else{p.style.fill='';p.style.stroke=''}
         });
       }catch(e){}
     });
