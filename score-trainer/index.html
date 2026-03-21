@@ -774,11 +774,11 @@ function switchTab(t){
   document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('active',el.dataset.tab===t));
   $('libraryPanel').style.display=t==='library'?'':'none';
   $('editorPanel').style.display=t==='editor'?'':'none';
-  $('playPanel').style.display=t==='play'?'':'none';
-  $('classroomPanel').style.display=t==='classroom'?'':'none';
+  $('playPanel').style.display=t==='play'?'block':'none';
+  $('classroomPanel').style.display=t==='classroom'?'block':'none';
   if(t==='library')loadLibrary();
-  if(t==='play'){showPartSelect();resizeCV(cv);if(!micOn)initMic()}
-  if(t==='classroom'){ccv.width=ccv.clientWidth*devicePixelRatio;ccv.height=ccv.clientHeight*devicePixelRatio;startClassroom()}
+  if(t==='play'){showPartSelect();setTimeout(()=>resizeCV(cv),50);if(!micOn)initMic()}
+  if(t==='classroom'){setTimeout(()=>{ccv.width=ccv.clientWidth*devicePixelRatio;ccv.height=ccv.clientHeight*devicePixelRatio;startClassroom()},50)}
   if(t==='editor'){gameOn=false;classActive=false;stopPlayback()}}
 
 // ════════════════════════════════════
