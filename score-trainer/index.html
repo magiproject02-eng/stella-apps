@@ -1397,13 +1397,26 @@ function pitchToVex(p){
 
 function durToVex(dur,subdivPerBeat){
   if(subdivPerBeat===2){
-    const map={1:'8',2:'q',3:'qd',4:'h',5:'h',6:'hd',8:'w',12:'wd'};
+    const map={1:'8',2:'q',3:'qd',4:'h',6:'hd',8:'w',12:'wd'};
     return map[dur]||'q';
   }else if(subdivPerBeat===4){
     const map={1:'16',2:'8',3:'8d',4:'q',6:'qd',8:'h',12:'hd',16:'w'};
     return map[dur]||'q';
   }
   return'q';
+}
+
+// Decompose a duration into valid VexFlow note durations
+function decomposeDur(dur,subdivPerBeat){
+  const valid=subdivPerBeat===2?[12,8,6,4,3,2,1]:[16,12,8,6,4,3,2,1];
+  const parts=[];
+  let rem=dur;
+  while(rem>0){
+    let found=false;
+    for(const v of valid){if(v<=rem){parts.push(v);rem-=v;found=true;break;}}
+    if(!found){parts.push(1);rem--;} // safety
+  }
+  return parts;
 }
 
 function isDotted(vexDur){return vexDur.endsWith('d')}
@@ -1476,37 +1489,49 @@ function renderVexScore(partIdx){
     const barStart=bar*spBar;
     const notes=[];
     let pos=0;
-    for(const beat of barBeats){
-      const relPos=beat.pos-barStart;
-      // Add rest if gap
-      if(relPos>pos){
-        const restSubs=relPos-pos;
-        const rd=durToVex(restSubs,song.subdivPerBeat);
+    
+    // Helper: add rest(s) for a given subdivision count
+    function addRests(subs){
+      const parts=decomposeDur(subs,song.subdivPerBeat);
+      for(const d of parts){
+        const rd=durToVex(d,song.subdivPerBeat);
         const rest=new VF.StaveNote({keys:['b/4'],duration:vexDurBase(rd)+'r'});
         if(isDotted(rd))rest.addDot(0);
         notes.push(rest);
       }
-      // Add note
-      const vd=durToVex(beat.dur,song.subdivPerBeat);
+    }
+    
+    // Helper: add accidentals to a note
+    function addAcc(note,pitchStr){
+      const ps=(pitchStr||'').toLowerCase();
+      if(ps.includes('#'))note.addAccidental(0,new VF.Accidental('#'));
+      else if(ps.includes('b')&&!ps.startsWith('b'))note.addAccidental(0,new VF.Accidental('b'));
+    }
+
+    for(const beat of barBeats){
+      const relPos=beat.pos-barStart;
+      // Gap rest
+      if(relPos>pos) addRests(relPos-pos);
+      
+      // Clip note duration to bar boundary
+      const maxDur=spBar-relPos;
+      const clippedDur=Math.min(beat.dur,maxDur);
+      
+      // Decompose note into valid VexFlow durations (for ties across beats)
+      const noteParts=decomposeDur(clippedDur,song.subdivPerBeat);
       const vp=pitchToVex(beat.pitch);
-      const note=new VF.StaveNote({keys:[vp],duration:vexDurBase(vd),clef:part.clef||'treble'});
-      if(isDotted(vd))note.addDot(0);
-      // Add accidentals if needed
-      const pitchStr=(beat.pitch||'').toLowerCase();
-      if(pitchStr.includes('#'))note.addAccidental(0,new VF.Accidental('#'));
-      else if(pitchStr.includes('b')&&!pitchStr.startsWith('b'))note.addAccidental(0,new VF.Accidental('b'));
-      note._scorePos=beat.pos; // store for highlighting
-      notes.push(note);
-      pos=relPos+beat.dur;
+      for(let ni=0;ni<noteParts.length;ni++){
+        const vd=durToVex(noteParts[ni],song.subdivPerBeat);
+        const note=new VF.StaveNote({keys:[vp],duration:vexDurBase(vd),clef:part.clef||'treble'});
+        if(isDotted(vd))note.addDot(0);
+        if(ni===0) addAcc(note,beat.pitch);
+        if(ni===0) note._scorePos=beat.pos; // only first part gets highlight position
+        notes.push(note);
+      }
+      pos=relPos+clippedDur;
     }
     // Trailing rest
-    if(pos<spBar){
-      const restSubs=spBar-pos;
-      const rd=durToVex(restSubs,song.subdivPerBeat);
-      const rest=new VF.StaveNote({keys:['b/4'],duration:vexDurBase(rd)+'r'});
-      if(isDotted(rd))rest.addDot(0);
-      notes.push(rest);
-    }
+    if(pos<spBar) addRests(spBar-pos);
 
     try{
       const voice=new VF.Voice({num_beats:song.timeSigTop,beat_value:song.timeSigBot}).setStrict(false);
