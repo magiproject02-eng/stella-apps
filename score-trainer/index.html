@@ -740,6 +740,7 @@ async function importMusicXML(){
 }
 
 const HOMR_URL='https://openclaw.entoutois.com/omr/omr';
+const HOMR_TOKEN='BrFls_IDiVCNi_qWn37dfOalUtJ3P74r12T3u_IYIAk';
 
 async function scanImage(){
   const inp=document.createElement('input');
@@ -759,7 +760,7 @@ async function scanImage(){
       form.append('file',f);
       scanMsg.textContent='🔍 Processing with homr OMR...';
       scanDetail.textContent='Reading notes, pitch, rhythm — this takes 2-5 minutes';
-      const resp=await fetch(HOMR_URL,{method:'POST',body:form});
+      const resp=await fetch(HOMR_URL+'?token='+HOMR_TOKEN,{method:'POST',body:form});
       if(!resp.ok){
         const err=await resp.json().catch(()=>({error:'Server error '+resp.status}));
         throw new Error(err.error||'OMR failed');
