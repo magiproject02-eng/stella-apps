@@ -1565,38 +1565,56 @@ function highlightVexNote(elapsed){
     smoothX=0;
   }
 
-  // Show playhead — use CSS transform on SVG for smooth scroll instead of scrollLeft
+  // Show playhead — use CSS transform on SVG for smooth scroll
   const vexEl=sc.querySelector('svg');
-  if(vexEl){
-    const offset=Math.max(0,smoothX-sc.clientWidth*0.3);
-    vexEl.style.transform=`translateX(${-offset}px)`;
-    // Position highlight relative to visible area
-    hl.style.display='block';
-    hl.style.left=(smoothX-offset-1)+'px';
-    hl.style.width='3px';
+  if(!vexEl)return;
+  const offset=Math.max(0,smoothX-sc.clientWidth*0.3);
+  vexEl.style.transform=`translateX(${-offset}px)`;
+  
+  // Highlight overlay canvas (create once, reuse)
+  let hlCanvas=sc.querySelector('.hl-canvas');
+  if(!hlCanvas){
+    hlCanvas=document.createElement('canvas');
+    hlCanvas.className='hl-canvas';
+    hlCanvas.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:4;';
+    sc.appendChild(hlCanvas);
   }
-
-  // Find nearest note for coloring
-  let current=null,minDist=Infinity;
+  const cw=sc.clientWidth,ch=sc.clientHeight;
+  if(hlCanvas.width!==cw*2||hlCanvas.height!==ch*2){hlCanvas.width=cw*2;hlCanvas.height=ch*2;}
+  const hctx=hlCanvas.getContext('2d');
+  hctx.clearRect(0,0,cw*2,ch*2);
+  hctx.scale(2,2);
+  
+  // Draw playhead line
+  const plX=smoothX-offset;
+  hctx.strokeStyle='#f4a261';hctx.lineWidth=2;
+  hctx.beginPath();hctx.moveTo(plX,0);hctx.lineTo(plX,ch);hctx.stroke();
+  
+  // Highlight notes
   for(const ne of vexNoteElements){
-    const d=Math.abs(ne.pos*msPerSub-elapsed);
-    if(d<minDist){minDist=d;current=ne}
+    const nx=ne.x-offset;
+    if(nx+ne.w<-20||nx>cw+20)continue;
+    const noteTime=ne.pos*msPerSub;
+    if(noteTime<elapsed-400){
+      // Passed notes — dim overlay
+      hctx.fillStyle='rgba(15,15,20,0.55)';
+      hctx.fillRect(nx-1,ne.y-1,ne.w+2,ne.h+2);
+    }else if(Math.abs(noteTime-elapsed)<400){
+      // Current note — gold glow
+      hctx.fillStyle='rgba(244,162,97,0.35)';
+      hctx.beginPath();
+      hctx.roundRect?hctx.roundRect(nx-3,ne.y-3,ne.w+6,ne.h+6,4):hctx.rect(nx-3,ne.y-3,ne.w+6,ne.h+6);
+      hctx.fill();
+      hctx.strokeStyle='#f4a261';hctx.lineWidth=1.5;
+      hctx.beginPath();
+      hctx.roundRect?hctx.roundRect(nx-3,ne.y-3,ne.w+6,ne.h+6,4):hctx.rect(nx-3,ne.y-3,ne.w+6,ne.h+6);
+      hctx.stroke();
+    }
   }
-
-  // Color notes
-  vexNoteElements.forEach(ne=>{
-    if(!ne.el)return;
-    try{
-      const noteTime=ne.pos*msPerSub;
-      const allPaths=ne.el.querySelectorAll&&ne.el.querySelectorAll('path');
-      if(!allPaths||!allPaths.length)return;
-      allPaths.forEach(p=>{
-        if(noteTime<elapsed-300){p.style.fill='#555';p.style.stroke='#555'}
-        else if(ne===current&&minDist<500){p.style.fill='#f4a261';p.style.stroke='#f4a261'}
-        else{p.style.fill='';p.style.stroke=''}
-      });
-    }catch(e){}
-  });
+  hctx.setTransform(1,0,0,1,0,0); // reset scale
+  
+  // Hide the old CSS highlight element
+  hl.style.display='none';
 }
 
 // ════════════════════════════════════
