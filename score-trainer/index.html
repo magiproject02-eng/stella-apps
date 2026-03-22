@@ -101,21 +101,25 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 
 /* Play Mode */
 .play-container{display:none;height:calc(100dvh - 80px);position:relative;flex-direction:column}
-.score-container{overflow-x:auto;overflow-y:hidden;background:#12121a;border-bottom:1px solid var(--border);flex-shrink:0;height:140px;position:relative;white-space:nowrap;-webkit-overflow-scrolling:touch;touch-action:none;pointer-events:none}
-.score-container svg{display:block}
-.score-container svg path{stroke:#ccc}
-.score-container svg text{fill:#ccc}
+.score-container{overflow-x:hidden;overflow-y:hidden;background:#12121a;border-bottom:1px solid var(--border);flex-shrink:0;height:140px;position:relative;white-space:nowrap}
+.score-container svg{display:block;will-change:transform}
+.score-container svg path{stroke:#e8e6f0;fill:#e8e6f0}
+.score-container svg text{fill:#e8e6f0}
 .score-container svg .vf-stave .vf-stave-section rect{fill:none}
 .score-container svg rect.vf-stave-section{fill:none}
 .score-container .vf-notehead path{fill:#e8e6f0!important;stroke:#e8e6f0!important}
+.score-container .vf-accidental path{fill:#e8e6f0!important;stroke:#e8e6f0!important}
+.score-container .vf-modifiers path{fill:#e8e6f0!important;stroke:#e8e6f0!important}
+.score-container .vf-dot path{fill:#e8e6f0!important;stroke:#e8e6f0!important}
 .score-container .vf-stem path{stroke:#ccc!important}
 .score-container .vf-beam path{fill:#ccc!important;stroke:#ccc!important}
 .score-container .vf-flag path{fill:#ccc!important;stroke:#ccc!important}
+.score-container .vf-ledgerline path{stroke:#888!important}
 .score-container .vf-stave path{stroke:#555!important}
 .score-container .vf-stave-section text{fill:#888!important}
 .score-container .vf-clef path{fill:#888!important;stroke:#888!important}
-.score-container .vf-keysignature path{fill:#999!important;stroke:#999!important}
-.score-container .vf-timesignature path{fill:#999!important;stroke:#999!important}
+.score-container .vf-keysignature path{fill:#aaa!important;stroke:#aaa!important}
+.score-container .vf-timesignature path{fill:#aaa!important;stroke:#aaa!important}
 .score-highlight{position:absolute;background:rgba(244,162,97,0.4);border-left:2px solid var(--gold);pointer-events:none;z-index:5;top:0;bottom:0;width:3px}
 .play-container canvas{flex:1;width:100%;min-height:0}
 .part-select{position:absolute;inset:0;background:rgba(15,15,20,0.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;gap:0.4rem;padding:1.5rem}
@@ -1561,18 +1565,15 @@ function highlightVexNote(elapsed){
     smoothX=0;
   }
 
-  // Show playhead and scroll
-  hl.style.display='block';
-  hl.style.left=(smoothX-1)+'px';
-  hl.style.width='3px';
-
-  // Auto-scroll: only when playhead approaches right edge (less jarring than centering every frame)
-  const visLeft=sc.scrollLeft;
-  const visRight=visLeft+sc.clientWidth;
-  const margin=sc.clientWidth*0.25;
-  if(smoothX>visRight-margin||smoothX<visLeft+margin*0.5){
-    const target=smoothX-sc.clientWidth*0.35;
-    sc.scrollLeft+=(Math.max(0,target)-sc.scrollLeft)*0.15; // ease towards target
+  // Show playhead — use CSS transform on SVG for smooth scroll instead of scrollLeft
+  const vexEl=sc.querySelector('svg');
+  if(vexEl){
+    const offset=Math.max(0,smoothX-sc.clientWidth*0.3);
+    vexEl.style.transform=`translateX(${-offset}px)`;
+    // Position highlight relative to visible area
+    hl.style.display='block';
+    hl.style.left=(smoothX-offset-1)+'px';
+    hl.style.width='3px';
   }
 
   // Find nearest note for coloring
