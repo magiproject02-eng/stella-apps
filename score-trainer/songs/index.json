@@ -58,16 +58,17 @@
     },
     {
       "id": "dragon-dance",
-      "title": "Dragon Dance of Shang (Darius Lim) \u2014 Opening",
+      "title": "Dragon Dance of Shang (Darius Lim)",
       "bpm": 80,
       "timeSig": "4/4",
       "parts": [
+        "Solo",
         "S1",
         "S2",
         "A1",
         "A2"
       ],
-      "bars": 12,
+      "bars": 142,
       "tags": [
         "SSAA",
         "choral",
