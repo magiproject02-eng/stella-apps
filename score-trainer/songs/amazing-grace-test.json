@@ -1,0 +1,325 @@
+{
+  "title": "Amazing Grace (Test)",
+  "bpm": 72,
+  "timeSigTop": 3,
+  "timeSigBot": 4,
+  "bars": 5,
+  "subdivPerBeat": 2,
+  "keySig": "G",
+  "parts": [
+    {
+      "name": "S",
+      "clef": "treble",
+      "beats": [
+        {
+          "pos": 0,
+          "dur": 1,
+          "pitch": "D4"
+        },
+        {
+          "pos": 1,
+          "dur": 1,
+          "pitch": "D4"
+        },
+        {
+          "pos": 2,
+          "dur": 3,
+          "pitch": "G4"
+        },
+        {
+          "pos": 5,
+          "dur": 1,
+          "pitch": "B4"
+        },
+        {
+          "pos": 6,
+          "dur": 2,
+          "pitch": "B4"
+        },
+        {
+          "pos": 8,
+          "dur": 2,
+          "pitch": "A4"
+        },
+        {
+          "pos": 10,
+          "dur": 2,
+          "pitch": "G4"
+        },
+        {
+          "pos": 12,
+          "dur": 2,
+          "pitch": "G4"
+        },
+        {
+          "pos": 14,
+          "dur": 2,
+          "pitch": "E4"
+        },
+        {
+          "pos": 16,
+          "dur": 1,
+          "pitch": "D4"
+        },
+        {
+          "pos": 17,
+          "dur": 1,
+          "pitch": "D4"
+        },
+        {
+          "pos": 18,
+          "dur": 3,
+          "pitch": "G4"
+        },
+        {
+          "pos": 21,
+          "dur": 1,
+          "pitch": "B4"
+        },
+        {
+          "pos": 22,
+          "dur": 4,
+          "pitch": "B4"
+        },
+        {
+          "pos": 26,
+          "dur": 2,
+          "pitch": "A4"
+        },
+        {
+          "pos": 28,
+          "dur": 2,
+          "pitch": "B4"
+        }
+      ]
+    },
+    {
+      "name": "A",
+      "clef": "treble",
+      "beats": [
+        {
+          "pos": 0,
+          "dur": 1,
+          "pitch": "D4"
+        },
+        {
+          "pos": 1,
+          "dur": 1,
+          "pitch": "D4"
+        },
+        {
+          "pos": 2,
+          "dur": 2,
+          "pitch": "D4"
+        },
+        {
+          "pos": 4,
+          "dur": 2,
+          "pitch": "D4"
+        },
+        {
+          "pos": 6,
+          "dur": 2,
+          "pitch": "D4"
+        },
+        {
+          "pos": 8,
+          "dur": 2,
+          "pitch": "D4"
+        },
+        {
+          "pos": 10,
+          "dur": 2,
+          "pitch": "B3"
+        },
+        {
+          "pos": 12,
+          "dur": 2,
+          "pitch": "B3"
+        },
+        {
+          "pos": 14,
+          "dur": 2,
+          "pitch": "C4"
+        },
+        {
+          "pos": 16,
+          "dur": 1,
+          "pitch": "D4"
+        },
+        {
+          "pos": 17,
+          "dur": 1,
+          "pitch": "D4"
+        },
+        {
+          "pos": 18,
+          "dur": 2,
+          "pitch": "D4"
+        },
+        {
+          "pos": 20,
+          "dur": 2,
+          "pitch": "D4"
+        },
+        {
+          "pos": 22,
+          "dur": 2,
+          "pitch": "D4"
+        },
+        {
+          "pos": 24,
+          "dur": 2,
+          "pitch": "D4"
+        },
+        {
+          "pos": 26,
+          "dur": 2,
+          "pitch": "D4"
+        },
+        {
+          "pos": 28,
+          "dur": 2,
+          "pitch": "D4"
+        }
+      ]
+    },
+    {
+      "name": "T",
+      "clef": "treble",
+      "beats": [
+        {
+          "pos": 2,
+          "dur": 2,
+          "pitch": "B3"
+        },
+        {
+          "pos": 4,
+          "dur": 2,
+          "pitch": "B3"
+        },
+        {
+          "pos": 6,
+          "dur": 2,
+          "pitch": "G3"
+        },
+        {
+          "pos": 8,
+          "dur": 2,
+          "pitch": "F#3"
+        },
+        {
+          "pos": 10,
+          "dur": 2,
+          "pitch": "G3"
+        },
+        {
+          "pos": 12,
+          "dur": 4,
+          "pitch": "B3"
+        },
+        {
+          "pos": 18,
+          "dur": 2,
+          "pitch": "B3"
+        },
+        {
+          "pos": 20,
+          "dur": 2,
+          "pitch": "G3"
+        },
+        {
+          "pos": 22,
+          "dur": 2,
+          "pitch": "G3"
+        },
+        {
+          "pos": 24,
+          "dur": 2,
+          "pitch": "G3"
+        },
+        {
+          "pos": 26,
+          "dur": 2,
+          "pitch": "F#3"
+        },
+        {
+          "pos": 28,
+          "dur": 2,
+          "pitch": "G3"
+        }
+      ]
+    },
+    {
+      "name": "B",
+      "clef": "bass",
+      "beats": [
+        {
+          "pos": 2,
+          "dur": 2,
+          "pitch": "G2"
+        },
+        {
+          "pos": 4,
+          "dur": 2,
+          "pitch": "G2"
+        },
+        {
+          "pos": 6,
+          "dur": 2,
+          "pitch": "G2"
+        },
+        {
+          "pos": 8,
+          "dur": 2,
+          "pitch": "D3"
+        },
+        {
+          "pos": 10,
+          "dur": 2,
+          "pitch": "G2"
+        },
+        {
+          "pos": 12,
+          "dur": 2,
+          "pitch": "E2"
+        },
+        {
+          "pos": 14,
+          "dur": 2,
+          "pitch": "C3"
+        },
+        {
+          "pos": 18,
+          "dur": 2,
+          "pitch": "G2"
+        },
+        {
+          "pos": 20,
+          "dur": 2,
+          "pitch": "G2"
+        },
+        {
+          "pos": 22,
+          "dur": 2,
+          "pitch": "G2"
+        },
+        {
+          "pos": 24,
+          "dur": 2,
+          "pitch": "G2"
+        },
+        {
+          "pos": 26,
+          "dur": 2,
+          "pitch": "D3"
+        },
+        {
+          "pos": 28,
+          "dur": 2,
+          "pitch": "G2"
+        }
+      ]
+    }
+  ]
+}

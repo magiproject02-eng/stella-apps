@@ -876,78 +876,167 @@ $('btnAnalyze').addEventListener('click',async()=>{
   // Build image content array
   let imageContent=[];
   if(aiImagePages.length>0){
-    // PDF mode: send selected pages
     const pages=[...selectedPages].sort((a,b)=>a-b);
     if(pages.length===0)return;
     pages.forEach(idx=>{imageContent.push({type:"image",source:{type:"base64",media_type:"image/jpeg",data:aiImagePages[idx].base64}})});
   }else if(aiImageData){
-    // Single image mode
     imageContent.push({type:"image",source:{type:"base64",media_type:"image/jpeg",data:aiImageData}});
   }else return;
 
   const status=$('aiStatus');status.classList.remove('hidden','error','ok');status.classList.add('loading');
-  status.textContent=`🔄 Analyzing ${imageContent.length} page${imageContent.length>1?'s':''}... this may take 15-30 seconds`;
   $('btnAnalyze').disabled=true;
   const ctx=$('aiContext').value;
-  const prompt=`You are a music score rhythm extractor. Analyze ${imageContent.length>1?'these score pages':'this score image'} and extract the rhythm pattern for each voice part, INCLUDING NOTE DURATION.
-
-${imageContent.length>1?'The pages are in order and form a continuous score. Combine all pages into one beat map with continuous bar numbering.':''}
-${ctx?'Context from user: '+ctx:''}
-
-Output ONLY valid JSON (no markdown, no backticks, no explanation) in this exact format:
-{
-  "title": "Song name if visible",
-  "bpm": estimated_tempo_number,
-  "timeSigTop": beats_per_bar,
-  "timeSigBot": beat_unit,
-  "bars": total_number_of_bars_across_all_pages,
-  "subdivPerBeat": 2,
-  "parts": [
-    {"name": "S1", "beats": [{"pos":0,"dur":4},{"pos":4,"dur":2},...]},
-    {"name": "A", "beats": [{"pos":0,"dur":6},{"pos":8,"dur":2},...]}
-  ]
-}
-
-Rules:
-- Each beat has "pos" (onset position) and "dur" (duration in subdivisions)
-- subdivPerBeat=2 means 8th-note grid: quarter note dur=2, half note dur=4, dotted half dur=6, whole dur=8, 8th dur=1
-- subdivPerBeat=4 means 16th-note grid: quarter=4, half=8, dotted half=12, 8th=2, 16th=1, dotted quarter=6
-- Index each bar continuously: bar1=0-7, bar2=8-15, etc (for subdivPerBeat=2, 4/4)
-- Tied notes: combine into one beat with total duration spanning the tie
-- Identify voice parts from labels (S, A, T, B, S1, S2, etc) or staff positions
-- Use subdivPerBeat=4 if you see any 16th notes, otherwise use 2
-- Return ONLY the JSON object, nothing else`;
 
   try{
     const apiKey=$('aiApiKey').value.trim();
     const headers={"Content-Type":"application/json","anthropic-version":"2023-06-01"};
     if(apiKey)headers["x-api-key"]=apiKey;
-    const msgContent=[...imageContent,{type:"text",text:prompt}];
-    const resp=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers,body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:4000,messages:[{role:"user",content:msgContent}]})});
-    if(!resp.ok){
-      const errBody=await resp.text().catch(()=>'');
-      if(resp.status===401||resp.status===403){
-        throw new Error('API key required. Paste your Anthropic API key (sk-ant-...) in the field above.');
-      }
-      throw new Error(`API error ${resp.status}: ${errBody.slice(0,200)}`);
+
+    // ═══ PASS 1: Structure scan ═══
+    status.textContent='🔍 Pass 1/2: Reading score structure...';
+    const pass1Prompt=`You are a professional music score reader. Look at ${imageContent.length>1?'these pages of a':'this'} music score and identify the structure.
+${ctx?'Context from user: '+ctx:''}
+
+Answer ONLY in JSON (no markdown, no backticks):
+{
+  "title": "title if visible",
+  "composer": "composer if visible",
+  "keySig": "C" or "G" or "F" etc (the major key, e.g. 1 sharp = G, 2 flats = Bb),
+  "timeSigTop": 3,
+  "timeSigBot": 4,
+  "tempo": "Andantino" or "Allegro" etc if marked,
+  "bpm": estimated BPM number,
+  "staves_per_system": 3,
+  "staff_layout": ["Voice (treble clef)", "Piano RH (treble clef)", "Piano LH (bass clef)"],
+  "voice_staff_index": 0,
+  "total_bars": 42,
+  "voice_enters_bar": 7,
+  "clef": "treble",
+  "has_accidentals": true,
+  "has_dotted_notes": true,
+  "has_ties": true
+}`;
+
+    const pass1Resp=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers,body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:[...imageContent,{type:"text",text:pass1Prompt}]}]})});
+    if(!pass1Resp.ok){
+      const errBody=await pass1Resp.text().catch(()=>'');
+      if(pass1Resp.status===401||pass1Resp.status===403)throw new Error('API key required. Paste your Anthropic API key (sk-ant-...) above.');
+      throw new Error(`API error ${pass1Resp.status}: ${errBody.slice(0,200)}`);
     }
-    const data=await resp.json();
-    if(data.error)throw new Error(data.error.message||'API returned error');
-    const text=data.content.map(c=>c.text||'').join('');
-    const clean=text.replace(/```json|```/g,'').trim();
-    const parsed=JSON.parse(clean);
-    fromJSON(JSON.stringify(parsed));
-    status.classList.remove('loading');status.classList.add('ok');status.textContent=`✅ Extracted ${parsed.parts.length} parts, ${parsed.bars} bars. Check the editor!`;
-    setTimeout(()=>closeAIModal(),1500);
+    const pass1Data=await pass1Resp.json();
+    if(pass1Data.error)throw new Error(pass1Data.error.message);
+    const pass1Text=pass1Data.content.map(c=>c.text||'').join('').replace(/```json|```/g,'').trim();
+    const structure=JSON.parse(pass1Text);
+    console.log('Pass 1 structure:',structure);
+
+    // ═══ PASS 2: Note extraction with calibrated prompt ═══
+    status.textContent=`🎵 Pass 2/2: Reading ${structure.clef||'treble'} clef notes bar by bar...`;
+
+    const clefRef=structure.clef==='bass'?
+      `Bass clef line positions (bottom to top): G2, B2, D3, F3, A3
+Bass clef space positions (bottom to top): A2, C3, E3, G3
+Ledger lines above: B3, C4, D4. Below: F2, E2.`
+      :
+      `Treble clef line positions (bottom to top): E4, G4, B4, D5, F5
+Treble clef space positions (bottom to top): F4, A4, C5, E5
+Ledger lines below: D4, C4, B3. Above: G5, A5.`;
+
+    const keySigNote=structure.keySig||'C';
+    const accidentalHint=keySigNote==='C'?'Key of C major: no sharps or flats in key signature. Any accidentals are written explicitly next to notes.':
+      `Key of ${keySigNote}: follow the key signature for default sharps/flats. Mark any EXTRA accidentals (naturals, chromatic sharps/flats) explicitly.`;
+
+    const pass2Prompt=`You are a precise music score reader. Extract ONLY the vocal melody from staff ${(structure.voice_staff_index||0)+1} (the ${structure.staff_layout?structure.staff_layout[structure.voice_staff_index||0]:'top staff'}). IGNORE the piano/accompaniment staves completely.
+
+CLEF REFERENCE (use this to identify pitches):
+${clefRef}
+
+KEY SIGNATURE: ${accidentalHint}
+
+TIME SIGNATURE: ${structure.timeSigTop||4}/${structure.timeSigBot||4}
+
+DURATION CODES: w=whole, h=half, dh=dotted half, q=quarter, dq=dotted quarter, e=eighth, de=dotted eighth, s=sixteenth
+
+RULES:
+- Read each bar LEFT to RIGHT, one note at a time
+- Use lyrics underneath as a cross-check: each syllable = one note onset
+- For tied notes, combine durations and report as ONE note with total duration
+- Rests: mark as {"pitch":"R","dur":"q"} etc
+- Accidentals: include # or b in pitch (e.g. "G#4", "Bb4")
+- If voice is silent for entire bars, skip those bars
+- Be VERY careful about whether a note sits ON a line vs IN a space — one position = one pitch difference
+
+Output ONLY valid JSON (no markdown, no backticks, no explanation):
+[
+  {"bar":7, "notes":[{"pitch":"C5","dur":"q"},{"pitch":"C5","dur":"dq"},{"pitch":"B4","dur":"e"}]},
+  {"bar":8, "notes":[{"pitch":"B4","dur":"e"},{"pitch":"B4","dur":"e"},{"pitch":"A4","dur":"h"}]},
+  ...continue for ALL bars where the voice sings...
+]`;
+
+    const pass2Resp=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers,body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:8000,messages:[{role:"user",content:[...imageContent,{type:"text",text:pass2Prompt}]}]})});
+    if(!pass2Resp.ok)throw new Error('Pass 2 API error: '+pass2Resp.status);
+    const pass2Data=await pass2Resp.json();
+    if(pass2Data.error)throw new Error(pass2Data.error.message);
+    const pass2Text=pass2Data.content.map(c=>c.text||'').join('').replace(/```json|```/g,'').trim();
+    const barNotes=JSON.parse(pass2Text);
+    console.log('Pass 2 raw notes:',barNotes);
+
+    // ═══ CONVERT to Beat Map format ═══
+    const subdivPerBeat=2; // 8th note resolution
+    const timeSigTop=structure.timeSigTop||4;
+    const timeSigBot=structure.timeSigBot||4;
+    const subdivPerBar=timeSigTop*subdivPerBeat*(4/timeSigBot);
+
+    // Duration string → subdivision count (for subdivPerBeat=2: w=8, dh=6, h=4, dq=3, q=2, e=1)
+    const durMap={
+      'w':subdivPerBeat*4, 'dh':subdivPerBeat*3, 'h':subdivPerBeat*2,
+      'dq':Math.round(subdivPerBeat*1.5), 'q':subdivPerBeat,
+      'de':Math.max(1,Math.round(subdivPerBeat*0.75)),
+      'e':Math.max(1,Math.round(subdivPerBeat*0.5)),
+      's':Math.max(1,Math.round(subdivPerBeat*0.25))
+    };
+
+    const beats=[];
+    let maxBar=0;
+    barNotes.forEach(bar=>{
+      const barNum=bar.bar;
+      if(barNum>maxBar)maxBar=barNum;
+      const barStart=(barNum-1)*subdivPerBar;
+      let pos=barStart;
+      (bar.notes||[]).forEach(n=>{
+        const dur=durMap[n.dur]||subdivPerBeat;
+        if(n.pitch&&n.pitch!=='R'){
+          beats.push({pos:Math.round(pos),dur,pitch:n.pitch});
+        }
+        pos+=dur;
+      });
+    });
+
+    // Build song JSON
+    const songData={
+      title:structure.title||'Imported Score',
+      bpm:structure.bpm||100,
+      timeSigTop,
+      timeSigBot,
+      bars:maxBar,
+      subdivPerBeat,
+      keySig:structure.keySig||'C',
+      parts:[{name:'Voice',clef:structure.clef||'treble',beats}]
+    };
+
+    fromJSON(JSON.stringify(songData));
+    status.classList.remove('loading');status.classList.add('ok');
+    status.textContent=`✅ Extracted ${beats.length} notes across ${maxBar} bars (${structure.keySig||'C'} major, ${timeSigTop}/${timeSigBot}). Check the editor!`;
+    setTimeout(()=>closeAIModal(),2000);
   }catch(e){
     status.classList.remove('loading');status.classList.add('error');
     let msg=e.message;
     if(msg.includes('Failed to fetch')||msg.includes('NetworkError')||msg.includes('CORS')){
-      msg='Cannot reach Anthropic API from this domain. Please paste your API key (sk-ant-...) in the field above, or use this feature inside Claude chat.';
+      msg='Cannot reach Anthropic API from this domain. Please paste your API key (sk-ant-...) above, or use this feature inside Claude chat.';
     }
     status.textContent='❌ '+msg;
     $('btnAnalyze').disabled=false;
   }
+  $('btnAnalyze').disabled=false;
 });
 
 // ════════════════════════════════════
