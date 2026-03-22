@@ -1760,7 +1760,12 @@ function monMic(){if(!micOn)return;micAn.getByteFrequencyData(micD);let s=0;for(
 // SONG LIBRARY
 // ════════════════════════════════════
 let libraryLoaded=false;
-function songsBase(){const p=location.pathname;return(p.endsWith('/')?p:p.substring(0,p.lastIndexOf('/')+1))+'songs/'}
+function songsBase(){
+  const p=location.pathname;
+  // Handle both /score-trainer/ and /score-trainer and /score-trainer/index.html
+  const dir=p.endsWith('/')?p:p.endsWith('.html')?p.substring(0,p.lastIndexOf('/')+1):p+'/';
+  return dir+'songs/';
+}
 async function loadLibrary(){
   if(libraryLoaded)return;
   try{
