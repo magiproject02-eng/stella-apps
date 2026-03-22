@@ -1615,24 +1615,20 @@ function highlightVexNote(elapsed){
   hctx.strokeStyle='#f4a261';hctx.lineWidth=2;
   hctx.beginPath();hctx.moveTo(plX,0);hctx.lineTo(plX,ch);hctx.stroke();
   
-  // Highlight notes
+  // Highlight notes — only glow on current note, leave passed notes alone
   for(const ne of vexNoteElements){
     const nx=ne.x-offset;
     if(nx+ne.w<-20||nx>cw+20)continue;
     const noteTime=ne.pos*msPerSub;
-    if(noteTime<elapsed-400){
-      // Passed notes — dim overlay
-      hctx.fillStyle='rgba(15,15,20,0.55)';
-      hctx.fillRect(nx-1,ne.y-1,ne.w+2,ne.h+2);
-    }else if(Math.abs(noteTime-elapsed)<400){
+    if(Math.abs(noteTime-elapsed)<400){
       // Current note — gold glow
-      hctx.fillStyle='rgba(244,162,97,0.35)';
+      hctx.fillStyle='rgba(244,162,97,0.3)';
       hctx.beginPath();
-      hctx.roundRect?hctx.roundRect(nx-3,ne.y-3,ne.w+6,ne.h+6,4):hctx.rect(nx-3,ne.y-3,ne.w+6,ne.h+6);
+      hctx.roundRect?hctx.roundRect(nx-4,ne.y-4,ne.w+8,ne.h+8,5):hctx.rect(nx-4,ne.y-4,ne.w+8,ne.h+8);
       hctx.fill();
-      hctx.strokeStyle='#f4a261';hctx.lineWidth=1.5;
+      hctx.strokeStyle='#f4a261';hctx.lineWidth=2;
       hctx.beginPath();
-      hctx.roundRect?hctx.roundRect(nx-3,ne.y-3,ne.w+6,ne.h+6,4):hctx.rect(nx-3,ne.y-3,ne.w+6,ne.h+6);
+      hctx.roundRect?hctx.roundRect(nx-4,ne.y-4,ne.w+8,ne.h+8,5):hctx.rect(nx-4,ne.y-4,ne.w+8,ne.h+8);
       hctx.stroke();
     }
   }
