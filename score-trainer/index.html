@@ -1715,10 +1715,11 @@ function monMic(){if(!micOn)return;micAn.getByteFrequencyData(micD);let s=0;for(
 // SONG LIBRARY
 // ════════════════════════════════════
 let libraryLoaded=false;
+function songsBase(){const p=location.pathname;return(p.endsWith('/')?p:p.substring(0,p.lastIndexOf('/')+1))+'songs/'}
 async function loadLibrary(){
   if(libraryLoaded)return;
   try{
-    const resp=await fetch('songs/index.json');
+    const resp=await fetch(songsBase()+'index.json');
     if(!resp.ok)throw new Error('No index');
     const data=await resp.json();
     const list=$('songList');
@@ -1744,7 +1745,7 @@ async function loadLibrary(){
 
 async function loadSongFile(id,mode){
   try{
-    const resp=await fetch(`songs/${id}.json`);
+    const resp=await fetch(songsBase()+`${id}.json`);
     if(!resp.ok)throw new Error('Song not found');
     const json=await resp.text();
     fromJSON(json);
@@ -1802,9 +1803,11 @@ async function init(){
   const params=new URLSearchParams(location.search);
   const songFile=params.get('song');
   const mode=params.get('mode');
+  // Always try to load library first
+  loadLibrary();
   if(songFile){
     try{
-      const resp=await fetch(`songs/${encodeURIComponent(songFile)}.json`);
+      const resp=await fetch(songsBase()+`${encodeURIComponent(songFile)}.json`);
       if(!resp.ok)throw new Error('Song not found');
       const json=await resp.text();
       fromJSON(json);
@@ -1812,9 +1815,9 @@ async function init(){
       if(mode==='play'){switchTab('play')}
       else if(mode==='classroom'){switchTab('classroom')}
       else{switchTab('editor')}
-    }catch(e){console.error(e);loadFromHash();renderGrid();loadLibrary()}
+    }catch(e){console.error(e);loadFromHash();try{renderGrid()}catch(e2){console.error('Grid error:',e2)}}
   }else{
-    loadFromHash();renderGrid();loadLibrary();
+    loadFromHash();try{renderGrid()}catch(e){console.error('Grid error:',e)}
   }
 }
 init();
