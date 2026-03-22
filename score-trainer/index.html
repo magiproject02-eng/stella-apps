@@ -147,6 +147,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 .toast.show{opacity:1}
 
 .hidden{display:none!important}
+@keyframes spin{to{transform:rotate(360deg)}}
 
 /* Song cards */
 .song-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:0.8rem 1rem;cursor:pointer;transition:border-color 0.2s,transform 0.1s}
@@ -190,9 +191,19 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
       <div><span style="font-size:1.1rem;font-weight:700">Song Library</span><br><span style="font-size:0.7rem;color:var(--dim)">Tap a song to start practicing</span></div>
     </div>
-    <div onclick="importMusicXML()" style="background:linear-gradient(135deg,#7c3aed22,#457b9d22);border:1px dashed var(--purple);border-radius:10px;padding:0.8rem 1rem;cursor:pointer;margin-bottom:0.8rem;transition:border-color 0.2s;display:flex;align-items:center;gap:0.8rem">
+    <div onclick="importMusicXML()" style="background:linear-gradient(135deg,#7c3aed22,#457b9d22);border:1px dashed var(--purple);border-radius:10px;padding:0.8rem 1rem;cursor:pointer;margin-bottom:0.5rem;transition:border-color 0.2s;display:flex;align-items:center;gap:0.8rem">
       <span style="font-size:1.5rem">📥</span>
       <div><span style="font-size:0.85rem;font-weight:700">Import MusicXML</span><br><span style="font-size:0.65rem;color:var(--dim)">.musicxml, .mxl, .xml — from MuseScore, Finale, Sibelius, IMSLP</span></div>
+    </div>
+    <div onclick="scanImage()" style="background:linear-gradient(135deg,#2a9d8f22,#06b6d422);border:1px dashed var(--green);border-radius:10px;padding:0.8rem 1rem;cursor:pointer;margin-bottom:0.8rem;transition:border-color 0.2s;display:flex;align-items:center;gap:0.8rem">
+      <span style="font-size:1.5rem">🔍</span>
+      <div><span style="font-size:0.85rem;font-weight:700">Scan Sheet Music</span><br><span style="font-size:0.65rem;color:var(--dim)">Upload a photo/scan → AI reads notes → MusicXML (2-5 min)</span></div>
+    </div>
+    <div id="scanStatus" class="hidden" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.8rem 1rem;margin-bottom:0.8rem">
+      <div style="display:flex;align-items:center;gap:0.6rem">
+        <div id="scanSpinner" style="width:18px;height:18px;border:2px solid var(--dim);border-top-color:var(--green);border-radius:50%;animation:spin 1s linear infinite"></div>
+        <div><span id="scanMsg" style="font-size:0.8rem;font-weight:600">Processing...</span><br><span id="scanDetail" style="font-size:0.65rem;color:var(--dim)">This takes 2-5 minutes on server</span></div>
+      </div>
     </div>
     <div id="songList" style="display:flex;flex-direction:column;gap:0.5rem"></div>
     <div id="libraryLoading" style="text-align:center;padding:2rem;color:var(--dim);font-size:0.8rem">Loading songs...</div>
@@ -728,9 +739,49 @@ async function importMusicXML(){
   inp.click();
 }
 
-// ════════════════════════════════════
-// URL SHARING
-// ════════════════════════════════════
+const HOMR_URL='https://openclaw.entoutois.com/omr/omr';
+
+async function scanImage(){
+  const inp=document.createElement('input');
+  inp.type='file';
+  inp.accept='image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp';
+  inp.onchange=async e=>{
+    const f=e.target.files[0];
+    if(!f)return;
+    const scanStatus=$('scanStatus');
+    const scanMsg=$('scanMsg');
+    const scanDetail=$('scanDetail');
+    scanStatus.classList.remove('hidden');
+    scanMsg.textContent='📤 Uploading '+f.name+'...';
+    scanDetail.textContent='Sending to OMR server';
+    try{
+      const form=new FormData();
+      form.append('file',f);
+      scanMsg.textContent='🔍 Processing with homr OMR...';
+      scanDetail.textContent='Reading notes, pitch, rhythm — this takes 2-5 minutes';
+      const resp=await fetch(HOMR_URL,{method:'POST',body:form});
+      if(!resp.ok){
+        const err=await resp.json().catch(()=>({error:'Server error '+resp.status}));
+        throw new Error(err.error||'OMR failed');
+      }
+      const xmlStr=await resp.text();
+      scanMsg.textContent='✅ Parsing MusicXML...';
+      scanDetail.textContent='Converting to Score Trainer format';
+      const data=parseMusicXML(xmlStr);
+      fromJSON(JSON.stringify(data));
+      scanStatus.classList.add('hidden');
+      toast('✅ Scanned: '+data.title+' ('+data.parts.length+' parts, '+data.bars+' bars)');
+      switchTab('editor');
+    }catch(err){
+      console.error('Scan error:',err);
+      scanMsg.textContent='❌ Scan failed';
+      scanDetail.textContent=err.message;
+      $('scanSpinner').style.display='none';
+      setTimeout(()=>{scanStatus.classList.add('hidden');$('scanSpinner').style.display='';},5000);
+    }
+  };
+  inp.click();
+}
 function shareSong(){const data=toJSON();const compressed=btoa(unescape(encodeURIComponent(data)));const url=location.origin+location.pathname+'#'+compressed;navigator.clipboard.writeText(url).then(()=>toast('Link copied to clipboard!')).catch(()=>{prompt('Copy this URL:',url)})}
 function loadFromHash(){if(!location.hash||location.hash.length<2)return;try{const data=decodeURIComponent(escape(atob(location.hash.slice(1))));fromJSON(data);toast('Loaded shared song!')}catch(e){}}
 
