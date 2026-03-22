@@ -1,40 +1,91 @@
 {
   "songs": [
     {
+      "id": "bella-ciao",
+      "title": "Bella Ciao (SATB a cappella)",
+      "bpm": 100,
+      "timeSig": "4/4",
+      "parts": [
+        "S",
+        "A",
+        "T",
+        "B"
+      ],
+      "bars": 71,
+      "tags": [
+        "SATB",
+        "choral",
+        "Italian",
+        "a cappella",
+        "pitch"
+      ]
+    },
+    {
       "id": "santa-lucia",
       "title": "Santa Lucia (Cottrau)",
       "bpm": 76,
       "timeSig": "3/4",
-      "parts": ["Voice"],
+      "parts": [
+        "Voice"
+      ],
       "bars": 34,
-      "tags": ["solo","Italian","pitch"]
+      "tags": [
+        "solo",
+        "Italian",
+        "pitch"
+      ]
     },
     {
       "id": "dragon-dance",
-      "title": "Dragon Dance of Shang (Darius Lim) — Opening",
+      "title": "Dragon Dance of Shang (Darius Lim) \u2014 Opening",
       "bpm": 80,
       "timeSig": "4/4",
-      "parts": ["S1","S2","A1","A2"],
+      "parts": [
+        "S1",
+        "S2",
+        "A1",
+        "A2"
+      ],
       "bars": 12,
-      "tags": ["SSAA","choral","Mandarin","pitch"]
+      "tags": [
+        "SSAA",
+        "choral",
+        "Mandarin",
+        "pitch"
+      ]
     },
     {
       "id": "marys-song",
       "title": "Mary's Song (Scott & Curtis)",
       "bpm": 92,
       "timeSig": "3/4",
-      "parts": ["S","A","T","B"],
+      "parts": [
+        "S",
+        "A",
+        "T",
+        "B"
+      ],
       "bars": 48,
-      "tags": ["SATB","choral","Christmas","pitch"]
+      "tags": [
+        "SATB",
+        "choral",
+        "Christmas",
+        "pitch"
+      ]
     },
     {
       "id": "test",
       "title": "Test Song",
       "bpm": 100,
       "timeSig": "4/4",
-      "parts": ["S1","A"],
+      "parts": [
+        "S1",
+        "A"
+      ],
       "bars": 4,
-      "tags": ["demo"]
+      "tags": [
+        "demo"
+      ]
     }
   ]
 }
