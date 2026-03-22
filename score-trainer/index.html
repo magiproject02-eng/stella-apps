@@ -9,6 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/vexflow/3.0.9/vexflow-min.js"></script>
 <script>console.log('VexFlow check:',typeof Vex,window.Vex?'OK':'MISSING');</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -168,6 +169,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
   <h1>🎵 Score Trainer</h1>
   <div class="header-btns">
     <button class="hbtn ai" id="btnAI">🤖 AI Read Score</button>
+    <button class="hbtn primary" id="btnMusicXML">📥 MusicXML</button>
     <button class="hbtn" id="btnShare">🔗 Share</button>
     <button class="hbtn" id="btnSave">💾 Save</button>
     <button class="hbtn" id="btnLoad">📂 Load</button>
@@ -187,6 +189,10 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
   <div style="padding:1rem">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
       <div><span style="font-size:1.1rem;font-weight:700">Song Library</span><br><span style="font-size:0.7rem;color:var(--dim)">Tap a song to start practicing</span></div>
+    </div>
+    <div onclick="importMusicXML()" style="background:linear-gradient(135deg,#7c3aed22,#457b9d22);border:1px dashed var(--purple);border-radius:10px;padding:0.8rem 1rem;cursor:pointer;margin-bottom:0.8rem;transition:border-color 0.2s;display:flex;align-items:center;gap:0.8rem">
+      <span style="font-size:1.5rem">📥</span>
+      <div><span style="font-size:0.85rem;font-weight:700">Import MusicXML</span><br><span style="font-size:0.65rem;color:var(--dim)">.musicxml, .mxl, .xml — from MuseScore, Finale, Sibelius, IMSLP</span></div>
     </div>
     <div id="songList" style="display:flex;flex-direction:column;gap:0.5rem"></div>
     <div id="libraryLoading" style="text-align:center;padding:2rem;color:var(--dim);font-size:0.8rem">Loading songs...</div>
@@ -512,6 +518,215 @@ function saveSong(){const k='st_'+song.title.replace(/\s+/g,'_');localStorage.se
 function loadSong(){const l=JSON.parse(localStorage.getItem('st_list')||'[]');if(!l.length){alert('No saved songs');return}const n=prompt('Saved:\n'+l.map((k,i)=>`${i+1}. ${k.replace('st_','')}`).join('\n')+'\n\nEnter number:');if(!n)return;const k=l[+n-1];if(k&&localStorage.getItem(k))fromJSON(localStorage.getItem(k))}
 function exportJSON(){const b=new Blob([toJSON()],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=song.title.replace(/\s+/g,'_')+'.json';a.click()}
 function importJSON(){const inp=document.createElement('input');inp.type='file';inp.accept='.json';inp.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{fromJSON(ev.target.result);toast('Imported!')}catch(e){alert('Invalid file')}};r.readAsText(f)};inp.click()}
+
+// ════════════════════════════════════
+// MUSICXML IMPORT (Phase 7)
+// ════════════════════════════════════
+const FIFTHS_MAP={'-7':'Cb','-6':'Gb','-5':'Db','-4':'Ab','-3':'Eb','-2':'Bb','-1':'F','0':'C','1':'G','2':'D','3':'A','4':'E','5':'B','6':'F#','7':'C#'};
+const ALTER_MAP={'1':'#','2':'##','-1':'b','-2':'bb'};
+
+function parseMusicXML(xmlStr){
+  const parser=new DOMParser();
+  const doc=parser.parseFromString(xmlStr,'text/xml');
+  if(doc.querySelector('parsererror'))throw new Error('Invalid XML');
+
+  // Detect format: partwise or timewise
+  const root=doc.documentElement;
+  if(root.tagName==='score-timewise')throw new Error('Timewise MusicXML not supported yet. Please export as partwise.');
+
+  // Extract title
+  const titleEl=doc.querySelector('work>work-title')||doc.querySelector('movement-title')||doc.querySelector('credit-words');
+  const title=titleEl?titleEl.textContent.trim():'Imported Score';
+
+  // Build part name map from part-list
+  const partNames={};
+  doc.querySelectorAll('part-list>score-part').forEach(sp=>{
+    const id=sp.getAttribute('id');
+    const nameEl=sp.querySelector('part-name');
+    partNames[id]=nameEl?nameEl.textContent.trim():id;
+  });
+
+  // Parse each part
+  let globalBpm=100, globalTimeSigTop=4, globalTimeSigBot=4, globalKeySig='C';
+  let maxPos=0;
+  const subdivPerBeat=2; // 8th note resolution
+
+  const parts=[];
+  doc.querySelectorAll('part').forEach(partEl=>{
+    const partId=partEl.getAttribute('id');
+    let partName=partNames[partId]||partId;
+    // Shorten common names
+    const shortNames={'Soprano':'S','Soprano 1':'S1','Soprano 2':'S2','Alto':'A','Alto 1':'A1','Alto 2':'A2',
+      'Tenor':'T','Tenor 1':'T1','Tenor 2':'T2','Bass':'B','Bass 1':'B1','Bass 2':'B2',
+      'Soprano I':'S1','Soprano II':'S2','Alto I':'A1','Alto II':'A2','Tenor I':'T1','Tenor II':'T2','Bass I':'B1','Bass II':'B2'};
+    if(shortNames[partName])partName=shortNames[partName];
+
+    let divisions=1; // MusicXML divisions per quarter note
+    let currentPos=0; // position in subdivisions from start
+    let clef='treble';
+    const beats=[];
+    const tiedNotes=new Set(); // track notes that are continuation of ties
+
+    const measures=partEl.querySelectorAll('measure');
+    measures.forEach((meas,measIdx)=>{
+      // Check for attributes (divisions, key, time, clef)
+      const attrs=meas.querySelector('attributes');
+      if(attrs){
+        const divEl=attrs.querySelector('divisions');
+        if(divEl)divisions=parseInt(divEl.textContent);
+        const keyEl=attrs.querySelector('key>fifths');
+        if(keyEl)globalKeySig=FIFTHS_MAP[keyEl.textContent]||'C';
+        const timeBeats=attrs.querySelector('time>beats');
+        const timeBeatType=attrs.querySelector('time>beat-type');
+        if(timeBeats)globalTimeSigTop=parseInt(timeBeats.textContent);
+        if(timeBeatType)globalTimeSigBot=parseInt(timeBeatType.textContent);
+        const clefSign=attrs.querySelector('clef>sign');
+        if(clefSign)clef=clefSign.textContent==='F'?'bass':'treble';
+      }
+
+      // Check for tempo
+      const soundEl=meas.querySelector('direction>sound[tempo]')||meas.querySelector('sound[tempo]');
+      if(soundEl)globalBpm=Math.round(parseFloat(soundEl.getAttribute('tempo')));
+
+      // Process notes
+      const children=meas.children;
+      for(let i=0;i<children.length;i++){
+        const el=children[i];
+        if(el.tagName==='forward'){
+          const dur=parseInt(el.querySelector('duration').textContent);
+          currentPos+=Math.round((dur/divisions)*subdivPerBeat);
+          continue;
+        }
+        if(el.tagName==='backup'){
+          const dur=parseInt(el.querySelector('duration').textContent);
+          currentPos-=Math.round((dur/divisions)*subdivPerBeat);
+          continue;
+        }
+        if(el.tagName!=='note')continue;
+
+        const isChord=el.querySelector('chord')!==null;
+        const isRest=el.querySelector('rest')!==null;
+        const durEl=el.querySelector('duration');
+        if(!durEl)continue;
+        const xmlDur=parseInt(durEl.textContent);
+        const subdivDur=Math.max(1,Math.round((xmlDur/divisions)*subdivPerBeat));
+
+        // Handle chord: don't advance position
+        const notePos=isChord?currentPos-subdivDur:currentPos; // chords share position with previous note
+
+        if(!isRest){
+          // Extract pitch
+          const pitchEl=el.querySelector('pitch');
+          let pitch='C4';
+          if(pitchEl){
+            const step=pitchEl.querySelector('step').textContent;
+            const octave=pitchEl.querySelector('octave').textContent;
+            const alterEl=pitchEl.querySelector('alter');
+            const alter=alterEl?ALTER_MAP[alterEl.textContent]||'':'';
+            pitch=step+alter+octave;
+          }
+
+          // Check for tie
+          const ties=el.querySelectorAll('tie');
+          let tieStart=false,tieStop=false;
+          ties.forEach(t=>{
+            if(t.getAttribute('type')==='start')tieStart=true;
+            if(t.getAttribute('type')==='stop')tieStop=true;
+          });
+
+          const noteKey=notePos+'_'+pitch;
+          if(tieStop){
+            // Find the previous beat with same pitch and extend it
+            for(let b=beats.length-1;b>=0;b--){
+              if(beats[b].pitch===pitch&&beats[b]._tieStart){
+                beats[b].dur+=subdivDur;
+                beats[b]._tieStart=tieStart; // propagate if tie continues
+                break;
+              }
+            }
+          }else{
+            const beat={pos:isChord?currentPos:currentPos,dur:subdivDur,pitch};
+            if(tieStart)beat._tieStart=true;
+            beats.push(beat);
+          }
+        }
+
+        // Advance position (but not for chord notes)
+        if(!isChord)currentPos+=subdivDur;
+      }
+    });
+
+    // Clean up internal tie markers
+    beats.forEach(b=>delete b._tieStart);
+
+    if(beats.length>0){
+      const lastBeat=beats.reduce((max,b)=>b.pos+b.dur>max?b.pos+b.dur:max,0);
+      if(lastBeat>maxPos)maxPos=lastBeat;
+      parts.push({name:partName,clef,beats});
+    }
+  });
+
+  if(!parts.length)throw new Error('No notes found in MusicXML file');
+
+  // Calculate bars
+  const beatsPerBar=globalTimeSigTop*(globalTimeSigBot===8?1:subdivPerBeat)/((globalTimeSigBot===8)?1:1);
+  const subdivPerBar=globalTimeSigTop*subdivPerBeat*(4/globalTimeSigBot);
+  const bars=Math.ceil(maxPos/subdivPerBar);
+
+  return{
+    title,bpm:globalBpm,timeSigTop:globalTimeSigTop,timeSigBot:globalTimeSigBot,
+    bars,subdivPerBeat,keySig:globalKeySig,parts
+  };
+}
+
+async function importMusicXML(){
+  const inp=document.createElement('input');
+  inp.type='file';
+  inp.accept='.musicxml,.xml,.mxl';
+  inp.onchange=async e=>{
+    const f=e.target.files[0];
+    if(!f)return;
+    try{
+      let xmlStr;
+      if(f.name.endsWith('.mxl')){
+        // .mxl = zipped MusicXML
+        if(!window.JSZip)throw new Error('JSZip not loaded — cannot open .mxl files');
+        const zip=await JSZip.loadAsync(f);
+        // Find the .musicxml or .xml file inside
+        let xmlFile=null;
+        // First check META-INF/container.xml for the rootfile
+        const container=zip.file('META-INF/container.xml');
+        if(container){
+          const containerXml=await container.async('string');
+          const cDoc=new DOMParser().parseFromString(containerXml,'text/xml');
+          const rootfile=cDoc.querySelector('rootfile');
+          if(rootfile){
+            const path=rootfile.getAttribute('full-path');
+            if(path)xmlFile=zip.file(path);
+          }
+        }
+        // Fallback: find any .musicxml or .xml file
+        if(!xmlFile){
+          const files=Object.keys(zip.files);
+          const xmlName=files.find(n=>n.endsWith('.musicxml'))||files.find(n=>n.endsWith('.xml')&&!n.includes('META-INF'));
+          if(xmlName)xmlFile=zip.file(xmlName);
+        }
+        if(!xmlFile)throw new Error('No MusicXML file found inside .mxl archive');
+        xmlStr=await xmlFile.async('string');
+      }else{
+        xmlStr=await f.text();
+      }
+      const data=parseMusicXML(xmlStr);
+      fromJSON(JSON.stringify(data));
+      toast('✅ Imported: '+data.title+' ('+data.parts.length+' parts, '+data.bars+' bars)');
+      switchTab('editor');
+    }catch(err){
+      console.error('MusicXML import error:',err);
+      alert('MusicXML import failed: '+err.message);
+    }
+  };
+  inp.click();
+}
 
 // ════════════════════════════════════
 // URL SHARING
@@ -1431,7 +1646,7 @@ document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>swit
 $('btnPlay').addEventListener('click',startPlayback);$('btnStop').addEventListener('click',stopPlayback);
 $('btnSave').addEventListener('click',saveSong);$('btnLoad').addEventListener('click',loadSong);
 $('btnExport').addEventListener('click',exportJSON);$('btnImport').addEventListener('click',importJSON);
-$('btnShare').addEventListener('click',shareSong);$('btnAI').addEventListener('click',openAIModal);
+$('btnShare').addEventListener('click',shareSong);$('btnAI').addEventListener('click',openAIModal);$('btnMusicXML').addEventListener('click',importMusicXML);
 ['songTitle','bpmInput','timeSigTop','timeSigBot','barCount','subdivSelect'].forEach(id=>{$(id).addEventListener('change',()=>{
   song.title=$('songTitle').value;song.bpm=+$('bpmInput').value||100;song.timeSigTop=+$('timeSigTop').value;song.timeSigBot=+$('timeSigBot').value;song.bars=+$('barCount').value||4;
   const m={'4':1,'8':2,'16':4,'12':3};song.subdivPerBeat=m[$('subdivSelect').value]||2;renderGrid()})});
