@@ -425,8 +425,8 @@ function addBeat(beats,pos,dur){
 // ════════════════════════════════════
 // GRID EDITOR
 // ════════════════════════════════════
-function totalSubs(){return song.bars*song.timeSigTop*song.subdivPerBeat}
-function subsPerBar(){return song.timeSigTop*song.subdivPerBeat}
+function subsPerBar(){return Math.round(song.timeSigTop*song.subdivPerBeat*(4/song.timeSigBot))}
+function totalSubs(){return song.bars*subsPerBar()}
 
 function renderGrid(){
   const g=document.getElementById('editorGrid'),t=totalSubs(),spb=subsPerBar(),spbt=song.subdivPerBeat;
