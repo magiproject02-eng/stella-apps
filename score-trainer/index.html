@@ -101,7 +101,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 
 /* Play Mode */
 .play-container{display:none;height:calc(100dvh - 80px);position:relative;flex-direction:column}
-.score-container{overflow-x:auto;overflow-y:hidden;background:#12121a;border-bottom:1px solid var(--border);flex-shrink:0;height:140px;position:relative;white-space:nowrap}
+.score-container{overflow-x:auto;overflow-y:hidden;background:#12121a;border-bottom:1px solid var(--border);flex-shrink:0;height:140px;position:relative;white-space:nowrap;-webkit-overflow-scrolling:touch;touch-action:none;pointer-events:none}
 .score-container svg{display:block}
 .score-container svg path{stroke:#ccc}
 .score-container svg text{fill:#ccc}
@@ -1421,9 +1421,9 @@ function renderVexScore(partIdx){
   const hasPitch=part.beats[0].pitch;
   if(!hasPitch){scoreC.style.display='none';return} // fallback to canvas score view
 
-  const subsPerBar=song.timeSigTop*song.subdivPerBeat;
-  const staveWidth=200;
-  const firstStaveExtra=80; // extra width for clef+key+time sig
+  const spBar=Math.round(song.timeSigTop*song.subdivPerBeat*(4/song.timeSigBot));
+  const staveWidth=Math.max(150,Math.round(spBar*30)); // ~30px per subdivision
+  const firstStaveExtra=80;
   const w=firstStaveExtra+song.bars*staveWidth+100;
   const h=130;
 
@@ -1435,8 +1435,8 @@ function renderVexScore(partIdx){
   // Group beats into measures
   const measures=[];
   for(let bar=0;bar<song.bars;bar++){
-    const barStart=bar*subsPerBar;
-    const barEnd=barStart+subsPerBar;
+    const barStart=bar*spBar;
+    const barEnd=barStart+spBar;
     const barBeats=part.beats.filter(b=>b.pos>=barStart&&b.pos<barEnd);
     measures.push(barBeats);
   }
@@ -1469,7 +1469,7 @@ function renderVexScore(partIdx){
     }
 
     // Build notes for this bar
-    const barStart=bar*subsPerBar;
+    const barStart=bar*spBar;
     const notes=[];
     let pos=0;
     for(const beat of barBeats){
@@ -1496,8 +1496,8 @@ function renderVexScore(partIdx){
       pos=relPos+beat.dur;
     }
     // Trailing rest
-    if(pos<subsPerBar){
-      const restSubs=subsPerBar-pos;
+    if(pos<spBar){
+      const restSubs=spBar-pos;
       const rd=durToVex(restSubs,song.subdivPerBeat);
       const rest=new VF.StaveNote({keys:['b/4'],duration:vexDurBase(rd)+'r'});
       if(isDotted(rd))rest.addDot(0);
@@ -1566,9 +1566,14 @@ function highlightVexNote(elapsed){
   hl.style.left=(smoothX-1)+'px';
   hl.style.width='3px';
 
-  // Scroll to keep playhead centered
-  const scrollTarget=smoothX-sc.clientWidth*0.5;
-  sc.scrollLeft=Math.max(0,scrollTarget);
+  // Auto-scroll: only when playhead approaches right edge (less jarring than centering every frame)
+  const visLeft=sc.scrollLeft;
+  const visRight=visLeft+sc.clientWidth;
+  const margin=sc.clientWidth*0.25;
+  if(smoothX>visRight-margin||smoothX<visLeft+margin*0.5){
+    const target=smoothX-sc.clientWidth*0.35;
+    sc.scrollLeft+=(Math.max(0,target)-sc.scrollLeft)*0.15; // ease towards target
+  }
 
   // Find nearest note for coloring
   let current=null,minDist=Infinity;
