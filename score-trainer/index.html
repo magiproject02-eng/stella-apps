@@ -1325,14 +1325,17 @@ function startPlay(pi){
         cx.fillText(song.timeSigBot+'',ksX2,staffTop+lineGap*3.2);
       }
       
-      // ── BAR LINES (grey, offset left by note radius so notes never sit on them) ──
-      var barOffset=Math.max(6,lineGap*0.4)+3; // note radius + 3px gap
+      // ── BAR LINES (same color as staff, clear gap before beat 1 notes) ──
+      var beatPx=gPulseMs*px; // pixels per beat
+      var barOffset=Math.min(beatPx*0.15, 25); // 15% of beat width, max 25px
+      barOffset=Math.max(barOffset, 12); // at least 12px
       for(var i=-10;i<200;i++){
         var x=hx+(i*gPulseMs-el)*px;if(x<-10||x>w+10)continue;
         var isBar=i%gPulsesPerBar===0;
         if(isBar){
           var bx=x-barOffset;
-          cx.strokeStyle='#666';cx.lineWidth=1;
+          if(bx<-10||bx>w+10)continue;
+          cx.strokeStyle='#555';cx.lineWidth=1;
           cx.beginPath();cx.moveTo(bx,staffTop);cx.lineTo(bx,staffBot);cx.stroke();
           if(i>=0){
             cx.fillStyle='#666';cx.font="bold 8px 'Plus Jakarta Sans'";cx.textAlign='center';cx.textBaseline='bottom';
