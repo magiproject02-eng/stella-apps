@@ -1304,102 +1304,79 @@ function startPlay(pi){
       cx.strokeStyle='rgba(233,196,0,0.5)';cx.lineWidth=2;
       cx.beginPath();cx.moveTo(hx,staffTop-5);cx.lineTo(hx,staffBot+5);cx.stroke();
       
-      // ── NOTATION VIEW (noteheads + stems, linear time) ──
+      // ── NOTES ON STAFF (simple circles, no transform tricks) ──
       const visNotes=[];
       for(const n of gNotes){
         const x=hx+(n.time-el)*px;
         const nw=Math.max(6,n.durMs*px);
-        if(x+nw<-30||x>w+30)continue;
+        if(x+nw<-50||x>w+50)continue;
         visNotes.push({x,nw,y:pitchToY(n.pitch),nt:n.time-el,dur:n.dur,pitch:n.pitch,hit:n.hit,missed:n.missed});
       }
       
-      if(visNotes.length>0){
-        const noteRx=lineGap*0.55; // notehead horizontal radius (bigger)
-        const noteRy=lineGap*0.4;  // notehead vertical radius
-        const stemLen=lineGap*2.5;
+      const nr=Math.max(6,lineGap*0.45); // note radius
+      
+      // Pass 1: duration bars
+      for(let vi=0;vi<visNotes.length;vi++){
+        const vn=visNotes[vi];
+        const passed=vn.nt<-100;
+        const current=Math.abs(vn.nt)<300;
+        cx.globalAlpha=passed?0.15:current?0.5:0.3;
+        cx.fillStyle=current?'#e9c400':PC[selPart]||'#b8c3ff';
+        cx.fillRect(vn.x,vn.y-nr*0.4,vn.nw,nr*0.8);
+        cx.globalAlpha=1;
+      }
+      
+      // Pass 2: noteheads as circles + stems + labels
+      for(let vi=0;vi<visNotes.length;vi++){
+        const vn=visNotes[vi];
+        const passed=vn.nt<-100;
+        const current=Math.abs(vn.nt)<300;
+        cx.globalAlpha=passed?0.4:1;
+        const col=current?'#e9c400':vn.hit?'#2a9d8f':'#fff';
         
-        // Duration tail (colored bar showing note length)
-        for(const vn of visNotes){
-          const passed=vn.nt<-100;
-          const current=Math.abs(vn.nt)<200;
-          cx.globalAlpha=passed?0.12:current?0.5:0.3;
-          cx.fillStyle=current?'#e9c400':PC[selPart]||'#b8c3ff';
-          const barH=lineGap*0.5;
-          rRect(cx,vn.x,vn.y-barH/2,vn.nw,barH,2);cx.fill();
-          cx.globalAlpha=1;
+        // Filled circle notehead
+        cx.fillStyle=col;
+        cx.beginPath();cx.arc(vn.x,vn.y,nr,0,Math.PI*2);cx.fill();
+        
+        // Open notehead for half notes
+        if(vn.dur>=4){
+          cx.fillStyle='#16161d';
+          cx.beginPath();cx.arc(vn.x,vn.y,nr*0.5,0,Math.PI*2);cx.fill();
         }
         
-        // Noteheads + stems
-        for(const vn of visNotes){
-          const passed=vn.nt<-100;
-          const current=Math.abs(vn.nt)<200;
-          cx.globalAlpha=passed?0.35:1;
-          const col=current?'#e9c400':vn.hit?'#2a9d8f':'#e4e1e9';
-          
-          // Determine if notehead is filled (quarter/eighth) or open (half/whole)
-          const isOpen=vn.dur>=4; // half note or longer = open
-          const isWhole=vn.dur>=8; // whole note = no stem
-          
-          // Draw notehead (tilted ellipse)
-          cx.save();
-          cx.translate(vn.x,vn.y);
-          cx.rotate(-0.2);
-          cx.beginPath();
-          cx.ellipse(0,0,noteRx,noteRy,0,0,Math.PI*2);
-          if(isOpen){
-            cx.strokeStyle=col;cx.lineWidth=2;cx.stroke();
-          }else{
-            cx.fillStyle=col;cx.fill();
-          }
-          cx.restore();
-          
-          // Stem (not for whole notes)
-          if(!isWhole){
-            const stemUp=vn.y>staffTop+2*lineGap;
-            const stemX=stemUp?vn.x+noteRx*0.8:vn.x-noteRx*0.8;
-            const stemY2=stemUp?vn.y-stemLen:vn.y+stemLen;
-            cx.strokeStyle=col;cx.lineWidth=2;
-            cx.beginPath();cx.moveTo(stemX,vn.y);cx.lineTo(stemX,stemY2);cx.stroke();
-            
-            // Flag for eighth notes
-            if(vn.dur<=1){
-              const flagDir=stemUp?1:-1;
-              cx.beginPath();
-              cx.moveTo(stemX,stemY2);
-              cx.quadraticCurveTo(stemX+10*flagDir,stemY2+8,stemX+5*flagDir,stemY2+14);
-              cx.strokeStyle=col;cx.lineWidth=2;cx.stroke();
-            }
-          }
-          
-          // Current note glow
-          if(current){
-            cx.strokeStyle='#e9c400';cx.lineWidth=2.5;
-            cx.beginPath();cx.ellipse(vn.x,vn.y,noteRx+5,noteRy+5,0,0,Math.PI*2);cx.stroke();
-          }
-          
-          // Pitch label
-          cx.fillStyle=current?'#e9c400':passed?'#666':'#aaa';
-          cx.font="bold 9px 'Plus Jakarta Sans'";cx.textAlign='center';cx.textBaseline='top';
-          cx.fillText(vn.pitch||'',vn.x,vn.y+noteRy+3);
-          
-          cx.globalAlpha=1;
+        // Stem
+        if(vn.dur<8){
+          const stemUp=vn.y>(staffTop+staffBot)/2;
+          const sy2=stemUp?vn.y-lineGap*2.5:vn.y+lineGap*2.5;
+          cx.strokeStyle=col;cx.lineWidth=2;
+          cx.beginPath();cx.moveTo(vn.x+(stemUp?nr:-nr),vn.y);cx.lineTo(vn.x+(stemUp?nr:-nr),sy2);cx.stroke();
         }
+        
+        // Current note ring
+        if(current){
+          cx.strokeStyle='#e9c400';cx.lineWidth=3;
+          cx.beginPath();cx.arc(vn.x,vn.y,nr+5,0,Math.PI*2);cx.stroke();
+        }
+        
+        // Pitch label below
+        cx.fillStyle=current?'#e9c400':passed?'#666':'#ccc';
+        cx.font="bold 9px 'Plus Jakarta Sans'";cx.textAlign='center';cx.textBaseline='top';
+        cx.fillText(vn.pitch||'',vn.x,vn.y+nr+2);
         
         // Ledger lines
-        for(const vn of visNotes){
-          if(vn.x<-20||vn.x>w+20)continue;
-          cx.strokeStyle='#555';cx.lineWidth=1;
-          if(vn.y>staffBot+halfStep*0.8){
-            for(let ly=staffBot+lineGap;ly<=vn.y+2;ly+=lineGap){
-              cx.beginPath();cx.moveTo(vn.x-noteRx-4,ly);cx.lineTo(vn.x+noteRx+4,ly);cx.stroke();
-            }
-          }
-          if(vn.y<staffTop-halfStep*0.8){
-            for(let ly=staffTop-lineGap;ly>=vn.y-2;ly-=lineGap){
-              cx.beginPath();cx.moveTo(vn.x-noteRx-4,ly);cx.lineTo(vn.x+noteRx+4,ly);cx.stroke();
-            }
+        cx.strokeStyle='#666';cx.lineWidth=1;
+        if(vn.y>staffBot+halfStep*0.5){
+          for(let ly=staffBot+lineGap;ly<=vn.y+2;ly+=lineGap){
+            cx.beginPath();cx.moveTo(vn.x-nr-4,ly);cx.lineTo(vn.x+nr+4,ly);cx.stroke();
           }
         }
+        if(vn.y<staffTop-halfStep*0.5){
+          for(let ly=staffTop-lineGap;ly>=vn.y-2;ly-=lineGap){
+            cx.beginPath();cx.moveTo(vn.x-nr-4,ly);cx.lineTo(vn.x+nr+4,ly);cx.stroke();
+          }
+        }
+        
+        cx.globalAlpha=1;
       }
     }
 
