@@ -1327,18 +1327,18 @@ function startPlay(pi){
         cx.fillText(song.timeSigBot+'',ksX2,staffTop+lineGap*3.2);
       }
       
-      // ── BAR LINES (dashed blue, clearly different from solid white stems) ──
+      // ── BAR LINES (same grey as staff, offset 2px left so notes don't sit on them) ──
       for(var i=-10;i<200;i++){
         var x=hx+(i*gPulseMs-el)*px;if(x<-10||x>w+10)continue;
         var isBar=i%gPulsesPerBar===0;
         if(isBar){
-          cx.strokeStyle='rgba(80,130,255,0.5)';cx.lineWidth=1.5;
-          cx.setLineDash([3,3]);
-          cx.beginPath();cx.moveTo(x,staffTop-4);cx.lineTo(x,staffBot+4);cx.stroke();
+          var bx=x-2; // offset left so notehead doesn't overlap
+          cx.strokeStyle='#888';cx.lineWidth=1.5;
           cx.setLineDash([]);
+          cx.beginPath();cx.moveTo(bx,staffTop);cx.lineTo(bx,staffBot);cx.stroke();
           if(i>=0){
-            cx.fillStyle='rgba(80,130,255,0.6)';cx.font="bold 8px 'Plus Jakarta Sans'";cx.textAlign='center';cx.textBaseline='bottom';
-            cx.fillText(Math.floor(i/gPulsesPerBar)+1+'',x,staffTop-5);
+            cx.fillStyle='#777';cx.font="bold 8px 'Plus Jakarta Sans'";cx.textAlign='center';cx.textBaseline='bottom';
+            cx.fillText(Math.floor(i/gPulsesPerBar)+1+'',bx,staffTop-2);
           }
         }
       }
