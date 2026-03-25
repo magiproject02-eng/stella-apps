@@ -1393,7 +1393,7 @@ function startPlay(pi){
         if(vn.dur<8){
           var midY=staffTop+2*lineGap; // middle line = B4
           var stemUp=vn.y>=midY; // below or on middle → stem up
-          var stemLen=lineGap*3.5;
+          var stemLen=lineGap*2.5;
           var stemX=stemUp?vn.x+nr:vn.x-nr; // right side up, left side down
           var sy2=stemUp?vn.y-stemLen:vn.y+stemLen;
           cx.strokeStyle=passed?'#555':current?'#c8a800':'#bbb';cx.lineWidth=1.2;
@@ -1466,9 +1466,9 @@ function startPlay(pi){
       cx.beginPath();cx.moveTo(x,by-bh/2);cx.lineTo(x,by+bh/2);cx.stroke();
       if(isBar&&i>=0){cx.fillStyle='#555';cx.font="600 9px 'Plus Jakarta Sans'";cx.textAlign='center';cx.fillText(Math.floor(i/gPulsesPerBar)+1+'',x,by-bh/2-4)}
     }
-    const dr=32;
-    if(cFlash>0){const r=dr+10+(1-cFlash)*30;cx.beginPath();cx.arc(hx,by,r,0,Math.PI*2);cx.strokeStyle=`rgba(244,162,97,${cFlash*0.6})`;cx.lineWidth=3;cx.stroke();cFlash-=0.04}
-    if(dFlash>0){cx.fillStyle=`rgba(230,57,70,${dFlash*0.5})`;cx.beginPath();cx.arc(hx,by,dr+12,0,Math.PI*2);cx.fill();dFlash-=0.05}
+    const dr=22;
+    if(cFlash>0){const r=dr+8+(1-cFlash)*20;cx.beginPath();cx.arc(hx,by,r,0,Math.PI*2);cx.strokeStyle=`rgba(244,162,97,${cFlash*0.6})`;cx.lineWidth=2;cx.stroke();cFlash-=0.04}
+    if(dFlash>0){cx.fillStyle=`rgba(230,57,70,${dFlash*0.5})`;cx.beginPath();cx.arc(hx,by,dr+8,0,Math.PI*2);cx.fill();dFlash-=0.05}
     cx.beginPath();cx.arc(hx,by,dr,0,Math.PI*2);cx.fillStyle='#1a1a22';cx.fill();cx.strokeStyle='#6b6b80';cx.lineWidth=3;cx.stroke();
 
     // Ghost notes on belt (small dots for other parts)
@@ -1479,14 +1479,14 @@ function startPlay(pi){
     for(const n of gNotes){const nt=n.time-el,x=hx+nt*px,nw=Math.max(12,n.durMs*px);
       if(!n.hit&&!n.missed){allD=false;if(nt<-MW){n.missed=true;gMiss++;gCombo=0;showJ('MISS','#e63946');continue}}
       if(x+nw<-50||x>w+50)continue;
-      if(n.hit){if(n.ha>0){const r=18+(1-n.ha)*25;cx.beginPath();cx.arc(hx,by,r,0,Math.PI*2);cx.strokeStyle=`rgba(42,157,143,${n.ha})`;cx.lineWidth=2;cx.stroke();n.ha-=0.03}continue}
+      if(n.hit){if(n.ha>0){const r=14+(1-n.ha)*15;cx.beginPath();cx.arc(hx,by,r,0,Math.PI*2);cx.strokeStyle=`rgba(42,157,143,${n.ha})`;cx.lineWidth=2;cx.stroke();n.ha-=0.03}continue}
       if(n.missed)cx.globalAlpha=0.25;
       // Duration tail (faded line from onset to end)
       cx.strokeStyle=pc;cx.globalAlpha=n.missed?0.1:0.3;cx.lineWidth=4;
       cx.beginPath();cx.moveTo(x,by);cx.lineTo(x+nw,by);cx.stroke();
       // Onset circle — centered exactly on x (the beat line position)
       cx.globalAlpha=n.missed?0.25:1;
-      const r=16;
+      const r=12;
       cx.fillStyle=pc;cx.beginPath();cx.arc(x,by,r,0,Math.PI*2);cx.fill();
       cx.strokeStyle='#fff';cx.lineWidth=2;cx.beginPath();cx.arc(x,by,r,0,Math.PI*2);cx.stroke();
       // Pitch label centered on the circle
