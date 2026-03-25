@@ -1240,13 +1240,8 @@ function startPlay(pi){
     }
   },10);
 
-  // Render VexFlow score if pitch data available
-  const vexAvailable=!!(window.Vex&&window.Vex.Flow);
-  const hasPitch=song.parts[selPart].beats.length>0&&song.parts[selPart].beats[0].pitch;
-  const useVex=vexAvailable&&hasPitch&&showScore;
-  if(!vexAvailable&&showScore&&hasPitch){console.warn('VexFlow not loaded — falling back to canvas score view. window.Vex=',window.Vex)}
-  if(useVex){renderVexScore(pi);setTimeout(()=>resizeCV(cv),100)}
-  else{$('scoreContainer').style.display='none'}
+  // Score is now drawn on canvas (same linear time as belt) — no VexFlow in Play mode
+  $('scoreContainer').style.display='none';
 
   gameLoop = function loop(){
     if(!gameOn)return;
@@ -1254,54 +1249,103 @@ function startPlay(pi){
     const w=cv.clientWidth,h=cv.clientHeight,el=performance.now()-gStart-totalPaused;
     const hx=w*HX,px=NS/1000;
 
-    // VexFlow highlighting
-    if(useVex&&showScore)highlightVexNote(el);
-
-    // Layout: no canvas score when VexFlow is active
-    const canvasScore=showScore&&!useVex;
-    const scoreH=canvasScore?Math.min(140,h*0.25):0;
-    const by=scoreH+(h-scoreH)*0.38;
+    // Layout: staff above, belt below
+    const hasPitchData=gNotes.length>0&&gNotes[0].pitch;
+    const staffH=showScore&&hasPitchData?Math.min(150,h*0.3):0;
+    const by=staffH+(h-staffH)*0.38;
     const bh=70;
 
-    cx.clearRect(0,0,w,h);cx.fillStyle='#0f0f14';cx.fillRect(0,0,w,h);
+    cx.clearRect(0,0,w,h);cx.fillStyle='#131318';cx.fillRect(0,0,w,h);
 
-    // ─── CANVAS SCORE VIEW (fallback when no pitch data) ───
-    if(canvasScore&&allPartsData.length>0){
-      const partH=Math.max(16,Math.min(28,(scoreH-10)/allPartsData.length));
-      const sy=5;
-      // Beat grid lines (using natural pulse: quarter for simple, dotted quarter for compound)
-      for(let i=0;i<300;i++){
-        const x=hx+(i*gPulseMs-el)*px;if(x<-5||x>w+5)continue;
-        cx.strokeStyle=i%gPulsesPerBar===0?'#2e2e3a':'#1e1e28';
-        cx.lineWidth=1;cx.beginPath();
-        cx.moveTo(x,sy);cx.lineTo(x,sy+allPartsData.length*partH);cx.stroke();
+    // ─── STAFF VIEW (same linear time as belt) ───
+    if(staffH>0){
+      const staffTop=20;
+      const staffBot=staffH-15;
+      const lineGap=(staffBot-staffTop)/4; // 5 lines, 4 gaps
+      // Pitch to Y: map pitch to staff position
+      // Middle line (line 3, B4) is center of staff
+      // Each line/space = half a lineGap
+      const halfStep=lineGap/2;
+      // Reference: treble clef, middle = B4
+      // Lines bottom→top: E4=0, G4=1, B4=2, D5=3, F5=4
+      // Spaces: F4=0.5, A4=1.5, C5=2.5, E5=3.5
+      function pitchToY(p){
+        if(!p)return staffTop+2*lineGap; // default to middle
+        const m=p.match(/^([A-G][#b]?)(\d)$/);
+        if(!m)return staffTop+2*lineGap;
+        const note=m[1][0],oct=parseInt(m[2]);
+        const notePos={'C':0,'D':1,'E':2,'F':3,'G':4,'A':5,'B':6};
+        const pos=(notePos[note]||0)+(oct-4)*7; // semitone-ish position relative to C4=0
+        // E4=2, F4=3, G4=4, A4=5, B4=6, C5=7, D5=8, E5=9, F5=10
+        // Map to staff lines: E4=bottom line(4), F5=top line(0)
+        const staffPos=(pos-2)/8; // 0=E4(bottom), 1=F5(top)
+        return staffBot-staffPos*(staffBot-staffTop);
       }
-      // Playhead on score
-      cx.strokeStyle='#f4a26155';cx.lineWidth=2;cx.beginPath();
-      cx.moveTo(hx,sy);cx.lineTo(hx,sy+allPartsData.length*partH);cx.stroke();
-
-      allPartsData.forEach((pd,pi)=>{
-        const y=sy+pi*partH+partH/2;
-        // Lane bg
-        cx.fillStyle=pd.isSel?'#22222e':'#16161d';cx.fillRect(0,y-partH/2,w,partH);
-        // Label
-        cx.fillStyle=pd.color;cx.font=`bold ${Math.min(11,partH-4)}px 'Outfit'`;cx.textAlign='right';cx.textBaseline='middle';
-        cx.fillText(pd.name,hx-8,y);
-        // Notes as bars
-        pd.notes.forEach(n=>{
-          const x=hx+(n.time-el)*px,nw=Math.max(3,n.durMs*px);
-          if(x+nw<-10||x>w+10)return;
-          const isNear=Math.abs(n.time-el)<200;
-          cx.globalAlpha=pd.isSel?(isNear?1:0.7):(isNear?0.5:0.25);
-          const nh=partH*0.6;
-          cx.fillStyle=pd.color;rRect(cx,x,y-nh/2,nw,nh,2);cx.fill();
-          // Highlight current note
-          if(isNear&&pd.isSel){cx.strokeStyle='#fff';cx.lineWidth=1.5;rRect(cx,x,y-nh/2,nw,nh,2);cx.stroke()}
-          cx.globalAlpha=1;
-        });
-      });
-      // Divider line between score and belt
-      cx.strokeStyle='#2e2e3a';cx.lineWidth=1;cx.beginPath();cx.moveTo(0,scoreH);cx.lineTo(w,scoreH);cx.stroke();
+      
+      // Draw staff background
+      cx.fillStyle='#16161d';cx.fillRect(0,0,w,staffH);
+      
+      // Draw 5 staff lines
+      for(let i=0;i<5;i++){
+        const ly=staffTop+i*lineGap;
+        cx.strokeStyle='#333';cx.lineWidth=1;
+        cx.beginPath();cx.moveTo(0,ly);cx.lineTo(w,ly);cx.stroke();
+      }
+      
+      // Beat grid on staff (same timing as belt)
+      for(let i=-10;i<200;i++){
+        const x=hx+(i*gPulseMs-el)*px;if(x<-10||x>w+10)continue;
+        const isBar=i%gPulsesPerBar===0;
+        cx.strokeStyle=isBar?'#444':'#272730';cx.lineWidth=isBar?1.5:0.5;
+        cx.beginPath();cx.moveTo(x,staffTop-5);cx.lineTo(x,staffBot+5);cx.stroke();
+      }
+      
+      // Playhead on staff
+      cx.strokeStyle='rgba(233,196,0,0.5)';cx.lineWidth=2;
+      cx.beginPath();cx.moveTo(hx,staffTop-5);cx.lineTo(hx,staffBot+5);cx.stroke();
+      
+      // Draw notes on staff — SAME x coordinate as belt
+      for(const n of gNotes){
+        const nt=n.time-el;
+        const x=hx+nt*px;
+        if(x<-20||x>w+20)continue;
+        const y=pitchToY(n.pitch);
+        const noteR=5;
+        // Note circle
+        const passed=nt<-100;
+        const current=Math.abs(nt)<200;
+        cx.globalAlpha=passed?0.3:1;
+        cx.fillStyle=current?'#e9c400':n.hit?'#2a9d8f':'#e4e1e9';
+        cx.beginPath();cx.ellipse(x,y,noteR+1,noteR,0,0,Math.PI*2);cx.fill();
+        // Stem
+        cx.strokeStyle=cx.fillStyle;cx.lineWidth=1.5;
+        cx.beginPath();cx.moveTo(x+noteR,y);cx.lineTo(x+noteR,y-lineGap*2);cx.stroke();
+        // Duration tail (line to show note length)
+        if(n.durMs>0){
+          const nw=n.durMs*px;
+          cx.strokeStyle=current?'rgba(233,196,0,0.3)':'rgba(228,225,233,0.15)';
+          cx.lineWidth=3;
+          cx.beginPath();cx.moveTo(x,y);cx.lineTo(x+nw,y);cx.stroke();
+        }
+        // Ledger lines if needed
+        if(y>staffBot+halfStep*0.8){
+          for(let ly=staffBot+lineGap;ly<=y+2;ly+=lineGap){
+            cx.strokeStyle='#444';cx.lineWidth=1;
+            cx.beginPath();cx.moveTo(x-8,ly);cx.lineTo(x+8,ly);cx.stroke();
+          }
+        }
+        if(y<staffTop-halfStep*0.8){
+          for(let ly=staffTop-lineGap;ly>=y-2;ly-=lineGap){
+            cx.strokeStyle='#444';cx.lineWidth=1;
+            cx.beginPath();cx.moveTo(x-8,ly);cx.lineTo(x+8,ly);cx.stroke();
+          }
+        }
+        cx.globalAlpha=1;
+      }
+      
+      // Divider
+      cx.strokeStyle='#333';cx.lineWidth=1;
+      cx.beginPath();cx.moveTo(0,staffH);cx.lineTo(w,staffH);cx.stroke();
     }
 
     // ─── PITCH MODE AUTO-HIT ───
