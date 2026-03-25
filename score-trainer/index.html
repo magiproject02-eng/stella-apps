@@ -1246,6 +1246,8 @@ function startPlay(pi){
   gameLoop = function loop(){
     if(!gameOn)return;
     if(gamePaused)return;
+    // Schedule next frame FIRST so errors can't kill the loop
+    requestAnimationFrame(gameLoop);
     const w=cv.clientWidth,h=cv.clientHeight,el=performance.now()-gStart-totalPaused;
     const hx=w*HX,px=NS/1000;
 
@@ -1258,6 +1260,7 @@ function startPlay(pi){
     cx.clearRect(0,0,w,h);cx.fillStyle='#131318';cx.fillRect(0,0,w,h);
 
     // ─── STAFF VIEW (same linear time as belt) ───
+    try{
     if(staffH>0){
       const staffTop=20;
       const staffBot=staffH-15;
@@ -1379,6 +1382,7 @@ function startPlay(pi){
         cx.globalAlpha=1;
       }
     }
+    }catch(e){console.warn('Staff render error:',e.message)}
 
     // ─── PITCH MODE AUTO-HIT ───
     if(gameMode==='pitch'&&currentDetectedPitch>0){
@@ -1467,7 +1471,7 @@ function startPlay(pi){
     const td=gNotes.length>0?gNotes[gNotes.length-1].time+1000:1,pr=Math.max(0,Math.min(1,el/td));
     cx.fillStyle='#2e2e3a';cx.fillRect(0,h-3,w,3);cx.fillStyle=pc;cx.fillRect(0,h-3,w*pr,3);
 
-    if(el>td+1000&&allD){endPlay();return}requestAnimationFrame(gameLoop)}
+    if(el>td+1000&&allD){endPlay();return}}
   requestAnimationFrame(gameLoop)}
 
 function showJ(t,c){jT=t;jC=c;jTime=performance.now()}
