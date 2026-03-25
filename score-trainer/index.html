@@ -1388,12 +1388,16 @@ function startPlay(pi){
           cx.beginPath();cx.arc(vn.x,vn.y,nr*0.45,0,Math.PI*2);cx.fill();
         }
         
-        // Stem (thin, short, white — clearly different from blue bar lines)
+        // Stem: up when below middle line (B4), down when above — standard notation
+        // Length = 3.5 staff spaces (standard)
         if(vn.dur<8){
-          var stemUp=vn.y>(staffTop+staffBot)/2;
-          var sy2=stemUp?vn.y-lineGap*2:vn.y+lineGap*2;
-          cx.strokeStyle=passed?'#444':current?'#c8a800':'#aaa';cx.lineWidth=1;
-          cx.beginPath();cx.moveTo(vn.x+(stemUp?nr:-nr),vn.y);cx.lineTo(vn.x+(stemUp?nr:-nr),sy2);cx.stroke();
+          var midY=staffTop+2*lineGap; // middle line = B4
+          var stemUp=vn.y>=midY; // below or on middle → stem up
+          var stemLen=lineGap*3.5;
+          var stemX=stemUp?vn.x+nr:vn.x-nr; // right side up, left side down
+          var sy2=stemUp?vn.y-stemLen:vn.y+stemLen;
+          cx.strokeStyle=passed?'#555':current?'#c8a800':'#bbb';cx.lineWidth=1.2;
+          cx.beginPath();cx.moveTo(stemX,vn.y);cx.lineTo(stemX,sy2);cx.stroke();
         }
         
         // Current note: small bright dot instead of big ring
