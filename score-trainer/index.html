@@ -1211,10 +1211,10 @@ function startPlay(pi){
   if(useVex){renderVexScore(pi);setTimeout(()=>resizeCV(cv),100)}
   else{$('scoreContainer').style.display='none'}
 
-  gameLoop = function loop(ts){
+  gameLoop = function loop(){
     if(!gameOn)return;
-    if(gamePaused)return; // stop rendering when paused
-    const w=cv.clientWidth,h=cv.clientHeight,el=ts-gStart-totalPaused;
+    if(gamePaused)return;
+    const w=cv.clientWidth,h=cv.clientHeight,el=performance.now()-gStart-totalPaused;
     const hx=w*HX,px=NS/1000;
 
     // VexFlow highlighting
@@ -1298,8 +1298,13 @@ function startPlay(pi){
     // ─── TAIKO BELT ───
     cx.fillStyle='#1a1a22';cx.fillRect(0,by-bh/2,w,bh);cx.strokeStyle='#2e2e3a';cx.lineWidth=1;cx.beginPath();cx.moveTo(0,by-bh/2);cx.lineTo(w,by-bh/2);cx.moveTo(0,by+bh/2);cx.lineTo(w,by+bh/2);cx.stroke();
     const bd2=60000/(song.bpm*(difficulty==='slow'?0.7:1));
-    const bpb=Math.round(song.timeSigTop*(4/song.timeSigBot)); // beats per bar: 4/4→4, 12/8→6, 6/8→3, 3/4→3
-    for(let i=0;i<200;i++){const x=hx+(i*bd2-el)*px;if(x<-10||x>w+10)continue;cx.strokeStyle=i%bpb===0?'#444':'#2e2e3a';cx.lineWidth=i%bpb===0?2:1;cx.beginPath();cx.moveTo(x,by-bh/2);cx.lineTo(x,by+bh/2);cx.stroke()}
+    const bpb=Math.round(song.timeSigTop*(4/song.timeSigBot));
+    for(let i=-10;i<200;i++){const x=hx+(i*bd2-el)*px;if(x<-10||x>w+10)continue;
+      const isBar=i%bpb===0;
+      cx.strokeStyle=isBar?'#666':'#333';cx.lineWidth=isBar?2:1;
+      cx.beginPath();cx.moveTo(x,by-bh/2);cx.lineTo(x,by+bh/2);cx.stroke();
+      if(isBar&&i>=0){cx.fillStyle='#555';cx.font="600 9px 'Outfit'";cx.textAlign='center';cx.fillText(Math.floor(i/bpb)+1+'',x,by-bh/2-4)}
+    }
     const dr=32;
     if(cFlash>0){const r=dr+10+(1-cFlash)*30;cx.beginPath();cx.arc(hx,by,r,0,Math.PI*2);cx.strokeStyle=`rgba(244,162,97,${cFlash*0.6})`;cx.lineWidth=3;cx.stroke();cFlash-=0.04}
     if(dFlash>0){cx.fillStyle=`rgba(230,57,70,${dFlash*0.5})`;cx.beginPath();cx.arc(hx,by,dr+12,0,Math.PI*2);cx.fill();dFlash-=0.05}
@@ -1314,13 +1319,21 @@ function startPlay(pi){
       if(!n.hit&&!n.missed){allD=false;if(nt<-MW){n.missed=true;gMiss++;gCombo=0;showJ('MISS','#e63946');continue}}
       if(x+nw<-50||x>w+50)continue;
       if(n.hit){if(n.ha>0){const r=18+(1-n.ha)*25;cx.beginPath();cx.arc(hx,by,r,0,Math.PI*2);cx.strokeStyle=`rgba(42,157,143,${n.ha})`;cx.lineWidth=2;cx.stroke();n.ha-=0.03}continue}
-      const nh=26;if(n.missed)cx.globalAlpha=0.25;
-      cx.fillStyle=pc;rRect(cx,x,by-nh/2,nw,nh,6);cx.fill();
-      cx.strokeStyle=pc;cx.lineWidth=2;rRect(cx,x,by-nh/2,nw,nh,6);cx.stroke();
-      cx.fillStyle='rgba(255,255,255,0.2)';rRect(cx,x,by-nh/2,Math.min(10,nw),nh,3);cx.fill();
-      cx.fillStyle='#fff';cx.font="12px 'Outfit'";cx.textAlign='center';cx.textBaseline='middle';
-      if(gameMode==='pitch'&&n.pitch){cx.font="bold 10px 'Outfit'";cx.fillText(n.pitch.replace(/(\d)/,'$1'),x+nw/2,by)}
-      else{cx.fillText('👏',x+8,by)}
+      const nh=30;if(n.missed)cx.globalAlpha=0.25;
+      // Duration tail
+      cx.fillStyle=pc;cx.globalAlpha=n.missed?0.15:0.35;
+      rRect(cx,x+2,by-nh/2+4,nw-2,nh-8,4);cx.fill();
+      // Onset block (left portion = the beat)
+      cx.globalAlpha=n.missed?0.25:1;
+      const ow=Math.min(nw,30); // onset marker width
+      cx.fillStyle=pc;rRect(cx,x,by-nh/2,ow,nh,6);cx.fill();
+      cx.strokeStyle=pc;cx.lineWidth=2;rRect(cx,x,by-nh/2,ow,nh,6);cx.stroke();
+      // Onset line (exact beat position)
+      cx.strokeStyle='#fff';cx.lineWidth=2;cx.beginPath();cx.moveTo(x,by-nh/2);cx.lineTo(x,by+nh/2);cx.stroke();
+      // Pitch label (always show if available)
+      cx.fillStyle='#fff';cx.textAlign='center';cx.textBaseline='middle';
+      if(n.pitch){cx.font="bold 11px 'Outfit'";cx.fillText(n.pitch.replace(/(\d)/,'$1'),x+ow/2,by)}
+      else{cx.font="12px 'Outfit'";cx.fillText('👏',x+8,by)}
       cx.globalAlpha=1}
 
     // HUD
@@ -1670,7 +1683,7 @@ function highlightVexNote(elapsed){
   // Show playhead — use CSS transform on SVG for smooth scroll
   const vexEl=sc.querySelector('svg');
   if(!vexEl)return;
-  const offset=Math.max(0,smoothX-sc.clientWidth*0.3);
+  const offset=Math.max(0,smoothX-sc.clientWidth*HX);
   vexEl.style.transform=`translateX(${-offset}px)`;
   
   // Highlight overlay canvas (create once, reuse)
