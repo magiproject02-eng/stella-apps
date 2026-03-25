@@ -103,10 +103,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 .play-container{display:none;height:calc(100dvh - 80px);position:relative;flex-direction:column}
 .score-container{overflow-x:hidden;overflow-y:hidden;background:#12121a;border-bottom:1px solid var(--border);flex-shrink:0;height:140px;position:relative;white-space:nowrap}
 .score-container svg{display:block;will-change:transform}
-.score-container svg path{stroke:#e8e6f0;fill:#e8e6f0}
-.score-container svg text{fill:#e8e6f0}
-.score-container svg .vf-stave .vf-stave-section rect{fill:none}
-.score-container svg rect.vf-stave-section{fill:none}
 .score-container .vf-notehead path{fill:#e8e6f0!important;stroke:#e8e6f0!important}
 .score-container .vf-accidental path{fill:#e8e6f0!important;stroke:#e8e6f0!important}
 .score-container .vf-modifiers path{fill:#e8e6f0!important;stroke:#e8e6f0!important}
@@ -115,12 +111,22 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 .score-container .vf-beam path{fill:#ccc!important;stroke:#ccc!important}
 .score-container .vf-flag path{fill:#ccc!important;stroke:#ccc!important}
 .score-container .vf-ledgerline path{stroke:#888!important}
-.score-container .vf-stave path{stroke:#555!important}
 .score-container .vf-stave-section text{fill:#888!important}
-.score-container .vf-clef path{fill:#888!important;stroke:#888!important}
-.score-container .vf-keysignature path{fill:#aaa!important;stroke:#aaa!important}
-.score-container .vf-timesignature path{fill:#aaa!important;stroke:#aaa!important}
 .score-highlight{position:absolute;background:rgba(244,162,97,0.4);border-left:2px solid var(--gold);pointer-events:none;z-index:5;top:0;bottom:0;width:3px}
+
+/* VexFlow dark theme for both play score and sight-reading */
+#srScore svg path,
+.score-container svg path{stroke:#e8e6f0;fill:#e8e6f0}
+#srScore svg text,
+.score-container svg text{fill:#e8e6f0}
+#srScore .vf-stave path,
+.score-container .vf-stave path{stroke:#555!important}
+#srScore .vf-clef path,
+.score-container .vf-clef path{fill:#888!important;stroke:#888!important}
+#srScore .vf-keysignature path,
+.score-container .vf-keysignature path{fill:#aaa!important;stroke:#aaa!important}
+#srScore .vf-timesignature path,
+.score-container .vf-timesignature path{fill:#aaa!important;stroke:#aaa!important}
 .play-container canvas{flex:1;width:100%;min-height:0}
 .part-select{position:absolute;inset:0;background:rgba(15,15,20,0.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;gap:0.4rem;padding:1.5rem}
 .part-select h2{font-size:1.3rem;font-weight:700;margin-bottom:0.5rem}
@@ -2044,13 +2050,6 @@ function renderSightReadScore(key,numBars){
       voice.draw(ctx,stave);
     }catch(e){console.warn('SR bar',bar,'error:',e.message)}
   }
-  
-  // Style SVG for dark theme
-  container.querySelectorAll('svg path').forEach(p=>{
-    if(!p.style.fill||p.style.fill==='none'){}
-    p.style.fill=p.style.fill||'#e8e6f0';
-    p.style.stroke=p.style.stroke||'#e8e6f0';
-  });
 }
 
 function playSightRead(){
