@@ -1344,8 +1344,8 @@ function startPlay(pi){
     if(dFlash>0){cx.fillStyle=`rgba(230,57,70,${dFlash*0.5})`;cx.beginPath();cx.arc(hx,by,dr+12,0,Math.PI*2);cx.fill();dFlash-=0.05}
     cx.beginPath();cx.arc(hx,by,dr,0,Math.PI*2);cx.fillStyle='#1a1a22';cx.fill();cx.strokeStyle='#6b6b80';cx.lineWidth=3;cx.stroke();
 
-    // Ghost notes on belt
-    ghost.forEach(gn=>{const x=hx+(gn.time-el)*px,nw=Math.max(8,gn.durMs*px);if(x+nw<-30||x>w+30)return;cx.globalAlpha=0.15;cx.fillStyle=PC[gn.pi];rRect(cx,x,by-10,nw,20,4);cx.fill();cx.globalAlpha=1});
+    // Ghost notes on belt (small dots for other parts)
+    ghost.forEach(gn=>{const x=hx+(gn.time-el)*px;if(x<-30||x>w+30)return;cx.globalAlpha=0.15;cx.fillStyle=PC[gn.pi];cx.beginPath();cx.arc(x,by,6,0,Math.PI*2);cx.fill();cx.globalAlpha=1});
 
     // Main notes on belt
     let allD=true;const pc=PC[selPart];
@@ -1353,21 +1353,19 @@ function startPlay(pi){
       if(!n.hit&&!n.missed){allD=false;if(nt<-MW){n.missed=true;gMiss++;gCombo=0;showJ('MISS','#e63946');continue}}
       if(x+nw<-50||x>w+50)continue;
       if(n.hit){if(n.ha>0){const r=18+(1-n.ha)*25;cx.beginPath();cx.arc(hx,by,r,0,Math.PI*2);cx.strokeStyle=`rgba(42,157,143,${n.ha})`;cx.lineWidth=2;cx.stroke();n.ha-=0.03}continue}
-      const nh=30;if(n.missed)cx.globalAlpha=0.25;
-      // Duration tail
-      cx.fillStyle=pc;cx.globalAlpha=n.missed?0.15:0.35;
-      rRect(cx,x+2,by-nh/2+4,nw-2,nh-8,4);cx.fill();
-      // Onset block (left portion = the beat)
+      if(n.missed)cx.globalAlpha=0.25;
+      // Duration tail (faded line from onset to end)
+      cx.strokeStyle=pc;cx.globalAlpha=n.missed?0.1:0.3;cx.lineWidth=4;
+      cx.beginPath();cx.moveTo(x,by);cx.lineTo(x+nw,by);cx.stroke();
+      // Onset circle — centered exactly on x (the beat line position)
       cx.globalAlpha=n.missed?0.25:1;
-      const ow=Math.min(nw,30); // onset marker width
-      cx.fillStyle=pc;rRect(cx,x,by-nh/2,ow,nh,6);cx.fill();
-      cx.strokeStyle=pc;cx.lineWidth=2;rRect(cx,x,by-nh/2,ow,nh,6);cx.stroke();
-      // Onset line (exact beat position)
-      cx.strokeStyle='#fff';cx.lineWidth=2;cx.beginPath();cx.moveTo(x,by-nh/2);cx.lineTo(x,by+nh/2);cx.stroke();
-      // Pitch label (always show if available)
+      const r=16;
+      cx.fillStyle=pc;cx.beginPath();cx.arc(x,by,r,0,Math.PI*2);cx.fill();
+      cx.strokeStyle='#fff';cx.lineWidth=2;cx.beginPath();cx.arc(x,by,r,0,Math.PI*2);cx.stroke();
+      // Pitch label centered on the circle
       cx.fillStyle='#fff';cx.textAlign='center';cx.textBaseline='middle';
-      if(n.pitch){cx.font="bold 11px 'Outfit'";cx.fillText(n.pitch.replace(/(\d)/,'$1'),x+ow/2,by)}
-      else{cx.font="12px 'Outfit'";cx.fillText('👏',x+8,by)}
+      cx.font="bold 10px 'Plus Jakarta Sans'";
+      cx.fillText(n.pitch||'👏',x,by);
       cx.globalAlpha=1}
 
     // HUD
