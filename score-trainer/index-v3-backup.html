@@ -1,0 +1,2225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Score Trainer 🎵</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vexflow/3.0.9/vexflow-min.js"></script>
+<script>console.log('VexFlow check:',typeof Vex,window.Vex?'OK':'MISSING');</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#0f0f14;--surface:#1a1a22;--surface2:#22222e;--border:#2e2e3a;--text:#e8e6f0;--dim:#6b6b80;--red:#e63946;--blue:#457b9d;--green:#2a9d8f;--gold:#f4a261;--purple:#7c3aed;--pink:#ec4899}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
+
+.header{display:flex;align-items:center;justify-content:space-between;padding:0.6rem 1rem;border-bottom:1px solid var(--border);background:var(--surface);flex-wrap:wrap;gap:0.3rem}
+.header h1{font-size:1rem;font-weight:700}
+.header-btns{display:flex;gap:0.4rem;flex-wrap:wrap}
+.hbtn{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:0.7rem;font-weight:600;padding:0.35rem 0.65rem;border-radius:7px;cursor:pointer;transition:border-color 0.2s;white-space:nowrap}
+.hbtn:hover{border-color:var(--purple)}
+.hbtn.primary{background:var(--purple);border-color:var(--purple);color:#fff}
+.hbtn.play{background:var(--green);border-color:var(--green);color:#fff}
+.hbtn.stop{background:var(--red);border-color:var(--red);color:#fff}
+.hbtn.ai{background:linear-gradient(135deg,#7c3aed,#ec4899);border-color:#7c3aed;color:#fff}
+
+.controls{display:flex;align-items:center;gap:0.8rem;padding:0.5rem 1rem;border-bottom:1px solid var(--border);background:var(--surface);flex-wrap:wrap}
+.ctrl-group{display:flex;align-items:center;gap:0.3rem}
+.ctrl-group label{font-size:0.65rem;color:var(--dim);text-transform:uppercase;letter-spacing:0.04em}
+.ctrl-group input,.ctrl-group select{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:0.75rem;padding:0.25rem 0.4rem;border-radius:5px}
+.ctrl-group input[type=number]{width:55px}
+.ctrl-group input[type=text]{width:120px}
+
+.tabs{display:flex;border-bottom:1px solid var(--border);background:var(--surface)}
+.tab{padding:0.5rem 1rem;font-size:0.75rem;font-weight:600;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;transition:color 0.2s}
+.tab.active{color:var(--text);border-bottom-color:var(--purple)}
+.tab:hover{color:var(--text)}
+
+/* Editor */
+.editor{padding:0.8rem;overflow-x:auto}
+.part-row{display:flex;align-items:stretch;margin-bottom:2px}
+.part-label{width:70px;min-width:70px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;border-radius:5px 0 0 5px;cursor:pointer;flex-shrink:0;gap:2px;padding:2px}
+.part-label .sm{display:flex;gap:2px;font-size:0.5rem}
+.part-label .sm span{padding:1px 3px;border-radius:2px;cursor:pointer;opacity:0.4}
+.part-label .sm span:hover,.part-label .sm span.on{opacity:1}
+.part-label .sm .sb{background:#2a9d8f66}.part-label .sm .mb{background:#e6394666}
+.part-label .sm .sb.on{background:var(--green);color:#fff}.part-label .sm .mb.on{background:var(--red);color:#fff}
+.part-label .del-btn{font-size:0.5rem;opacity:0.3;cursor:pointer}.part-label .del-btn:hover{opacity:1;color:var(--red)}
+
+.beat-grid{display:flex;flex:1}
+.bar-group{display:flex;margin-right:2px}
+.cell{width:20px;height:28px;border:1px solid var(--border);cursor:pointer;transition:background 0.08s;flex-shrink:0}
+.cell:hover{border-color:#555}
+.cell.beat-start{border-left-color:#444}
+.cell.sub-0{background:var(--surface2)}.cell.sub-1{background:#1c1c26}
+.cell.on{border-radius:2px}
+.cell.held{opacity:0.5;border-radius:0}
+.cell.on,.cell.held{border-right-color:transparent}
+.cell.playhead{box-shadow:inset 0 0 0 2px var(--gold)}
+
+.bar-numbers{display:flex;margin-left:70px;margin-bottom:3px}
+.bar-numbers .bar-group{height:14px}
+.bar-numbers .bl{font-size:0.55rem;color:var(--dim);width:20px;text-align:center}
+
+.part-0{--pc:#e63946}.part-1{--pc:#457b9d}.part-2{--pc:#2a9d8f}.part-3{--pc:#f4a261}
+.part-4{--pc:#7c3aed}.part-5{--pc:#ec4899}.part-6{--pc:#06b6d4}.part-7{--pc:#84cc16}
+.part-row .cell.on{background:var(--pc)!important;border-color:var(--pc)}
+.part-row .cell.held{background:var(--pc)!important;border-color:var(--pc);opacity:0.45}
+
+.add-part{display:flex;align-items:center;justify-content:center;padding:0.4rem;margin-top:0.4rem;border:1px dashed var(--border);border-radius:6px;color:var(--dim);font-size:0.7rem;cursor:pointer}
+.add-part:hover{border-color:var(--purple);color:var(--text)}
+
+.demo-bar{padding:0.4rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap}
+.demo-bar span{font-size:0.65rem;color:var(--dim)}
+.demo-btn{font-size:0.65rem;padding:0.2rem 0.5rem;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:5px;cursor:pointer;font-family:inherit;font-weight:600}
+.demo-btn:hover{border-color:var(--purple)}
+
+/* AI Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;display:none;align-items:center;justify-content:center;padding:1rem}
+.modal-overlay.show{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;max-width:500px;width:100%;max-height:90vh;overflow-y:auto}
+.modal h2{font-size:1.2rem;font-weight:700;margin-bottom:0.5rem}
+.modal p{font-size:0.8rem;color:var(--dim);line-height:1.5;margin-bottom:1rem}
+.modal .upload-zone{border:2px dashed var(--border);border-radius:10px;padding:2rem;text-align:center;cursor:pointer;transition:border-color 0.2s;margin-bottom:1rem}
+.modal .upload-zone:hover{border-color:var(--purple)}
+.modal .upload-zone.has-file{border-color:var(--green);background:#2a9d8f11}
+.modal .upload-zone img{max-width:100%;max-height:200px;border-radius:6px;margin-top:0.5rem}
+.page-selector{display:flex;gap:0.5rem;flex-wrap:wrap;margin:0.5rem 0;justify-content:center}
+.page-thumb{width:80px;height:110px;border:2px solid var(--border);border-radius:6px;cursor:pointer;object-fit:cover;transition:border-color 0.2s;opacity:0.5}
+.page-thumb.selected{border-color:var(--green);opacity:1;box-shadow:0 0 8px #2a9d8f44}
+.page-thumb:hover{opacity:0.8}
+.page-info{font-size:0.7rem;color:var(--dim);text-align:center;margin-bottom:0.5rem}
+.modal textarea{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:0.8rem;padding:0.5rem;border-radius:6px;min-height:60px;resize:vertical;margin-bottom:0.5rem}
+.modal .status{font-size:0.75rem;padding:0.4rem 0.6rem;border-radius:6px;margin-bottom:0.8rem}
+.modal .status.loading{background:#7c3aed22;color:var(--purple);border:1px solid #7c3aed44}
+.modal .status.error{background:#e6394622;color:var(--red);border:1px solid #e6394644}
+.modal .status.ok{background:#2a9d8f22;color:var(--green);border:1px solid #2a9d8f44}
+.modal-btns{display:flex;gap:0.5rem;justify-content:flex-end}
+
+/* Play Mode */
+.play-container{display:none;height:calc(100dvh - 80px);position:relative;flex-direction:column}
+.score-container{overflow-x:hidden;overflow-y:hidden;background:#12121a;border-bottom:1px solid var(--border);flex-shrink:0;height:140px;position:relative;white-space:nowrap}
+.score-container svg{display:block;will-change:transform}
+.score-container .vf-notehead path{fill:#e8e6f0!important;stroke:#e8e6f0!important}
+.score-container .vf-accidental path{fill:#e8e6f0!important;stroke:#e8e6f0!important}
+.score-container .vf-modifiers path{fill:#e8e6f0!important;stroke:#e8e6f0!important}
+.score-container .vf-dot path{fill:#e8e6f0!important;stroke:#e8e6f0!important}
+.score-container .vf-stem path{stroke:#ccc!important}
+.score-container .vf-beam path{fill:#ccc!important;stroke:#ccc!important}
+.score-container .vf-flag path{fill:#ccc!important;stroke:#ccc!important}
+.score-container .vf-ledgerline path{stroke:#888!important}
+.score-container .vf-stave-section text{fill:#888!important}
+.score-highlight{position:absolute;background:rgba(244,162,97,0.4);border-left:2px solid var(--gold);pointer-events:none;z-index:5;top:0;bottom:0;width:3px}
+
+/* VexFlow dark theme for both play score and sight-reading */
+#srScore svg path,
+.score-container svg path{stroke:#e8e6f0;fill:#e8e6f0}
+#srScore svg text,
+.score-container svg text{fill:#e8e6f0}
+#srScore .vf-stave path,
+.score-container .vf-stave path{stroke:#555!important}
+#srScore .vf-clef path,
+.score-container .vf-clef path{fill:#888!important;stroke:#888!important}
+#srScore .vf-keysignature path,
+.score-container .vf-keysignature path{fill:#aaa!important;stroke:#aaa!important}
+#srScore .vf-timesignature path,
+.score-container .vf-timesignature path{fill:#aaa!important;stroke:#aaa!important}
+.play-container canvas{flex:1;width:100%;min-height:0}
+.part-select{position:absolute;inset:0;background:rgba(15,15,20,0.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;gap:0.4rem;padding:1.5rem}
+.part-select h2{font-size:1.3rem;font-weight:700;margin-bottom:0.5rem}
+.part-select .sub{font-size:0.8rem;color:var(--dim);margin-bottom:0.5rem}
+.part-select .diff-row{display:flex;gap:0.5rem;margin-bottom:1rem}
+.part-select .diff-btn{padding:0.3rem 0.8rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-family:inherit;font-size:0.75rem;cursor:pointer;font-weight:600}
+.part-select .diff-btn.active{border-color:var(--purple);background:var(--purple);color:#fff}
+.pbtn{width:220px;padding:0.7rem;border:2px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font-family:inherit;font-size:0.9rem;font-weight:600;cursor:pointer;transition:border-color 0.2s}
+.pbtn:hover{border-color:var(--purple)}
+.back-btn{margin-top:0.8rem;color:var(--dim);font-size:0.8rem;cursor:pointer;text-decoration:underline}
+
+.results{position:absolute;inset:0;background:rgba(15,15,20,0.96);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:10;padding:1.5rem;text-align:center}
+.results h2{font-size:1.3rem;font-weight:700;margin-bottom:0.3rem}
+.results .rank{font-size:4rem;font-weight:800;margin-bottom:0.3rem}
+.results .rank.S{color:var(--gold)}.results .rank.A{color:var(--green)}.results .rank.B{color:var(--blue)}.results .rank.C{color:var(--dim)}
+.results .score{font-size:2.5rem;font-weight:800;color:var(--gold)}
+.results .stats{display:flex;gap:1.2rem;margin:0.8rem 0}
+.results .rs{text-align:center}
+.results .rs .v{font-size:1.2rem;font-weight:700}
+.results .rs .l{font-size:0.6rem;color:var(--dim);text-transform:uppercase}
+
+/* Classroom Mode */
+.classroom-container{display:none;height:calc(100dvh - 80px);position:relative;overflow:hidden}
+.classroom-container canvas{width:100%;height:100%}
+
+/* Share toast */
+.toast{position:fixed;top:1rem;right:1rem;background:var(--green);color:#fff;padding:0.5rem 1rem;border-radius:8px;font-size:0.8rem;font-weight:600;z-index:999;opacity:0;transition:opacity 0.3s;pointer-events:none}
+.toast.show{opacity:1}
+
+.hidden{display:none!important}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Song cards */
+.song-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:0.8rem 1rem;cursor:pointer;transition:border-color 0.2s,transform 0.1s}
+.song-card:hover{border-color:var(--purple);transform:translateY(-1px)}
+.song-card .sc-title{font-size:0.9rem;font-weight:700;margin-bottom:0.3rem}
+.song-card .sc-meta{font-size:0.65rem;color:var(--dim);display:flex;gap:0.8rem;flex-wrap:wrap;margin-bottom:0.5rem}
+.song-card .sc-parts{display:flex;gap:0.3rem;flex-wrap:wrap;margin-bottom:0.5rem}
+.song-card .sc-part{font-size:0.6rem;padding:0.1rem 0.4rem;border-radius:4px;font-weight:600}
+.song-card .sc-actions{display:flex;gap:0.4rem}
+.song-card .sc-btn{font-size:0.65rem;padding:0.25rem 0.6rem;border:1px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--text);font-family:inherit;font-weight:600;cursor:pointer;transition:border-color 0.15s}
+.song-card .sc-btn:hover{border-color:var(--purple)}
+.song-card .sc-btn.play-btn{background:var(--green);border-color:var(--green);color:#fff}
+.song-card .sc-btn.class-btn{background:var(--purple);border-color:var(--purple);color:#fff}
+.deployed-badge{position:fixed;bottom:0.3rem;right:0.5rem;font-size:0.5rem;color:var(--dim);opacity:0.2;z-index:200}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🎵 Score Trainer</h1>
+  <div class="header-btns">
+    <button class="hbtn ai" id="btnAI">🤖 AI Read Score</button>
+    <button class="hbtn primary" id="btnMusicXML">📥 MusicXML</button>
+    <button class="hbtn" id="btnShare">🔗 Share</button>
+    <button class="hbtn" id="btnSave">💾 Save</button>
+    <button class="hbtn" id="btnLoad">📂 Load</button>
+    <button class="hbtn" id="btnExport">📤 JSON</button>
+    <button class="hbtn" id="btnImport">📥 Import</button>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="library">📚 Library</div>
+  <div class="tab" data-tab="editor">✏️ Editor</div>
+  <div class="tab" data-tab="play">🎮 Play</div>
+  <div class="tab" data-tab="classroom">🏫 Classroom</div>
+</div>
+
+<div id="libraryPanel">
+  <div style="padding:1rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <div><span style="font-size:1.1rem;font-weight:700">Song Library</span><br><span style="font-size:0.7rem;color:var(--dim)">Tap a song to start practicing</span></div>
+    </div>
+    <div onclick="importMusicXML()" style="background:linear-gradient(135deg,#7c3aed22,#457b9d22);border:1px dashed var(--purple);border-radius:10px;padding:0.8rem 1rem;cursor:pointer;margin-bottom:0.5rem;transition:border-color 0.2s;display:flex;align-items:center;gap:0.8rem">
+      <span style="font-size:1.5rem">📥</span>
+      <div><span style="font-size:0.85rem;font-weight:700">Import MusicXML</span><br><span style="font-size:0.65rem;color:var(--dim)">.musicxml, .mxl, .xml — from MuseScore, Finale, Sibelius, IMSLP</span></div>
+    </div>
+    <div onclick="scanImage()" style="background:linear-gradient(135deg,#2a9d8f22,#06b6d422);border:1px dashed var(--green);border-radius:10px;padding:0.8rem 1rem;cursor:pointer;margin-bottom:0.8rem;transition:border-color 0.2s;display:flex;align-items:center;gap:0.8rem">
+      <span style="font-size:1.5rem">🔍</span>
+      <div><span style="font-size:0.85rem;font-weight:700">Scan Sheet Music</span><br><span style="font-size:0.65rem;color:var(--dim)">Upload a photo/scan → AI reads notes → MusicXML (2-5 min)</span></div>
+    </div>
+    <div id="scanStatus" class="hidden" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.8rem 1rem;margin-bottom:0.8rem">
+      <div style="display:flex;align-items:center;gap:0.6rem">
+        <div id="scanSpinner" style="width:18px;height:18px;border:2px solid var(--dim);border-top-color:var(--green);border-radius:50%;animation:spin 1s linear infinite"></div>
+        <div><span id="scanMsg" style="font-size:0.8rem;font-weight:600">Processing...</span><br><span id="scanDetail" style="font-size:0.65rem;color:var(--dim)">This takes 2-5 minutes on server</span></div>
+      </div>
+    </div>
+    <div onclick="switchTab('sightread')" style="background:linear-gradient(135deg,#f4a26122,#e6394622);border:1px dashed var(--gold);border-radius:10px;padding:0.8rem 1rem;cursor:pointer;margin-bottom:0.8rem;transition:border-color 0.2s;display:flex;align-items:center;gap:0.8rem">
+      <span style="font-size:1.5rem">🎯</span>
+      <div><span style="font-size:0.85rem;font-weight:700">視唱練習 Sight-Reading</span><br><span style="font-size:0.65rem;color:var(--dim)">Random phrases · 1-2 beat notes · Practice reading & singing</span></div>
+    </div>
+    <div id="songList" style="display:flex;flex-direction:column;gap:0.5rem"></div>
+    <div id="libraryLoading" style="text-align:center;padding:2rem;color:var(--dim);font-size:0.8rem">Loading songs...</div>
+  </div>
+</div>
+
+<!-- Sight-Reading Panel -->
+<div id="sightreadPanel" style="display:none">
+  <div style="padding:1rem;max-width:600px;margin:0 auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <div><span style="font-size:1.1rem;font-weight:700">🎯 視唱練習</span><br><span style="font-size:0.7rem;color:var(--dim)">Read the score, then sing!</span></div>
+      <button class="hbtn" onclick="switchTab('library')">← Back</button>
+    </div>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem">
+      <div class="ctrl-group"><label>Key 調</label>
+        <select id="srKey"><option value="C">C</option><option value="G">G</option><option value="D" selected>D</option><option value="F">F</option><option value="Bb">Bb</option><option value="A">A</option><option value="Eb">Eb</option></select>
+      </div>
+      <div class="ctrl-group"><label>Bars 小節</label>
+        <select id="srBars"><option value="2">2</option><option value="4" selected>4</option><option value="8">8</option></select>
+      </div>
+      <div class="ctrl-group"><label>Range 音域</label>
+        <select id="srRange">
+          <option value="C4-G4">Low 低 (C4-G4)</option>
+          <option value="D4-A4">Mid-Low (D4-A4)</option>
+          <option value="E4-B4" selected>Mid 中 (E4-B4)</option>
+          <option value="G4-D5">Mid-High (G4-D5)</option>
+          <option value="A4-E5">High 高 (A4-E5)</option>
+          <option value="C4-C5">Full Octave (C4-C5)</option>
+          <option value="B3-E5">Wide 寬 (B3-E5)</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:0.5rem;margin-bottom:1rem">
+      <button class="hbtn primary" onclick="generateSightRead()" style="flex:1;font-size:0.9rem;padding:0.5rem">🎲 Generate 出題</button>
+      <button class="hbtn play" id="srPlayBtn" onclick="playSightRead()" style="padding:0.5rem 1rem" disabled>▶ Listen 聽</button>
+      <button class="hbtn stop hidden" id="srStopBtn" onclick="stopSightRead()" style="padding:0.5rem 1rem">■ Stop</button>
+    </div>
+    <div id="srScore" style="background:#12121a;border:1px solid var(--border);border-radius:10px;overflow-x:auto;min-height:160px;display:flex;align-items:center;justify-content:center">
+      <span style="color:var(--dim);font-size:0.9rem">Press Generate to start</span>
+    </div>
+    <div id="srNoteNames" style="margin-top:0.5rem;font-size:0.75rem;color:var(--dim);text-align:center;min-height:1.2em"></div>
+    <div style="margin-top:1rem;display:flex;gap:0.5rem">
+      <button class="hbtn" id="srRevealBtn" onclick="revealNotes()" style="flex:1" disabled>👁 Reveal Note Names 顯示音名</button>
+      <button class="hbtn" onclick="loadSightReadToPlay()" id="srPracticeBtn" style="flex:1;background:var(--green);border-color:var(--green);color:#fff" disabled>🎮 Practice Mode 練習</button>
+    </div>
+  </div>
+</div>
+
+<div id="editorPanel" style="display:none">
+  <div class="controls">
+    <div class="ctrl-group"><label>Title</label><input type="text" id="songTitle" value="New Song"></div>
+    <div class="ctrl-group"><label>BPM</label><input type="number" id="bpmInput" value="100" min="40" max="300"></div>
+    <div class="ctrl-group"><label>Time</label>
+      <select id="timeSigTop"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option></select>/
+      <select id="timeSigBot"><option selected>4</option><option>8</option></select>
+    </div>
+    <div class="ctrl-group"><label>Bars</label><input type="number" id="barCount" value="4" min="1" max="64"></div>
+    <div class="ctrl-group"><label>Grid</label>
+      <select id="subdivSelect"><option value="4">Quarter</option><option value="8" selected>8th</option><option value="16">16th</option><option value="12">Triplet</option></select>
+    </div>
+    <button class="hbtn play" id="btnPlay">▶ Play</button>
+    <button class="hbtn stop hidden" id="btnStop">■ Stop</button>
+  </div>
+  <div class="demo-bar">
+    <span>Demos:</span>
+    <button class="demo-btn" onclick="loadDemo('simple')">Simple 4/4</button>
+    <button class="demo-btn" onclick="loadDemo('syncopation')">切分音</button>
+    <button class="demo-btn" onclick="loadDemo('chorale')">SATB Chorale</button>
+    <button class="demo-btn" onclick="loadDemo('waltz')">3/4 Waltz</button>
+    <button class="demo-btn" onclick="loadDemo('compound')">6/8 Compound</button>
+  </div>
+  <div class="editor" id="editorGrid"></div>
+</div>
+
+<div class="play-container" id="playPanel">
+  <div class="part-select" id="partSelect">
+    <h2>Select Your Part</h2>
+    <div class="sub">Choose difficulty:</div>
+    <div class="diff-row">
+      <button class="diff-btn active" data-diff="normal" onclick="setDifficulty('normal',this)">Normal</button>
+      <button class="diff-btn" data-diff="hard" onclick="setDifficulty('hard',this)">Hard (no ghost)</button>
+      <button class="diff-btn" data-diff="slow" onclick="setDifficulty('slow',this)">Slow (70%)</button>
+    </div>
+    <div class="sub">Input method:</div>
+    <div class="diff-row">
+      <button class="diff-btn active" data-input="tap" onclick="setInputMode('tap',this)">📱 Tap / Keyboard</button>
+      <button class="diff-btn" data-input="clap" onclick="setInputMode('clap',this)">👏 Clap (Mic)</button>
+    </div>
+    <div class="sub">Metronome:</div>
+    <div class="diff-row">
+      <button class="diff-btn active" data-metro="on" onclick="setMetronome('on',this)">🔊 Beat On</button>
+      <button class="diff-btn" data-metro="off" onclick="setMetronome('off',this)">🔇 Beat Off</button>
+    </div>
+    <div id="micSetup" style="display:none;margin-bottom:0.8rem;text-align:center">
+      <div id="micStatusPlay" style="font-size:0.7rem;padding:0.3rem 0.6rem;border-radius:6px;margin-bottom:0.5rem;background:#f4a26122;color:var(--gold);border:1px solid #f4a26144">🎤 Mic not active yet</div>
+      <button class="hbtn" onclick="initMicManual()" style="background:var(--green);border-color:var(--green);color:#fff">Allow Microphone 🎤</button>
+      <div style="margin-top:0.4rem;display:flex;align-items:center;gap:0.5rem;justify-content:center">
+        <span style="font-size:0.65rem;color:var(--dim)">Sensitivity</span>
+        <input type="range" id="sensSlider" min="1" max="20" value="8" style="width:100px;accent-color:var(--red)">
+        <span style="font-size:0.65rem;color:var(--gold)" id="sensVal">8</span>
+      </div>
+    </div>
+    <div id="partButtons"></div>
+    <div style="margin-top:0.8rem;width:100%;max-width:220px">
+      <div class="sub">Hear other parts (backing):</div>
+      <div id="backingParts" style="display:flex;flex-wrap:wrap;gap:0.5rem 1rem;margin-bottom:0.8rem"></div>
+      <div class="sub">Show score above:</div>
+      <div class="diff-row">
+        <button class="diff-btn active" data-score="on" onclick="setScoreView('on',this)">📋 Score On</button>
+        <button class="diff-btn" data-score="off" onclick="setScoreView('off',this)">📋 Score Off</button>
+      </div>
+      <div class="sub">Game mode:</div>
+      <div class="diff-row">
+        <button class="diff-btn active" data-gmode="clap" onclick="setGameMode('clap',this)">👏 Clap/Tap</button>
+        <button class="diff-btn" data-gmode="pitch" onclick="setGameMode('pitch',this)">🎤 Pitch + Beat</button>
+      </div>
+      <div id="pitchInfo" style="display:none;font-size:0.65rem;color:var(--dim);text-align:center;margin-bottom:0.5rem">
+        Sing the correct pitch — mic detects your note. Timing + pitch accuracy scored!
+      </div>
+    </div>
+    <div class="back-btn" onclick="switchTab('library')">← Back to Library</div>
+  </div>
+  <div class="score-container" id="scoreContainer" style="display:none">
+    <div id="vexScore"></div>
+    <div class="score-highlight" id="scoreHighlight" style="display:none"></div>
+  </div>
+  <div id="pauseOverlay" style="display:none;position:absolute;inset:0;background:rgba(15,15,20,0.85);z-index:8;flex-direction:column;align-items:center;justify-content:center">
+    <div style="font-size:2rem;font-weight:800;margin-bottom:0.5rem">⏸ PAUSED</div>
+    <button class="hbtn play" onclick="resumeGame()" style="font-size:1rem;padding:0.6rem 2rem">▶ Resume</button>
+    <div class="back-btn" onclick="quitGame()" style="margin-top:1rem">✕ Quit</div>
+  </div>
+  <button id="pauseBtn" onclick="pauseGame()" style="display:none;position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:7;background:rgba(30,30,40,0.7);border:1px solid #444;color:#e8e6f0;font-family:inherit;font-size:0.7rem;font-weight:600;padding:0.25rem 0.8rem;border-radius:6px;cursor:pointer">⏸ Pause</button>
+  <canvas id="playCanvas"></canvas>
+  <div class="results" id="resultsScreen">
+    <h2>Results</h2>
+    <div class="rank" id="pRank">S</div>
+    <div class="score" id="pScore">0</div>
+    <div style="font-size:0.65rem;color:var(--dim);margin-bottom:0.4rem">POINTS</div>
+    <div class="stats">
+      <div class="rs"><div class="v" id="pPerf" style="color:var(--gold)">0</div><div class="l">Perfect</div></div>
+      <div class="rs"><div class="v" id="pGood" style="color:var(--green)">0</div><div class="l">Good</div></div>
+      <div class="rs"><div class="v" id="pMiss" style="color:var(--red)">0</div><div class="l">Miss</div></div>
+      <div class="rs"><div class="v" id="pCombo" style="color:var(--gold)">0</div><div class="l">Max Combo</div></div>
+    </div>
+    <button class="hbtn primary" onclick="showPartSelect()" style="font-size:0.85rem;padding:0.5rem 1.5rem">Play Again</button>
+    <div class="back-btn" onclick="switchTab('editor')">← Editor</div>
+  </div>
+</div>
+
+<div class="classroom-container" id="classroomPanel">
+  <canvas id="classCanvas"></canvas>
+</div>
+
+<!-- AI Modal -->
+<div class="modal-overlay" id="aiModal">
+  <div class="modal">
+    <h2>🤖 AI Score Reader</h2>
+    <p>Upload a photo of a score sheet. AI will extract the rhythm for each voice part. You can review and fix the result in the editor.</p>
+    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+      <div id="uploadLabel">📄 Upload score (image or PDF)<br><span style="font-size:0.7rem;color:var(--dim)">JPG, PNG, PDF — photo, scan, or digital score</span></div>
+      <input type="file" id="fileInput" accept="image/*,.pdf,application/pdf" style="display:none">
+    </div>
+    <div id="pageSelectArea"></div>
+    <textarea id="aiContext" placeholder="Optional: describe the score (e.g. '4-part SATB, 4/4 time, 8 bars')"></textarea>
+    <div class="ctrl-group" style="margin-bottom:0.8rem;width:100%">
+      <label style="min-width:60px">API Key</label>
+      <input type="password" id="aiApiKey" style="flex:1;width:100%" placeholder="sk-ant-... (needed when running from Vercel)">
+    </div>
+    <div style="font-size:0.65rem;color:var(--dim);margin-bottom:0.8rem">API key is required when running from the deployed site. Not needed when previewing inside Claude chat. Key stays in your browser — never sent anywhere except Anthropic's API.</div>
+    <div class="status hidden" id="aiStatus"></div>
+    <div class="modal-btns">
+      <button class="hbtn" onclick="closeAIModal()">Cancel</button>
+      <button class="hbtn ai" id="btnAnalyze" disabled>Analyze Score 🔍</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="deployed-badge">Score Trainer · Built by Stella</div>
+
+<script>
+// ════════════════════════════════════
+// CONSTANTS
+// ════════════════════════════════════
+const PC=['#e63946','#457b9d','#2a9d8f','#f4a261','#7c3aed','#ec4899','#06b6d4','#84cc16'];
+const PN=['S1','S2','A','T','B','B2','P1','P2'];
+
+// roundRect polyfill for older browsers
+function rRect(ctx,x,y,w,h,r){
+  if(w<0)return;r=Math.min(r,w/2,h/2);
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h);ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();
+}
+
+// ════════════════════════════════════
+// STATE — beats are now [{pos,dur},...] with duration
+// ════════════════════════════════════
+let song={title:'New Song',bpm:100,timeSigTop:4,timeSigBot:4,bars:4,subdivPerBeat:2,
+  parts:[{name:'S1',beats:[]},{name:'S2',beats:[]},{name:'A',beats:[]}]};
+let isPlaying=false,playInterval=null,playPosition=-1;
+let difficulty='normal';
+let inputMode='tap'; // 'tap' or 'clap'
+let micSensitivity=8;
+let metronomeOn=true;
+let showScore=true;
+let backingPartIndices=[];
+let gameMode='clap'; // 'clap' or 'pitch'
+let pitchDetector=null;
+let currentDetectedPitch=0;
+let currentDetectedNote='';
+let toneSynths={}; // Tone.js synths per part
+
+// ════════════════════════════════════
+// AUDIO
+// ════════════════════════════════════
+const AC=window.AudioContext||window.webkitAudioContext;let ac;
+function ia(){
+  if(!ac)ac=new AC();
+  if(ac.state==='suspended')ac.resume();
+}
+// Mobile browsers require playing actual audio during a user gesture to unlock
+function unlockAudio(){
+  ia();
+  // Play a tiny silent buffer to unlock the audio context
+  const buf=ac.createBuffer(1,1,22050);
+  const src=ac.createBufferSource();
+  src.buffer=buf;src.connect(ac.destination);src.start(0);
+  // Also play an audible tick so user knows it's working
+  playTick();
+}
+function playTick(){ia();const o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.value=800;g.gain.setValueAtTime(0.15,ac.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.04);o.connect(g).connect(ac.destination);o.start();o.stop(ac.currentTime+0.04)}
+function playDrum(pi){ia();const f=100+pi*40,o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.setValueAtTime(f,ac.currentTime);o.frequency.exponentialRampToValueAtTime(f*0.5,ac.currentTime+0.12);g.gain.setValueAtTime(0.6,ac.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.15);o.connect(g).connect(ac.destination);o.start();o.stop(ac.currentTime+0.15)}
+function playHit(){ia();const o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.setValueAtTime(120,ac.currentTime);o.frequency.exponentialRampToValueAtTime(60,ac.currentTime+0.15);g.gain.setValueAtTime(0.8,ac.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.2);o.connect(g).connect(ac.destination);o.start();o.stop(ac.currentTime+0.2)}
+
+// ════════════════════════════════════
+// BEAT HELPERS (duration-aware)
+// ════════════════════════════════════
+function getOnset(beats,idx){return beats.find(b=>b.pos===idx)}
+function isHeld(beats,idx){return beats.some(b=>idx>b.pos&&idx<b.pos+b.dur)}
+function isActive(beats,idx){return beats.some(b=>idx>=b.pos&&idx<b.pos+b.dur)}
+function removeBeatAt(beats,idx){
+  // Remove onset at idx, or shorten note that covers idx
+  const onset=getOnset(beats,idx);
+  if(onset){const i=beats.indexOf(onset);beats.splice(i,1);return}
+  const held=beats.find(b=>idx>b.pos&&idx<b.pos+b.dur);
+  if(held)held.dur=idx-held.pos;
+}
+function addBeat(beats,pos,dur){
+  // Remove any overlapping beats first
+  for(let i=beats.length-1;i>=0;i--){
+    const b=beats[i];
+    if(b.pos>=pos&&b.pos<pos+dur)beats.splice(i,1);
+    else if(pos>=b.pos&&pos<b.pos+b.dur)beats.splice(i,1);
+  }
+  beats.push({pos,dur});
+  beats.sort((a,b)=>a.pos-b.pos);
+}
+
+// ════════════════════════════════════
+// GRID EDITOR
+// ════════════════════════════════════
+function subsPerBar(){return Math.round(song.timeSigTop*song.subdivPerBeat*(4/song.timeSigBot))}
+function totalSubs(){return song.bars*subsPerBar()}
+
+function renderGrid(){
+  const g=document.getElementById('editorGrid'),t=totalSubs(),spb=subsPerBar(),spbt=song.subdivPerBeat;
+  let h='<div class="bar-numbers">';
+  for(let b=0;b<song.bars;b++){h+=`<div class="bar-group">`;for(let s=0;s<spb;s++){const isBeat=s%spbt===0;h+=`<div class="bl">${isBeat?(s/spbt+1):'·'}</div>`}h+='</div>'}
+  h+='</div>';
+  song.parts.forEach((p,pi)=>{
+    h+=`<div class="part-row part-${pi}"><div class="part-label" style="background:${PC[pi]}22;color:${PC[pi]};border:1px solid ${PC[pi]}44">
+      <span>${p.name}</span><div class="sm"><span class="sb ${p.solo?'on':''}" onclick="toggleSolo(${pi})">S</span><span class="mb ${p.mute?'on':''}" onclick="toggleMute(${pi})">M</span></div>
+      ${song.parts.length>1?`<span class="del-btn" onclick="delPart(${pi})">✕</span>`:''}
+    </div><div class="beat-grid">`;
+    for(let b=0;b<song.bars;b++){h+='<div class="bar-group">';for(let s=0;s<spb;s++){
+      const idx=b*spb+s;
+      const onset=getOnset(p.beats,idx);
+      const held=isHeld(p.beats,idx);
+      const sc=`sub-${s%spbt%2}`,bs=s%spbt===0?'beat-start':'',ph=idx===playPosition?'playhead':'';
+      const cls=onset?'on':held?'held':'';
+      h+=`<div class="cell ${sc} ${bs} ${cls} ${ph}" data-p="${pi}" data-i="${idx}" title="${onset?'dur:'+onset.dur:''}"></div>`;
+    }h+='</div>'}
+    h+='</div></div>';
+  });
+  if(song.parts.length<8)h+='<div class="add-part" onclick="addPart()">+ Add Voice Part</div>';
+  g.innerHTML=h;
+  g.querySelectorAll('.cell').forEach(c=>{
+    c.addEventListener('mousedown',e=>startCellEdit(c,e));
+    c.addEventListener('mouseover',e=>{if(e.buttons===1&&dragState)extendDrag(c)});
+    c.addEventListener('mouseup',()=>endDrag());
+  });
+}
+
+// Drag state for drawing notes with duration
+let dragState=null;
+function startCellEdit(c,e){
+  const pi=+c.dataset.p,idx=+c.dataset.i,p=song.parts[pi];
+  if(isActive(p.beats,idx)){
+    // Remove
+    removeBeatAt(p.beats,idx);
+    dragState={pi,mode:'erase'};
+    renderGrid();
+  }else{
+    // Add note (dur=1, will extend with drag)
+    addBeat(p.beats,idx,1);
+    dragState={pi,startIdx:idx,mode:'draw'};
+    renderGrid();
+  }
+}
+function extendDrag(c){
+  if(!dragState||dragState.mode!=='draw')return;
+  const pi=+c.dataset.p,idx=+c.dataset.i;
+  if(pi!==dragState.pi)return;
+  if(idx<=dragState.startIdx)return;
+  const p=song.parts[pi];
+  // Find the note we started and extend it
+  const note=getOnset(p.beats,dragState.startIdx);
+  if(note){
+    const newDur=idx-dragState.startIdx+1;
+    // Remove overlapping notes
+    for(let i=p.beats.length-1;i>=0;i--){
+      const b=p.beats[i];
+      if(b!==note&&b.pos>note.pos&&b.pos<note.pos+newDur)p.beats.splice(i,1);
+    }
+    note.dur=newDur;
+    renderGrid();
+  }
+}
+function endDrag(){dragState=null}
+
+function addPart(){const i=song.parts.length;song.parts.push({name:PN[i]||`P${i+1}`,beats:[]});renderGrid()}
+function delPart(i){if(song.parts.length<=1)return;song.parts.splice(i,1);renderGrid()}
+function toggleSolo(i){song.parts[i].solo=!song.parts[i].solo;renderGrid()}
+function toggleMute(i){song.parts[i].mute=!song.parts[i].mute;renderGrid()}
+
+// ════════════════════════════════════
+// EDITOR PLAYBACK
+// ════════════════════════════════════
+function startPlayback(){unlockAudio();isPlaying=true;playPosition=-1;$('btnPlay').classList.add('hidden');$('btnStop').classList.remove('hidden');
+  const ms=(60000/song.bpm)/song.subdivPerBeat,t=totalSubs(),spbt=song.subdivPerBeat,anySolo=song.parts.some(p=>p.solo);
+  playInterval=setInterval(()=>{playPosition++;if(playPosition>=t){stopPlayback();return}
+    if(playPosition%spbt===0)playTick();
+    song.parts.forEach((p,pi)=>{if(p.mute)return;if(anySolo&&!p.solo)return;if(getOnset(p.beats,playPosition))playDrum(pi)});renderGrid()},ms)}
+function stopPlayback(){isPlaying=false;clearInterval(playInterval);playPosition=-1;$('btnPlay').classList.remove('hidden');$('btnStop').classList.add('hidden');renderGrid()}
+
+// ════════════════════════════════════
+// SERIALIZE
+// ════════════════════════════════════
+function toJSON(){return JSON.stringify({title:song.title,bpm:song.bpm,timeSigTop:song.timeSigTop,timeSigBot:song.timeSigBot,bars:song.bars,subdivPerBeat:song.subdivPerBeat,keySig:song.keySig||'',parts:song.parts.map(p=>({name:p.name,clef:p.clef||'treble',beats:p.beats.map(b=>{const o={pos:b.pos,dur:b.dur};if(b.pitch)o.pitch=b.pitch;return o}).sort((a,b)=>a.pos-b.pos)}))})}
+function fromJSON(j){const d=JSON.parse(j);song.title=d.title;song.bpm=d.bpm;song.timeSigTop=d.timeSigTop;song.timeSigBot=d.timeSigBot;song.bars=d.bars;song.subdivPerBeat=d.subdivPerBeat;song.keySig=d.keySig||'';
+  song.parts=d.parts.map(p=>{
+    let beats;
+    if(p.beats.length>0&&typeof p.beats[0]==='number'){
+      beats=p.beats.map(pos=>({pos,dur:1}));
+    }else{
+      beats=(p.beats||[]).map(b=>{const o={pos:b.pos,dur:b.dur||1};if(b.pitch)o.pitch=b.pitch;return o});
+    }
+    return{name:p.name,clef:p.clef||'treble',beats};
+  });
+  syncUI();renderGrid()}
+function syncUI(){$('songTitle').value=song.title;$('bpmInput').value=song.bpm;$('timeSigTop').value=song.timeSigTop;$('timeSigBot').value=song.timeSigBot;$('barCount').value=song.bars;const m={'1':'4','2':'8','4':'16','3':'12'};$('subdivSelect').value=m[song.subdivPerBeat]||'8'}
+function saveSong(){const k='st_'+song.title.replace(/\s+/g,'_');localStorage.setItem(k,toJSON());const l=JSON.parse(localStorage.getItem('st_list')||'[]');if(!l.includes(k)){l.push(k);localStorage.setItem('st_list',JSON.stringify(l))}toast('Saved: '+song.title)}
+function loadSong(){const l=JSON.parse(localStorage.getItem('st_list')||'[]');if(!l.length){alert('No saved songs');return}const n=prompt('Saved:\n'+l.map((k,i)=>`${i+1}. ${k.replace('st_','')}`).join('\n')+'\n\nEnter number:');if(!n)return;const k=l[+n-1];if(k&&localStorage.getItem(k))fromJSON(localStorage.getItem(k))}
+function exportJSON(){const b=new Blob([toJSON()],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=song.title.replace(/\s+/g,'_')+'.json';a.click()}
+function importJSON(){const inp=document.createElement('input');inp.type='file';inp.accept='.json';inp.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{fromJSON(ev.target.result);toast('Imported!')}catch(e){alert('Invalid file')}};r.readAsText(f)};inp.click()}
+
+// ════════════════════════════════════
+// MUSICXML IMPORT (Phase 7)
+// ════════════════════════════════════
+const FIFTHS_MAP={'-7':'Cb','-6':'Gb','-5':'Db','-4':'Ab','-3':'Eb','-2':'Bb','-1':'F','0':'C','1':'G','2':'D','3':'A','4':'E','5':'B','6':'F#','7':'C#'};
+const ALTER_MAP={'1':'#','2':'##','-1':'b','-2':'bb'};
+
+function parseMusicXML(xmlStr){
+  const parser=new DOMParser();
+  const doc=parser.parseFromString(xmlStr,'text/xml');
+  if(doc.querySelector('parsererror'))throw new Error('Invalid XML');
+
+  // Detect format: partwise or timewise
+  const root=doc.documentElement;
+  if(root.tagName==='score-timewise')throw new Error('Timewise MusicXML not supported yet. Please export as partwise.');
+
+  // Extract title
+  const titleEl=doc.querySelector('work>work-title')||doc.querySelector('movement-title')||doc.querySelector('credit-words');
+  const title=titleEl?titleEl.textContent.trim():'Imported Score';
+
+  // Build part name map from part-list
+  const partNames={};
+  doc.querySelectorAll('part-list>score-part').forEach(sp=>{
+    const id=sp.getAttribute('id');
+    const nameEl=sp.querySelector('part-name');
+    partNames[id]=nameEl?nameEl.textContent.trim():id;
+  });
+
+  // Parse each part
+  let globalBpm=100, globalTimeSigTop=4, globalTimeSigBot=4, globalKeySig='C';
+  let maxPos=0;
+  const subdivPerBeat=2; // 8th note resolution
+
+  const parts=[];
+  doc.querySelectorAll('part').forEach(partEl=>{
+    const partId=partEl.getAttribute('id');
+    let partName=partNames[partId]||partId;
+    // Shorten common names
+    const shortNames={'Soprano':'S','Soprano 1':'S1','Soprano 2':'S2','Alto':'A','Alto 1':'A1','Alto 2':'A2',
+      'Tenor':'T','Tenor 1':'T1','Tenor 2':'T2','Bass':'B','Bass 1':'B1','Bass 2':'B2',
+      'Soprano I':'S1','Soprano II':'S2','Alto I':'A1','Alto II':'A2','Tenor I':'T1','Tenor II':'T2','Bass I':'B1','Bass II':'B2'};
+    if(shortNames[partName])partName=shortNames[partName];
+
+    let divisions=1; // MusicXML divisions per quarter note
+    let currentPos=0; // position in subdivisions from start
+    let clef='treble';
+    const beats=[];
+    const tiedNotes=new Set(); // track notes that are continuation of ties
+
+    const measures=partEl.querySelectorAll('measure');
+    measures.forEach((meas,measIdx)=>{
+      // Check for attributes (divisions, key, time, clef)
+      const attrs=meas.querySelector('attributes');
+      if(attrs){
+        const divEl=attrs.querySelector('divisions');
+        if(divEl)divisions=parseInt(divEl.textContent);
+        const keyEl=attrs.querySelector('key>fifths');
+        if(keyEl)globalKeySig=FIFTHS_MAP[keyEl.textContent]||'C';
+        const timeBeats=attrs.querySelector('time>beats');
+        const timeBeatType=attrs.querySelector('time>beat-type');
+        if(timeBeats)globalTimeSigTop=parseInt(timeBeats.textContent);
+        if(timeBeatType)globalTimeSigBot=parseInt(timeBeatType.textContent);
+        const clefSign=attrs.querySelector('clef>sign');
+        if(clefSign)clef=clefSign.textContent==='F'?'bass':'treble';
+      }
+
+      // Check for tempo
+      const soundEl=meas.querySelector('direction>sound[tempo]')||meas.querySelector('sound[tempo]');
+      if(soundEl)globalBpm=Math.round(parseFloat(soundEl.getAttribute('tempo')));
+
+      // Process notes
+      const children=meas.children;
+      for(let i=0;i<children.length;i++){
+        const el=children[i];
+        if(el.tagName==='forward'){
+          const dur=parseInt(el.querySelector('duration').textContent);
+          currentPos+=Math.round((dur/divisions)*subdivPerBeat);
+          continue;
+        }
+        if(el.tagName==='backup'){
+          const dur=parseInt(el.querySelector('duration').textContent);
+          currentPos-=Math.round((dur/divisions)*subdivPerBeat);
+          continue;
+        }
+        if(el.tagName!=='note')continue;
+
+        const isChord=el.querySelector('chord')!==null;
+        const isRest=el.querySelector('rest')!==null;
+        const durEl=el.querySelector('duration');
+        if(!durEl)continue;
+        const xmlDur=parseInt(durEl.textContent);
+        const subdivDur=Math.max(1,Math.round((xmlDur/divisions)*subdivPerBeat));
+
+        // Handle chord: don't advance position
+        const notePos=isChord?currentPos-subdivDur:currentPos; // chords share position with previous note
+
+        if(!isRest){
+          // Extract pitch
+          const pitchEl=el.querySelector('pitch');
+          let pitch='C4';
+          if(pitchEl){
+            const step=pitchEl.querySelector('step').textContent;
+            const octave=pitchEl.querySelector('octave').textContent;
+            const alterEl=pitchEl.querySelector('alter');
+            const alter=alterEl?ALTER_MAP[alterEl.textContent]||'':'';
+            pitch=step+alter+octave;
+          }
+
+          // Check for tie
+          const ties=el.querySelectorAll('tie');
+          let tieStart=false,tieStop=false;
+          ties.forEach(t=>{
+            if(t.getAttribute('type')==='start')tieStart=true;
+            if(t.getAttribute('type')==='stop')tieStop=true;
+          });
+
+          const noteKey=notePos+'_'+pitch;
+          if(tieStop){
+            // Find the previous beat with same pitch and extend it
+            for(let b=beats.length-1;b>=0;b--){
+              if(beats[b].pitch===pitch&&beats[b]._tieStart){
+                beats[b].dur+=subdivDur;
+                beats[b]._tieStart=tieStart; // propagate if tie continues
+                break;
+              }
+            }
+          }else{
+            const beat={pos:isChord?currentPos:currentPos,dur:subdivDur,pitch};
+            if(tieStart)beat._tieStart=true;
+            beats.push(beat);
+          }
+        }
+
+        // Advance position (but not for chord notes)
+        if(!isChord)currentPos+=subdivDur;
+      }
+    });
+
+    // Clean up internal tie markers
+    beats.forEach(b=>delete b._tieStart);
+
+    if(beats.length>0){
+      const lastBeat=beats.reduce((max,b)=>b.pos+b.dur>max?b.pos+b.dur:max,0);
+      if(lastBeat>maxPos)maxPos=lastBeat;
+      parts.push({name:partName,clef,beats});
+    }
+  });
+
+  if(!parts.length)throw new Error('No notes found in MusicXML file');
+
+  // Calculate bars
+  const beatsPerBar=globalTimeSigTop*(globalTimeSigBot===8?1:subdivPerBeat)/((globalTimeSigBot===8)?1:1);
+  const subdivPerBar=globalTimeSigTop*subdivPerBeat*(4/globalTimeSigBot);
+  const bars=Math.ceil(maxPos/subdivPerBar);
+
+  return{
+    title,bpm:globalBpm,timeSigTop:globalTimeSigTop,timeSigBot:globalTimeSigBot,
+    bars,subdivPerBeat,keySig:globalKeySig,parts
+  };
+}
+
+async function importMusicXML(){
+  const inp=document.createElement('input');
+  inp.type='file';
+  inp.accept='.musicxml,.xml,.mxl';
+  inp.onchange=async e=>{
+    const f=e.target.files[0];
+    if(!f)return;
+    try{
+      let xmlStr;
+      if(f.name.endsWith('.mxl')){
+        // .mxl = zipped MusicXML
+        if(!window.JSZip)throw new Error('JSZip not loaded — cannot open .mxl files');
+        const zip=await JSZip.loadAsync(f);
+        // Find the .musicxml or .xml file inside
+        let xmlFile=null;
+        // First check META-INF/container.xml for the rootfile
+        const container=zip.file('META-INF/container.xml');
+        if(container){
+          const containerXml=await container.async('string');
+          const cDoc=new DOMParser().parseFromString(containerXml,'text/xml');
+          const rootfile=cDoc.querySelector('rootfile');
+          if(rootfile){
+            const path=rootfile.getAttribute('full-path');
+            if(path)xmlFile=zip.file(path);
+          }
+        }
+        // Fallback: find any .musicxml or .xml file
+        if(!xmlFile){
+          const files=Object.keys(zip.files);
+          const xmlName=files.find(n=>n.endsWith('.musicxml'))||files.find(n=>n.endsWith('.xml')&&!n.includes('META-INF'));
+          if(xmlName)xmlFile=zip.file(xmlName);
+        }
+        if(!xmlFile)throw new Error('No MusicXML file found inside .mxl archive');
+        xmlStr=await xmlFile.async('string');
+      }else{
+        xmlStr=await f.text();
+      }
+      const data=parseMusicXML(xmlStr);
+      fromJSON(JSON.stringify(data));
+      toast('✅ Imported: '+data.title+' ('+data.parts.length+' parts, '+data.bars+' bars)');
+      switchTab('editor');
+    }catch(err){
+      console.error('MusicXML import error:',err);
+      alert('MusicXML import failed: '+err.message);
+    }
+  };
+  inp.click();
+}
+
+const HOMR_URL='https://openclaw.entoutois.com/omr/omr';
+const HOMR_TOKEN='BrFls_IDiVCNi_qWn37dfOalUtJ3P74r12T3u_IYIAk';
+
+async function scanImage(){
+  const inp=document.createElement('input');
+  inp.type='file';
+  inp.accept='image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp';
+  inp.onchange=async e=>{
+    const f=e.target.files[0];
+    if(!f)return;
+    const scanStatus=$('scanStatus');
+    const scanMsg=$('scanMsg');
+    const scanDetail=$('scanDetail');
+    scanStatus.classList.remove('hidden');
+    scanMsg.textContent='📤 Uploading '+f.name+'...';
+    scanDetail.textContent='Sending to OMR server';
+    try{
+      const form=new FormData();
+      form.append('file',f);
+      scanMsg.textContent='🔍 Processing with homr OMR...';
+      scanDetail.textContent='Reading notes, pitch, rhythm — this takes 2-5 minutes';
+      const resp=await fetch(HOMR_URL+'?token='+HOMR_TOKEN,{method:'POST',body:form});
+      if(!resp.ok){
+        const err=await resp.json().catch(()=>({error:'Server error '+resp.status}));
+        throw new Error(err.error||'OMR failed');
+      }
+      const xmlStr=await resp.text();
+      scanMsg.textContent='✅ Parsing MusicXML...';
+      scanDetail.textContent='Converting to Score Trainer format';
+      const data=parseMusicXML(xmlStr);
+      fromJSON(JSON.stringify(data));
+      scanStatus.classList.add('hidden');
+      toast('✅ Scanned: '+data.title+' ('+data.parts.length+' parts, '+data.bars+' bars)');
+      switchTab('editor');
+    }catch(err){
+      console.error('Scan error:',err);
+      scanMsg.textContent='❌ Scan failed';
+      scanDetail.textContent=err.message;
+      $('scanSpinner').style.display='none';
+      setTimeout(()=>{scanStatus.classList.add('hidden');$('scanSpinner').style.display='';},5000);
+    }
+  };
+  inp.click();
+}
+function shareSong(){const data=toJSON();const compressed=btoa(unescape(encodeURIComponent(data)));const url=location.origin+location.pathname+'#'+compressed;navigator.clipboard.writeText(url).then(()=>toast('Link copied to clipboard!')).catch(()=>{prompt('Copy this URL:',url)})}
+function loadFromHash(){if(!location.hash||location.hash.length<2)return;try{const data=decodeURIComponent(escape(atob(location.hash.slice(1))));fromJSON(data);toast('Loaded shared song!')}catch(e){}}
+
+// ════════════════════════════════════
+// DEMOS
+// ════════════════════════════════════
+const DEMOS={
+  simple:{title:'Simple 4/4',bpm:100,timeSigTop:4,timeSigBot:4,bars:4,subdivPerBeat:2,parts:[{name:'S1',beats:[0,4,8,12,16,20,24,28]},{name:'A',beats:[2,6,10,14,18,22,26,30]}]},
+  syncopation:{title:'切分音 Practice',bpm:90,timeSigTop:4,timeSigBot:4,bars:4,subdivPerBeat:4,parts:[{name:'S1',beats:[0,4,6,8,12,14,16,20,22,24,28,30,32,36,38,40,44,46,48,52,54,56,60,62]},{name:'S2',beats:[0,3,8,11,16,19,24,27,32,35,40,43,48,51,56,59]},{name:'A',beats:[0,8,16,24,32,40,48,56]}]},
+  chorale:{title:'SATB Chorale',bpm:72,timeSigTop:4,timeSigBot:4,bars:4,subdivPerBeat:2,parts:[{name:'S',beats:[0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30]},{name:'A',beats:[0,4,6,8,12,14,16,20,22,24,28,30]},{name:'T',beats:[0,4,8,12,16,20,24,28]},{name:'B',beats:[0,8,16,24]}]},
+  waltz:{title:'3/4 Waltz',bpm:120,timeSigTop:3,timeSigBot:4,bars:8,subdivPerBeat:2,parts:[{name:'Melody',beats:[0,2,4,6,10,12,14,16,18,22,24,26,28,30,34,36,38,40,42,46]},{name:'Bass',beats:[0,6,12,18,24,30,36,42]}]},
+  compound:{title:'6/8 Compound',bpm:80,timeSigTop:6,timeSigBot:8,bars:4,subdivPerBeat:2,parts:[{name:'S1',beats:[0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46]},{name:'S2',beats:[0,6,12,18,24,30,36,42]},{name:'A',beats:[0,4,6,10,12,16,18,22,24,28,30,34,36,40,42,46]}]}
+};
+function loadDemo(n){fromJSON(JSON.stringify(DEMOS[n]))}
+
+// ════════════════════════════════════
+// AI SCORE READER
+// ════════════════════════════════════
+let aiImageData=null;
+let aiImagePages=[]; // for multi-page PDFs
+let selectedPages=new Set();
+function openAIModal(){$('aiModal').classList.add('show');aiImageData=null;aiImagePages=[];selectedPages.clear();$('uploadLabel').innerHTML='📄 Upload score (image or PDF)<br><span style="font-size:0.7rem;color:var(--dim)">JPG, PNG, PDF — photo, scan, or digital score</span>';$('uploadZone').classList.remove('has-file');$('btnAnalyze').disabled=true;$('aiStatus').classList.add('hidden');$('aiContext').value='';$('pageSelectArea').innerHTML=''}
+function closeAIModal(){$('aiModal').classList.remove('show')}
+
+async function renderPDFPage(pdf,pageNum,scale=2){
+  const page=await pdf.getPage(pageNum);
+  const vp=page.getViewport({scale});
+  const canvas=document.createElement('canvas');
+  canvas.width=vp.width;canvas.height=vp.height;
+  await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+  return canvas.toDataURL('image/jpeg',0.85);
+}
+
+$('fileInput').addEventListener('change',async e=>{
+  const f=e.target.files[0];if(!f)return;
+  const isPDF=f.type==='application/pdf'||f.name.toLowerCase().endsWith('.pdf');
+
+  if(isPDF){
+    // Handle PDF
+    const status=$('aiStatus');status.classList.remove('hidden','error','ok');status.classList.add('loading');status.textContent='📄 Reading PDF pages...';
+    try{
+      if(!window.pdfjsLib)throw new Error('PDF.js library failed to load. Try uploading an image (JPG/PNG) instead.');
+      const arrayBuf=await f.arrayBuffer();
+      const pdf=await pdfjsLib.getDocument({data:arrayBuf}).promise;
+      const numPages=pdf.numPages;
+      aiImagePages=[];selectedPages.clear();
+
+      // Render all pages
+      for(let i=1;i<=numPages;i++){
+        const dataUrl=await renderPDFPage(pdf,i);
+        aiImagePages.push({dataUrl,base64:dataUrl.split(',')[1]});
+      }
+
+      // Show page thumbnails
+      $('uploadLabel').innerHTML=`<strong>📄 ${f.name}</strong><br><span style="font-size:0.7rem;color:var(--dim)">${numPages} page${numPages>1?'s':''} found</span>`;
+      $('uploadZone').classList.add('has-file');
+
+      let thumbHtml='<div class="page-info">Select pages to analyze (click to toggle):</div><div class="page-selector">';
+      aiImagePages.forEach((_,i)=>{
+        selectedPages.add(i);
+        thumbHtml+=`<img class="page-thumb selected" src="${aiImagePages[i].dataUrl}" data-page="${i}" onclick="togglePage(${i},this)" title="Page ${i+1}">`;
+      });
+      thumbHtml+='</div>';
+      $('pageSelectArea').innerHTML=thumbHtml;
+
+      status.classList.remove('loading');status.classList.add('ok');status.textContent=`✅ ${numPages} pages rendered. Select which pages contain the score.`;
+      $('btnAnalyze').disabled=false;
+    }catch(err){
+      status.classList.remove('loading');status.classList.add('error');status.textContent='❌ Failed to read PDF: '+err.message;
+    }
+  }else{
+    // Handle image (same as before)
+    const r=new FileReader();r.onload=ev=>{
+      aiImageData=ev.target.result.split(',')[1];
+      aiImagePages=[];selectedPages.clear();
+      const img=document.createElement('img');img.src=ev.target.result;
+      $('uploadLabel').innerHTML='';$('uploadLabel').appendChild(img);
+      $('uploadZone').classList.add('has-file');$('btnAnalyze').disabled=false;
+      $('pageSelectArea').innerHTML='';
+    };r.readAsDataURL(f);
+  }
+});
+
+function togglePage(idx,el){
+  if(selectedPages.has(idx)){selectedPages.delete(idx);el.classList.remove('selected')}
+  else{selectedPages.add(idx);el.classList.add('selected')}
+  $('btnAnalyze').disabled=selectedPages.size===0&&!aiImageData;
+}
+
+$('btnAnalyze').addEventListener('click',async()=>{
+  // Build image content array
+  let imageContent=[];
+  if(aiImagePages.length>0){
+    const pages=[...selectedPages].sort((a,b)=>a-b);
+    if(pages.length===0)return;
+    pages.forEach(idx=>{imageContent.push({type:"image",source:{type:"base64",media_type:"image/jpeg",data:aiImagePages[idx].base64}})});
+  }else if(aiImageData){
+    imageContent.push({type:"image",source:{type:"base64",media_type:"image/jpeg",data:aiImageData}});
+  }else return;
+
+  const status=$('aiStatus');status.classList.remove('hidden','error','ok');status.classList.add('loading');
+  $('btnAnalyze').disabled=true;
+  const ctx=$('aiContext').value;
+
+  try{
+    const apiKey=$('aiApiKey').value.trim();
+    const headers={"Content-Type":"application/json","anthropic-version":"2023-06-01"};
+    if(apiKey)headers["x-api-key"]=apiKey;
+
+    // ═══ PASS 1: Structure scan (enhanced) ═══
+    status.textContent='🔍 Pass 1: Reading score structure...';
+    const pass1Prompt=`You are a professional music score reader. Look at ${imageContent.length>1?'these pages of a':'this'} music score and identify the structure.
+${ctx?'Context from user: '+ctx:''}
+
+Answer ONLY in JSON (no markdown, no backticks):
+{
+  "title": "title if visible",
+  "composer": "composer/arranger if visible",
+  "keySig": "C" or "G" or "Bb" etc (the major key),
+  "timeSigTop": 4,
+  "timeSigBot": 4,
+  "bpm": estimated BPM number,
+  "parts": [
+    {"name": "S", "staff_index": 0, "clef": "treble", "range_low": "A3", "range_high": "D5"},
+    {"name": "A", "staff_index": 1, "clef": "treble", "range_low": "F3", "range_high": "Bb4"}
+  ],
+  "total_bars": 42,
+  "first_note_bar": 1,
+  "has_key_change": false,
+  "key_change_bar": null,
+  "new_key": null,
+  "sections": [
+    {"type": "verse", "bars": "1-8", "register": "low"},
+    {"type": "refrain", "bars": "9-16", "register": "high"}
+  ],
+  "repeating_patterns": "describe any repeating melodic patterns"
+}
+
+For "parts": list EVERY independent vocal/instrumental part. For SATB choral, list all 4. For voice+piano, list only the voice.
+For "sections": identify verse/refrain/bridge/coda patterns and note which register each uses.
+For "range_low"/"range_high": estimate the lowest and highest notes for each part.`;
+
+    const pass1Resp=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers,body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:2000,messages:[{role:"user",content:[...imageContent,{type:"text",text:pass1Prompt}]}]})});
+    if(!pass1Resp.ok){
+      const errBody=await pass1Resp.text().catch(()=>'');
+      if(pass1Resp.status===401||pass1Resp.status===403)throw new Error('API key required. Paste your Anthropic API key (sk-ant-...) above.');
+      throw new Error(`API error ${pass1Resp.status}: ${errBody.slice(0,200)}`);
+    }
+    const pass1Data=await pass1Resp.json();
+    if(pass1Data.error)throw new Error(pass1Data.error.message);
+    const pass1Text=pass1Data.content.map(c=>c.text||'').join('').replace(/```json|```/g,'').trim();
+    const structure=JSON.parse(pass1Text);
+    console.log('Pass 1 structure:',structure);
+
+    // ═══ PASS 2: Per-part note extraction with calibration ═══
+    const detectedParts=structure.parts||[{name:'Voice',staff_index:0,clef:'treble',range_low:'C4',range_high:'C6'}];
+    const totalParts=detectedParts.length;
+    const allParts=[];
+    const subdivPerBeat=2;
+    const timeSigTop=structure.timeSigTop||4;
+    const timeSigBot=structure.timeSigBot||4;
+    const subdivPerBar=timeSigTop*subdivPerBeat*(4/timeSigBot);
+    const durMap={
+      'w':subdivPerBeat*4,'dh':subdivPerBeat*3,'h':subdivPerBeat*2,
+      'dq':Math.round(subdivPerBeat*1.5),'q':subdivPerBeat,
+      'de':Math.max(1,Math.round(subdivPerBeat*0.75)),
+      'e':Math.max(1,Math.round(subdivPerBeat*0.5)),
+      's':Math.max(1,Math.round(subdivPerBeat*0.25))
+    };
+    const keySigNote=structure.keySig||'C';
+    const keyHints={'C':'no sharps or flats','G':'F#','D':'F# C#','A':'F# C# G#','E':'F# C# G# D#',
+      'F':'Bb','Bb':'Bb Eb','Eb':'Bb Eb Ab','Ab':'Bb Eb Ab Db'};
+    const sectionHint=structure.sections?
+      '\nSECTION STRUCTURE (watch for register changes!):\n'+structure.sections.map(s=>'- '+s.type+': bars '+s.bars+' ('+s.register+' register)').join('\n'):'';
+
+    for(let pi=0;pi<totalParts;pi++){
+      const part=detectedParts[pi];
+      const partClef=part.clef||'treble';
+      const partName=part.name||('Part '+(pi+1));
+      status.textContent=`🎵 Pass 2: Reading ${partName} (${pi+1}/${totalParts})...`;
+      const clefRef=partClef==='bass'?
+        'Bass clef lines (bottom→top): G2, B2, D3, F3, A3\nBass clef spaces: A2, C3, E3, G3\nLedger lines above: B3, C4, D4. Below: F2, E2.'
+        :'Treble clef lines (bottom→top): E4, G4, B4, D5, F5\nTreble clef spaces: F4, A4, C5, E5\nLedger lines below: D4, C4, B3, A3. Above: G5, A5.';
+      const rangeHint=(part.range_low&&part.range_high)?
+        '\nEXPECTED RANGE for '+partName+': '+part.range_low+' to '+part.range_high+'. If you read a note outside this range, double-check the octave.':'';
+
+      const pass2Prompt=`You are a precise music score reader. Extract ONLY the ${partName} part (staff ${(part.staff_index||0)+1} from top in each system). IGNORE all other staves completely.
+
+CLEF REFERENCE for ${partName} (${partClef} clef):
+${clefRef}
+
+KEY SIGNATURE: Key of ${keySigNote}: ${keyHints[keySigNote]||'check key signature'}. Extra accidentals written explicitly.
+TIME SIGNATURE: ${timeSigTop}/${timeSigBot}
+${rangeHint}
+${sectionHint}
+
+DURATION CODES: w=whole, h=half, dh=dotted half, q=quarter, dq=dotted quarter, e=eighth, de=dotted eighth, s=sixteenth
+
+CALIBRATION RULES (learned from errors — follow these strictly):
+1. OCTAVE VERIFICATION: When melody jumps between sections (verse→refrain), the register often changes dramatically. Second space in treble = A4 not A3. Verify every note against the clef reference above.
+2. KEY SIGNATURE: Every ${keyHints[keySigNote]||'note in key'} applies unless cancelled by natural sign.
+3. LYRICS CROSS-CHECK: Each syllable = one note. Count syllables to verify note count per bar.
+4. REPEATING SECTIONS: If bars repeat, read FIRST instance carefully, confirm repeats match.
+5. DOT = +50% duration. Dotted quarter = dq. Dotted half = dh.
+6. TIES across barlines = ONE note with combined duration.
+7. RESTS: Whole rest hangs from line 4. Half rest sits on line 3. Don't confuse with notes.
+
+Output ONLY valid JSON (no markdown, no backticks):
+[{"bar":1,"notes":[{"pitch":"A3","dur":"e"},{"pitch":"D4","dur":"e"}]},...]
+Include ALL bars where ${partName} has notes.`;
+
+      const pass2Resp=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers,body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:8000,messages:[{role:"user",content:[...imageContent,{type:"text",text:pass2Prompt}]}]})});
+      if(!pass2Resp.ok)throw new Error('Pass 2 ('+partName+') API error: '+pass2Resp.status);
+      const pass2Data=await pass2Resp.json();
+      if(pass2Data.error)throw new Error(pass2Data.error.message);
+      const pass2Text=pass2Data.content.map(c=>c.text||'').join('').replace(/```json|```/g,'').trim();
+      const barNotes=JSON.parse(pass2Text);
+      console.log('Pass 2 '+partName+':',barNotes.length,'bars');
+      const beats=[];let maxBar=0;
+      barNotes.forEach(bar=>{const barNum=bar.bar;if(barNum>maxBar)maxBar=barNum;const barStart=(barNum-1)*subdivPerBar;let pos=barStart;
+        (bar.notes||[]).forEach(n=>{const dur=durMap[n.dur]||subdivPerBeat;if(n.pitch&&n.pitch!=='R'){beats.push({pos:Math.round(pos),dur,pitch:n.pitch})}pos+=dur})});
+      allParts.push({name:partName,clef:partClef,beats,maxBar});
+    }
+
+    const globalMaxBar=Math.max(...allParts.map(p=>p.maxBar));
+    const songData={title:structure.title||'Imported Score',bpm:structure.bpm||100,timeSigTop,timeSigBot,
+      bars:globalMaxBar,subdivPerBeat,keySig:structure.keySig||'C',
+      parts:allParts.map(p=>({name:p.name,clef:p.clef,beats:p.beats}))};
+    const totalNotes=allParts.reduce((s,p)=>s+p.beats.length,0);
+    fromJSON(JSON.stringify(songData));
+    status.classList.remove('loading');status.classList.add('ok');
+    status.textContent=`✅ Extracted ${totalNotes} notes across ${totalParts} part${totalParts>1?'s':''}, ${globalMaxBar} bars. Check the editor!`;
+    setTimeout(()=>closeAIModal(),2000);
+  }catch(e){
+    status.classList.remove('loading');status.classList.add('error');
+    let msg=e.message;
+    if(msg.includes('Failed to fetch')||msg.includes('NetworkError')||msg.includes('CORS')){
+      msg='Cannot reach Anthropic API from this domain. Please paste your API key (sk-ant-...) above, or use this feature inside Claude chat.';
+    }
+    status.textContent='❌ '+msg;
+    $('btnAnalyze').disabled=false;
+  }
+  $('btnAnalyze').disabled=false;
+});
+
+// ════════════════════════════════════
+// PLAY MODE
+// ════════════════════════════════════
+const cv=$('playCanvas'),cx=cv.getContext('2d');
+let gameOn=false,gamePaused=false,pauseStart=0,totalPaused=0,gameLoop=null,selPart=-1,gStart=0,gNotes=[],gScore=0,gCombo=0,gMaxCombo=0,gPerf=0,gGood=0,gMiss=0;
+let jT='',jC='',jTime=0,dFlash=0,cFlash=0;
+const PW=100,GW=220,MW=350,NS=350,HX=0.18;
+
+function resizeCV(c){c.width=c.clientWidth*devicePixelRatio;c.height=c.clientHeight*devicePixelRatio;cx.scale(devicePixelRatio,devicePixelRatio)}
+function setDifficulty(d,el){difficulty=d;document.querySelectorAll('[data-diff]').forEach(b=>b.classList.toggle('active',b.dataset.diff===d))}
+function setInputMode(m,el){
+  inputMode=m;
+  document.querySelectorAll('[data-input]').forEach(b=>b.classList.toggle('active',b.dataset.input===m));
+  $('micSetup').style.display=m==='clap'?'block':'none';
+}
+function setMetronome(m,el){
+  metronomeOn=(m==='on');
+  document.querySelectorAll('[data-metro]').forEach(b=>b.classList.toggle('active',b.dataset.metro===m));
+}
+function setScoreView(m,el){
+  showScore=(m==='on');
+  document.querySelectorAll('[data-score]').forEach(b=>b.classList.toggle('active',b.dataset.score===m));
+}
+function setGameMode(m,el){
+  gameMode=m;
+  document.querySelectorAll('[data-gmode]').forEach(b=>b.classList.toggle('active',b.dataset.gmode===m));
+  $('pitchInfo').style.display=m==='pitch'?'block':'none';
+  // Pitch mode requires mic
+  if(m==='pitch')$('micSetup').style.display='block';
+}
+function initMicManual(){initMic().then(()=>{
+  if(micOn){
+    $('micStatusPlay').textContent='✅ Mic active — try clapping!';
+    $('micStatusPlay').style.background='#2a9d8f22';
+    $('micStatusPlay').style.color='var(--green)';
+    $('micStatusPlay').style.borderColor='#2a9d8f44';
+    // Auto-start pitch detection if in pitch mode
+    if(gameMode==='pitch')startPitchDetection();
+  }
+}).catch(()=>{$('micStatusPlay').textContent='❌ Mic denied';$('micStatusPlay').style.background='#e6394622';$('micStatusPlay').style.color='var(--red)'})}
+
+
+function showPartSelect(){$('resultsScreen').style.display='none';$('partSelect').style.display='flex';$('scoreContainer').style.display='none';
+  const b=$('partButtons');b.innerHTML='';
+  song.parts.forEach((p,i)=>{const btn=document.createElement('button');btn.className='pbtn';btn.style.borderColor=PC[i];btn.textContent=`${p.name} (${p.beats.length} notes)`;btn.onclick=()=>startPlay(i);b.appendChild(btn)});
+  // Build backing parts checkboxes
+  const bp=$('backingParts');if(bp){bp.innerHTML='';
+    song.parts.forEach((p,i)=>{
+      const label=document.createElement('label');label.style.cssText='display:flex;align-items:center;gap:0.3rem;font-size:0.75rem;cursor:pointer';
+      const cb=document.createElement('input');cb.type='checkbox';cb.checked=true;cb.dataset.partIdx=i;cb.style.accentColor=PC[i];
+      const span=document.createElement('span');span.style.color=PC[i];span.style.fontWeight='600';span.textContent=p.name;
+      label.appendChild(cb);label.appendChild(span);bp.appendChild(label);
+    });
+  }
+}
+
+function startPlay(pi){
+  selPart=pi;$('partSelect').style.display='none';$('resultsScreen').style.display='none';resizeCV(cv);
+  unlockAudio();
+  if(window.Tone){Tone.start().catch(()=>{});initToneSynths()}
+  // Init mic for pitch mode — pitch detection starts after mic is ready
+  if(gameMode==='pitch'){
+    if(!micOn){
+      initMic().then(()=>{if(micOn)startPitchDetection()}).catch(()=>{});
+    }else{
+      startPitchDetection();
+    }
+  }
+  const bpmMod=difficulty==='slow'?0.7:1;
+  const msPerSub=(60000/(song.bpm*bpmMod))/song.subdivPerBeat;
+
+  // Collect backing part settings from checkboxes
+  backingPartIndices=[];
+  document.querySelectorAll('#backingParts input[type=checkbox]').forEach(cb=>{
+    const idx=parseInt(cb.dataset.partIdx);
+    if(cb.checked&&idx!==pi)backingPartIndices.push(idx);
+  });
+
+  // Build main notes
+  gNotes=[];song.parts[selPart].beats.forEach(b=>{gNotes.push({time:b.pos*msPerSub,durMs:b.dur*msPerSub,dur:b.dur,pitch:b.pitch||null,hit:false,missed:false,ha:0})});gNotes.sort((a,b)=>a.time-b.time);
+
+  // Build ghost notes (visual)
+  const ghost=[];if(difficulty!=='hard'){song.parts.forEach((p,ppi)=>{if(ppi===selPart)return;p.beats.forEach(b=>{ghost.push({time:b.pos*msPerSub,durMs:b.dur*msPerSub,pi:ppi})})});ghost.sort((a,b)=>a.time-b.time)}
+
+  // Build all-parts data for score view
+  const allPartsData=song.parts.map((p,i)=>({
+    name:p.name,color:PC[i],isSel:i===pi,
+    notes:p.beats.map(b=>({time:b.pos*msPerSub,durMs:b.dur*msPerSub})).sort((a,b)=>a.time-b.time)
+  }));
+
+  // Build backing audio schedule (notes to play for other parts)
+  const backingNotes=[];
+  backingPartIndices.forEach(bpi=>{
+    song.parts[bpi].beats.forEach(b=>{
+      backingNotes.push({time:b.pos*msPerSub,durMs:b.dur*msPerSub,pi:bpi,pitch:b.pitch||null});
+    });
+  });
+  backingNotes.sort((a,b)=>a.time-b.time);
+  let backingIdx=0;
+
+  gScore=0;gCombo=0;gMaxCombo=0;gPerf=0;gGood=0;gMiss=0;gameOn=true;gamePaused=false;totalPaused=0;jT='';
+  const beatMs=60000/(song.bpm*bpmMod);
+  const countInBeats=song.timeSigTop; // 4 beats for 4/4, 3 for 3/4
+  gStart=performance.now()+countInBeats*beatMs; // exactly 1 bar of count-in
+  $('pauseBtn').style.display='block';
+  // Metronome synced to gStart — track which beat we've played
+  let nextMetroBeat=-countInBeats; // start from negative = count-in beats
+  const metroSub=song.subdivPerBeat; // tick on every beat (not every subdivision)
+  const mid=setInterval(()=>{
+    if(!gameOn){clearInterval(mid);return}
+    if(gamePaused)return;
+    const el=performance.now()-gStart-totalPaused;
+    const currentBeat=Math.floor(el/beatMs);
+    while(nextMetroBeat<=currentBeat){
+      if(metronomeOn)playTick();
+      nextMetroBeat++;
+    }
+  },10);
+
+  // Render VexFlow score if pitch data available
+  const vexAvailable=!!(window.Vex&&window.Vex.Flow);
+  const hasPitch=song.parts[selPart].beats.length>0&&song.parts[selPart].beats[0].pitch;
+  const useVex=vexAvailable&&hasPitch&&showScore;
+  if(!vexAvailable&&showScore&&hasPitch){console.warn('VexFlow not loaded — falling back to canvas score view. window.Vex=',window.Vex)}
+  if(useVex){renderVexScore(pi);setTimeout(()=>resizeCV(cv),100)}
+  else{$('scoreContainer').style.display='none'}
+
+  gameLoop = function loop(){
+    if(!gameOn)return;
+    if(gamePaused)return;
+    const w=cv.clientWidth,h=cv.clientHeight,el=performance.now()-gStart-totalPaused;
+    const hx=w*HX,px=NS/1000;
+
+    // VexFlow highlighting
+    if(useVex&&showScore)highlightVexNote(el);
+
+    // Layout: no canvas score when VexFlow is active
+    const canvasScore=showScore&&!useVex;
+    const scoreH=canvasScore?Math.min(140,h*0.25):0;
+    const by=scoreH+(h-scoreH)*0.38;
+    const bh=70;
+
+    cx.clearRect(0,0,w,h);cx.fillStyle='#0f0f14';cx.fillRect(0,0,w,h);
+
+    // ─── CANVAS SCORE VIEW (fallback when no pitch data) ───
+    if(canvasScore&&allPartsData.length>0){
+      const partH=Math.max(16,Math.min(28,(scoreH-10)/allPartsData.length));
+      const sy=5;
+      // Beat grid lines
+      const bd=60000/(song.bpm*bpmMod);
+      const bpbS=Math.round(song.timeSigTop*(4/song.timeSigBot)); // beats per bar
+      for(let i=0;i<300;i++){
+        const x=hx+(i*bd-el)*px;if(x<-5||x>w+5)continue;
+        cx.strokeStyle=i%bpbS===0?'#2e2e3a':'#1e1e28';
+        cx.lineWidth=1;cx.beginPath();
+        cx.moveTo(x,sy);cx.lineTo(x,sy+allPartsData.length*partH);cx.stroke();
+      }
+      // Playhead on score
+      cx.strokeStyle='#f4a26155';cx.lineWidth=2;cx.beginPath();
+      cx.moveTo(hx,sy);cx.lineTo(hx,sy+allPartsData.length*partH);cx.stroke();
+
+      allPartsData.forEach((pd,pi)=>{
+        const y=sy+pi*partH+partH/2;
+        // Lane bg
+        cx.fillStyle=pd.isSel?'#22222e':'#16161d';cx.fillRect(0,y-partH/2,w,partH);
+        // Label
+        cx.fillStyle=pd.color;cx.font=`bold ${Math.min(11,partH-4)}px 'Outfit'`;cx.textAlign='right';cx.textBaseline='middle';
+        cx.fillText(pd.name,hx-8,y);
+        // Notes as bars
+        pd.notes.forEach(n=>{
+          const x=hx+(n.time-el)*px,nw=Math.max(3,n.durMs*px);
+          if(x+nw<-10||x>w+10)return;
+          const isNear=Math.abs(n.time-el)<200;
+          cx.globalAlpha=pd.isSel?(isNear?1:0.7):(isNear?0.5:0.25);
+          const nh=partH*0.6;
+          cx.fillStyle=pd.color;rRect(cx,x,y-nh/2,nw,nh,2);cx.fill();
+          // Highlight current note
+          if(isNear&&pd.isSel){cx.strokeStyle='#fff';cx.lineWidth=1.5;rRect(cx,x,y-nh/2,nw,nh,2);cx.stroke()}
+          cx.globalAlpha=1;
+        });
+      });
+      // Divider line between score and belt
+      cx.strokeStyle='#2e2e3a';cx.lineWidth=1;cx.beginPath();cx.moveTo(0,scoreH);cx.lineTo(w,scoreH);cx.stroke();
+    }
+
+    // ─── PITCH MODE AUTO-HIT ───
+    if(gameMode==='pitch'&&currentDetectedPitch>0){
+      const nextNote=gNotes.find(n=>!n.hit&&!n.missed);
+      if(nextNote&&nextNote.pitch){
+        const expectedFreq=pitchNameToFreq(nextNote.pitch);
+        if(expectedFreq>0){
+          const semitones=Math.abs(12*Math.log2(currentDetectedPitch/expectedFreq));
+          const timeDist=Math.abs(nextNote.time-el);
+          if(semitones<2&&timeDist<GW){onHit(true)}
+        }
+      }
+    }
+
+    // ─── PLAY BACKING PARTS AUDIO ───
+    while(backingIdx<backingNotes.length&&backingNotes[backingIdx].time<=el+10){
+      if(backingNotes[backingIdx].time>=el-30){
+        const bn=backingNotes[backingIdx];
+        if(bn.pitch&&window.Tone&&toneSynths.backing){
+          playBackingNote(bn.pitch,bn.durMs);
+        }else{
+          playDrum(bn.pi);
+        }
+      }
+      backingIdx++;
+    }
+
+    // ─── TAIKO BELT ───
+    cx.fillStyle='#1a1a22';cx.fillRect(0,by-bh/2,w,bh);cx.strokeStyle='#2e2e3a';cx.lineWidth=1;cx.beginPath();cx.moveTo(0,by-bh/2);cx.lineTo(w,by-bh/2);cx.moveTo(0,by+bh/2);cx.lineTo(w,by+bh/2);cx.stroke();
+    const bd2=60000/(song.bpm*(difficulty==='slow'?0.7:1));
+    const bpb=Math.round(song.timeSigTop*(4/song.timeSigBot));
+    for(let i=-10;i<200;i++){const x=hx+(i*bd2-el)*px;if(x<-10||x>w+10)continue;
+      const isBar=i%bpb===0;
+      cx.strokeStyle=isBar?'#666':'#333';cx.lineWidth=isBar?2:1;
+      cx.beginPath();cx.moveTo(x,by-bh/2);cx.lineTo(x,by+bh/2);cx.stroke();
+      if(isBar&&i>=0){cx.fillStyle='#555';cx.font="600 9px 'Outfit'";cx.textAlign='center';cx.fillText(Math.floor(i/bpb)+1+'',x,by-bh/2-4)}
+    }
+    const dr=32;
+    if(cFlash>0){const r=dr+10+(1-cFlash)*30;cx.beginPath();cx.arc(hx,by,r,0,Math.PI*2);cx.strokeStyle=`rgba(244,162,97,${cFlash*0.6})`;cx.lineWidth=3;cx.stroke();cFlash-=0.04}
+    if(dFlash>0){cx.fillStyle=`rgba(230,57,70,${dFlash*0.5})`;cx.beginPath();cx.arc(hx,by,dr+12,0,Math.PI*2);cx.fill();dFlash-=0.05}
+    cx.beginPath();cx.arc(hx,by,dr,0,Math.PI*2);cx.fillStyle='#1a1a22';cx.fill();cx.strokeStyle='#6b6b80';cx.lineWidth=3;cx.stroke();
+
+    // Ghost notes on belt
+    ghost.forEach(gn=>{const x=hx+(gn.time-el)*px,nw=Math.max(8,gn.durMs*px);if(x+nw<-30||x>w+30)return;cx.globalAlpha=0.15;cx.fillStyle=PC[gn.pi];rRect(cx,x,by-10,nw,20,4);cx.fill();cx.globalAlpha=1});
+
+    // Main notes on belt
+    let allD=true;const pc=PC[selPart];
+    for(const n of gNotes){const nt=n.time-el,x=hx+nt*px,nw=Math.max(12,n.durMs*px);
+      if(!n.hit&&!n.missed){allD=false;if(nt<-MW){n.missed=true;gMiss++;gCombo=0;showJ('MISS','#e63946');continue}}
+      if(x+nw<-50||x>w+50)continue;
+      if(n.hit){if(n.ha>0){const r=18+(1-n.ha)*25;cx.beginPath();cx.arc(hx,by,r,0,Math.PI*2);cx.strokeStyle=`rgba(42,157,143,${n.ha})`;cx.lineWidth=2;cx.stroke();n.ha-=0.03}continue}
+      const nh=30;if(n.missed)cx.globalAlpha=0.25;
+      // Duration tail
+      cx.fillStyle=pc;cx.globalAlpha=n.missed?0.15:0.35;
+      rRect(cx,x+2,by-nh/2+4,nw-2,nh-8,4);cx.fill();
+      // Onset block (left portion = the beat)
+      cx.globalAlpha=n.missed?0.25:1;
+      const ow=Math.min(nw,30); // onset marker width
+      cx.fillStyle=pc;rRect(cx,x,by-nh/2,ow,nh,6);cx.fill();
+      cx.strokeStyle=pc;cx.lineWidth=2;rRect(cx,x,by-nh/2,ow,nh,6);cx.stroke();
+      // Onset line (exact beat position)
+      cx.strokeStyle='#fff';cx.lineWidth=2;cx.beginPath();cx.moveTo(x,by-nh/2);cx.lineTo(x,by+nh/2);cx.stroke();
+      // Pitch label (always show if available)
+      cx.fillStyle='#fff';cx.textAlign='center';cx.textBaseline='middle';
+      if(n.pitch){cx.font="bold 11px 'Outfit'";cx.fillText(n.pitch.replace(/(\d)/,'$1'),x+ow/2,by)}
+      else{cx.font="12px 'Outfit'";cx.fillText('👏',x+8,by)}
+      cx.globalAlpha=1}
+
+    // HUD
+    cx.fillStyle='#e8e6f0';cx.font="bold 22px 'Outfit'";cx.textAlign='left';cx.fillText(gScore+'',20,scoreH+20);cx.fillStyle='#6b6b80';cx.font="600 9px 'Outfit'";cx.fillText('SCORE',20,scoreH+34);
+    cx.textAlign='right';cx.fillStyle='#444';cx.font="600 11px 'Outfit'";cx.fillText(`${song.parts[selPart].name} · ${song.title} · ${song.bpm} BPM${difficulty!=='normal'?' ['+difficulty+']':''} · ${gameMode==='pitch'?'🎤 Pitch':'📱'}`,w-15,scoreH+16);
+
+    // Pitch mode: show detected note and expected note
+    if(gameMode==='pitch'){
+      cx.textAlign='left';cx.font="bold 16px 'Outfit'";
+      cx.fillStyle=currentDetectedNote?'#2a9d8f':'#555';
+      cx.fillText('🎤 '+(currentDetectedNote||'—'),20,h-25);
+      // Show expected pitch for next note
+      const nextNote=gNotes.find(n=>!n.hit&&!n.missed);
+      if(nextNote&&nextNote.pitch){
+        cx.fillStyle='#6b6b80';cx.font="600 10px 'Outfit'";
+        cx.fillText('Target: '+nextNote.pitch,20,h-10);
+      }
+    }
+    if(gCombo>1){cx.textAlign='center';cx.fillStyle='#f4a261';cx.font=`bold ${Math.min(40,22+gCombo)}px 'Outfit'`;cx.fillText(gCombo+'',w/2,by-55);cx.fillStyle='#6b6b80';cx.font="600 9px 'Outfit'";cx.fillText('COMBO',w/2,by-38)}
+    if(jT&&performance.now()-jTime<500){const a=1-(performance.now()-jTime)/500;cx.globalAlpha=a;cx.textAlign='center';cx.fillStyle=jC;cx.font="bold 18px 'Outfit'";cx.fillText(jT,hx,by+55-(performance.now()-jTime)*0.04);cx.globalAlpha=1}
+
+    // Progress
+    const td=gNotes.length>0?gNotes[gNotes.length-1].time+1000:1,pr=Math.max(0,Math.min(1,el/td));
+    cx.fillStyle='#2e2e3a';cx.fillRect(0,h-3,w,3);cx.fillStyle=pc;cx.fillRect(0,h-3,w*pr,3);
+
+    if(el>td+1000&&allD){endPlay();return}requestAnimationFrame(gameLoop)}
+  requestAnimationFrame(gameLoop)}
+
+function showJ(t,c){jT=t;jC=c;jTime=performance.now()}
+function pauseGame(){
+  if(!gameOn||gamePaused)return;
+  gamePaused=true;pauseStart=performance.now();
+  $('pauseOverlay').style.display='flex';$('pauseBtn').style.display='none';
+}
+function resumeGame(){
+  if(!gamePaused)return;
+  totalPaused+=performance.now()-pauseStart;
+  gamePaused=false;
+  $('pauseOverlay').style.display='none';$('pauseBtn').style.display='block';
+  requestAnimationFrame(gameLoop);
+}
+function quitGame(){
+  gamePaused=false;gameOn=false;
+  $('pauseOverlay').style.display='none';$('pauseBtn').style.display='none';
+  showPartSelect();
+}
+function onHit(fromPitch){if(!gameOn||gamePaused)return;const el=performance.now()-gStart-totalPaused;
+  if(!fromPitch)playHit(); // only play drum sound for manual taps, not auto-pitch
+  dFlash=1;cFlash=1;
+  let cl=null,cd=Infinity;for(const n of gNotes){if(n.hit||n.missed)continue;const d=Math.abs(n.time-el);if(d<cd&&d<MW){cl=n;cd=d}}
+  if(!cl)return;cl.hit=true;cl.ha=1;
+
+  // Pitch accuracy check (pitch mode only)
+  let pitchAccurate=true;
+  let pitchMsg='';
+  if(gameMode==='pitch'&&cl.pitch){
+    const expectedFreq=pitchNameToFreq(cl.pitch);
+    if(currentDetectedPitch>0&&expectedFreq>0){
+      const semitones=12*Math.log2(currentDetectedPitch/expectedFreq);
+      const absSemitones=Math.abs(semitones);
+      if(absSemitones<=0.5){pitchAccurate=true;pitchMsg='🎯'}
+      else if(absSemitones<=1.5){pitchAccurate=true;pitchMsg='~'}
+      else{pitchAccurate=false;pitchMsg='✗ '+currentDetectedNote}
+    }else{
+      pitchAccurate=false;pitchMsg='🔇';
+    }
+  }
+
+  if(cd<=PW&&pitchAccurate){gScore+=300+gCombo*10;gCombo++;gPerf++;showJ('PERFECT ✨'+(pitchMsg?' '+pitchMsg:''),'#f4a261')}
+  else if(cd<=GW&&pitchAccurate){gScore+=100+gCombo*5;gCombo++;gGood++;showJ('GOOD'+(pitchMsg?' '+pitchMsg:''),'#2a9d8f')}
+  else if(cd<=GW&&!pitchAccurate){gScore+=50;gCombo=0;showJ('TIMING OK '+pitchMsg,'#6b6b80')}
+  else{gScore+=30;gCombo=0;showJ('OK'+(pitchMsg?' '+pitchMsg:''),'#6b6b80')}
+  gMaxCombo=Math.max(gMaxCombo,gCombo)}
+
+function endPlay(){gameOn=false;gamePaused=false;currentDetectedPitch=0;currentDetectedNote='';$('scoreContainer').style.display='none';$('pauseBtn').style.display='none';$('pauseOverlay').style.display='none';const t=gPerf+gGood+gMiss,acc=t>0?((gPerf*100+gGood*50)/(t*100))*100:0;
+  let rk;if(acc>=95&&gMiss===0)rk='S';else if(acc>=80)rk='A';else if(acc>=60)rk='B';else rk='C';
+  $('pRank').textContent=rk;$('pRank').className='rank '+rk;$('pScore').textContent=gScore;
+  $('pPerf').textContent=gPerf;$('pGood').textContent=gGood;$('pMiss').textContent=gMiss;$('pCombo').textContent=gMaxCombo;$('resultsScreen').style.display='flex'}
+
+// ════════════════════════════════════
+// CLASSROOM MODE (all parts, projector)
+// ════════════════════════════════════
+const ccv=$('classCanvas');let ccx,classActive=false,classStart=0;
+
+function startClassroom(){
+  ccx=ccv.getContext('2d');ccv.width=ccv.clientWidth*devicePixelRatio;ccv.height=ccv.clientHeight*devicePixelRatio;ccx.scale(devicePixelRatio,devicePixelRatio);
+  unlockAudio();classActive=true;classStart=performance.now()+2000;
+  const msPerSub=(60000/song.bpm)/song.subdivPerBeat;
+  const allNotes=song.parts.map(p=>p.beats.map(b=>({time:b.pos*msPerSub,durMs:b.dur*msPerSub})).sort((a,b)=>a.time-b.time));
+  const beatMs=60000/song.bpm;const mid=setInterval(()=>{if(!classActive){clearInterval(mid);return}if(metronomeOn)playTick()},beatMs);
+
+  function loop(ts){
+    if(!classActive)return;
+    const w=ccv.clientWidth,h=ccv.clientHeight,el=ts-classStart,px=300/1000;
+    ccx.clearRect(0,0,w,h);ccx.fillStyle='#0f0f14';ccx.fillRect(0,0,w,h);
+
+    const partH=Math.min(60,h/(song.parts.length+1));const startY=50;const hx=w*0.15;
+
+    ccx.fillStyle='#e8e6f0';ccx.font="bold 18px 'Outfit'";ccx.textAlign='center';
+    ccx.fillText(`${song.title} — ${song.bpm} BPM — Classroom Mode`,w/2,28);
+
+    const bd=60000/song.bpm;
+    const bpbC=Math.round(song.timeSigTop*(4/song.timeSigBot));
+    for(let i=0;i<200;i++){const x=hx+(i*bd-el)*px;if(x<-5||x>w+5)continue;
+      ccx.strokeStyle=i%bpbC===0?'#3a3a4a':'#25252f';ccx.lineWidth=i%bpbC===0?2:1;
+      ccx.beginPath();ccx.moveTo(x,startY-5);ccx.lineTo(x,startY+song.parts.length*partH+5);ccx.stroke()}
+
+    ccx.strokeStyle='#f4a26166';ccx.lineWidth=2;ccx.beginPath();ccx.moveTo(hx,startY-10);ccx.lineTo(hx,startY+song.parts.length*partH+10);ccx.stroke();
+
+    song.parts.forEach((p,pi)=>{
+      const y=startY+pi*partH+partH/2;
+      ccx.fillStyle=pi%2===0?'#15151d':'#18182240';ccx.fillRect(0,y-partH/2,w,partH);
+      ccx.fillStyle=PC[pi];ccx.font="bold 14px 'Outfit'";ccx.textAlign='right';ccx.textBaseline='middle';ccx.fillText(p.name,hx-15,y);
+      // Duration bars
+      allNotes[pi].forEach(n=>{const x=hx+(n.time-el)*px,nw=Math.max(6,n.durMs*px);if(x+nw<-20||x>w+20)return;
+        const passed=n.time+n.durMs<el;ccx.globalAlpha=passed?0.25:1;
+        const nh=partH*0.55;
+        ccx.fillStyle=PC[pi];rRect(ccx,x,y-nh/2,nw,nh,3);ccx.fill();
+        // Onset dot
+        ccx.fillStyle='rgba(255,255,255,0.3)';ccx.beginPath();ccx.arc(x+4,y,3,0,Math.PI*2);ccx.fill();
+        ccx.globalAlpha=1})});
+
+    const td=Math.max(...allNotes.map(a=>a.length?a[a.length-1].time+a[a.length-1].durMs:0))+1000;
+    const pr=Math.max(0,Math.min(1,el/td));
+    ccx.fillStyle='#2e2e3a';ccx.fillRect(0,h-3,w,3);ccx.fillStyle='#7c3aed';ccx.fillRect(0,h-3,w*pr,3);
+
+    if(el>td+2000){classActive=false;return}
+    requestAnimationFrame(loop)}
+  requestAnimationFrame(loop)}
+
+// ════════════════════════════════════
+// VEXFLOW SCORE RENDERER
+// ════════════════════════════════════
+let vexNoteElements=[]; // [{pos, el, x, y, measureIdx}]
+let vexMeasureYs=[]; // y position of each measure line
+
+function pitchToVex(p){
+  if(!p)return'c/4';
+  // "D5" → "d/5", "F#5" → "f#/5", "Bb3" → "bb/3"
+  const m=p.match(/^([A-Ga-g][#b]?)(\d)$/);
+  if(!m)return'c/4';
+  return m[1].toLowerCase()+'/'+m[2];
+}
+
+function durToVex(dur,subdivPerBeat){
+  if(subdivPerBeat===2){
+    const map={1:'8',2:'q',3:'qd',4:'h',6:'hd',8:'w',12:'wd'};
+    return map[dur]||'q';
+  }else if(subdivPerBeat===4){
+    const map={1:'16',2:'8',3:'8d',4:'q',6:'qd',8:'h',12:'hd',16:'w'};
+    return map[dur]||'q';
+  }
+  return'q';
+}
+
+// Decompose a duration into valid VexFlow note durations
+function decomposeDur(dur,subdivPerBeat){
+  const valid=subdivPerBeat===2?[12,8,6,4,3,2,1]:[16,12,8,6,4,3,2,1];
+  const parts=[];
+  let rem=dur;
+  while(rem>0){
+    let found=false;
+    for(const v of valid){if(v<=rem){parts.push(v);rem-=v;found=true;break;}}
+    if(!found){parts.push(1);rem--;} // safety
+  }
+  return parts;
+}
+
+function isDotted(vexDur){return vexDur.endsWith('d')}
+function vexDurBase(vexDur){return vexDur.replace(/d$/,'')}
+
+function renderVexScore(partIdx){
+  const container=$('vexScore');
+  const scoreC=$('scoreContainer');
+  container.innerHTML='';
+  vexNoteElements=[];
+  vexMeasureYs=[];
+
+  if(!showScore||!window.Vex){scoreC.style.display='none';return}
+  scoreC.style.display='block';
+
+  const VF=Vex.Flow;
+  const part=song.parts[partIdx];
+  if(!part||!part.beats.length){scoreC.style.display='none';return}
+  const hasPitch=part.beats[0].pitch;
+  if(!hasPitch){scoreC.style.display='none';return} // fallback to canvas score view
+
+  const spBar=Math.round(song.timeSigTop*song.subdivPerBeat*(4/song.timeSigBot));
+  const staveWidth=Math.max(150,Math.round(spBar*30));
+  const firstStaveExtra=80;
+  const startX=10;
+  const firstW=firstStaveExtra+staveWidth;
+  const w=startX+firstW+(song.bars-1)*staveWidth+20;
+  const h=130;
+
+  const renderer=new VF.Renderer(container,VF.Renderer.Backends.SVG);
+  renderer.resize(w,h);
+  const ctx=renderer.getContext();
+  if(ctx.setFont)ctx.setFont('Outfit',10);
+
+  // Group beats into measures
+  const measures=[];
+  for(let bar=0;bar<song.bars;bar++){
+    const barStart=bar*spBar;
+    const barEnd=barStart+spBar;
+    const barBeats=part.beats.filter(b=>b.pos>=barStart&&b.pos<barEnd);
+    measures.push(barBeats);
+  }
+
+  // Render each measure
+  for(let bar=0;bar<song.bars;bar++){
+    const x=bar===0?startX:startX+firstW+(bar-1)*staveWidth;
+    const thisW=bar===0?firstW:staveWidth;
+    const y=10;
+
+    const stave=new VF.Stave(x,y,thisW);
+    if(bar===0){
+      stave.addClef(part.clef||'treble');
+      if(song.keySig)stave.addKeySignature(song.keySig);
+      stave.addTimeSignature(`${song.timeSigTop}/${song.timeSigBot}`);
+    }
+    stave.setContext(ctx).draw();
+
+    const barBeats=measures[bar];
+    if(barBeats.length===0){
+      // Whole bar rest
+      const restDur=song.timeSigBot===4?(song.timeSigTop===3?'hd':'w'):'w';
+      const rest=new VF.StaveNote({keys:['b/4'],duration:restDur+'r'});
+      if(isDotted(restDur))rest.addDot(0);
+      const voice=new VF.Voice({num_beats:song.timeSigTop,beat_value:song.timeSigBot}).setStrict(false);
+      voice.addTickables([rest]);
+      new VF.Formatter().joinVoices([voice]).format([voice],thisW-40);
+      voice.draw(ctx,stave);
+      continue;
+    }
+
+    // Build notes for this bar
+    const barStart=bar*spBar;
+    const notes=[];
+    let pos=0;
+    
+    // Helper: add rest(s) for a given subdivision count
+    function addRests(subs){
+      const parts=decomposeDur(subs,song.subdivPerBeat);
+      for(const d of parts){
+        const rd=durToVex(d,song.subdivPerBeat);
+        const rest=new VF.StaveNote({keys:['b/4'],duration:vexDurBase(rd)+'r'});
+        if(isDotted(rd))rest.addDot(0);
+        notes.push(rest);
+      }
+    }
+    
+    // Helper: add accidentals to a note (skip if already in key signature)
+    const KEY_SIG_ACC={'C':[],'G':['f#'],'D':['f#','c#'],'A':['f#','c#','g#'],'E':['f#','c#','g#','d#'],
+      'B':['f#','c#','g#','d#','a#'],'F':['bb'],'Bb':['bb','eb'],'Eb':['bb','eb','ab'],'Ab':['bb','eb','ab','db']};
+    const keyAcc=KEY_SIG_ACC[song.keySig||'C']||[];
+    function addAcc(note,pitchStr){
+      const ps=(pitchStr||'').toLowerCase();
+      const noteName=ps.replace(/\d+$/,''); // e.g. "f#" from "f#4"
+      if(keyAcc.includes(noteName))return; // already in key sig, no explicit accidental needed
+      if(ps.includes('#'))note.addAccidental(0,new VF.Accidental('#'));
+      else if(ps.includes('b')&&!ps.startsWith('b'))note.addAccidental(0,new VF.Accidental('b'));
+    }
+
+    for(const beat of barBeats){
+      const relPos=beat.pos-barStart;
+      // Gap rest
+      if(relPos>pos) addRests(relPos-pos);
+      
+      // Clip note duration to bar boundary
+      const maxDur=spBar-relPos;
+      const clippedDur=Math.min(beat.dur,maxDur);
+      
+      // Decompose note into valid VexFlow durations (for ties across beats)
+      const noteParts=decomposeDur(clippedDur,song.subdivPerBeat);
+      const vp=pitchToVex(beat.pitch);
+      for(let ni=0;ni<noteParts.length;ni++){
+        const vd=durToVex(noteParts[ni],song.subdivPerBeat);
+        const note=new VF.StaveNote({keys:[vp],duration:vexDurBase(vd),clef:part.clef||'treble'});
+        if(isDotted(vd))note.addDot(0);
+        if(ni===0) addAcc(note,beat.pitch);
+        if(ni===0) note._scorePos=beat.pos; // only first part gets highlight position
+        notes.push(note);
+      }
+      pos=relPos+clippedDur;
+    }
+    // Trailing rest
+    if(pos<spBar) addRests(spBar-pos);
+
+    try{
+      const voice=new VF.Voice({num_beats:song.timeSigTop,beat_value:song.timeSigBot}).setStrict(false);
+      voice.addTickables(notes);
+      new VF.Formatter().joinVoices([voice]).format([voice],thisW-40);
+      voice.draw(ctx,stave);
+
+      // Store note positions for highlighting (works with VF3 and VF4)
+      notes.forEach(n=>{
+        if(n._scorePos!==undefined){
+          try{
+            const bb=n.getBoundingBox();
+            const el=(n.attrs&&n.attrs.el)||null;
+            vexNoteElements.push({pos:n._scorePos,el:el,x:bb.x,y:bb.y,w:bb.w,h:bb.h,lineY:y});
+          }catch(e){}
+        }
+      });
+    }catch(e){
+      // VexFlow formatting error — skip this measure silently
+      console.warn('VexFlow measure',bar,'error:',e.message);
+    }
+  }
+}
+
+function highlightVexNote(elapsed){
+  const hl=$('scoreHighlight');
+  const sc=$('scoreContainer');
+  if(!showScore||!hl||vexNoteElements.length===0){if(hl)hl.style.display='none';return}
+
+  const msPerSub=(60000/(song.bpm*(difficulty==='slow'?0.7:1)))/song.subdivPerBeat;
+
+  // Find the two adjacent notes (prev and next) surrounding current elapsed time
+  let prev=null,next=null;
+  for(const ne of vexNoteElements){
+    const t=ne.pos*msPerSub;
+    if(t<=elapsed)prev=ne;
+    if(t>elapsed&&!next)next=ne;
+  }
+
+  // Calculate smooth x by interpolating between prev and next
+  let smoothX;
+  if(prev&&next){
+    const prevT=prev.pos*msPerSub,nextT=next.pos*msPerSub;
+    const frac=Math.max(0,Math.min(1,(elapsed-prevT)/(nextT-prevT)));
+    smoothX=prev.x+prev.w*0.5+(next.x+next.w*0.5-(prev.x+prev.w*0.5))*frac;
+  }else if(prev){
+    // Past last note — keep moving right slowly
+    const lastT=prev.pos*msPerSub;
+    smoothX=prev.x+prev.w*0.5+(elapsed-lastT)*0.02;
+  }else if(next){
+    // Before first note — approach from left
+    const firstT=next.pos*msPerSub;
+    const frac=Math.max(0,Math.min(1,(elapsed+2000)/(firstT+2000)));
+    smoothX=(next.x+next.w*0.5)*frac;
+  }else{
+    smoothX=0;
+  }
+
+  // Show playhead — use CSS transform on SVG for smooth scroll
+  const vexEl=sc.querySelector('svg');
+  if(!vexEl)return;
+  const offset=Math.max(0,smoothX-sc.clientWidth*HX);
+  vexEl.style.transform=`translateX(${-offset}px)`;
+  
+  // Highlight overlay canvas (create once, reuse)
+  let hlCanvas=sc.querySelector('.hl-canvas');
+  if(!hlCanvas){
+    hlCanvas=document.createElement('canvas');
+    hlCanvas.className='hl-canvas';
+    hlCanvas.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:4;';
+    sc.appendChild(hlCanvas);
+  }
+  const cw=sc.clientWidth,ch=sc.clientHeight;
+  if(hlCanvas.width!==cw*2||hlCanvas.height!==ch*2){hlCanvas.width=cw*2;hlCanvas.height=ch*2;}
+  const hctx=hlCanvas.getContext('2d');
+  hctx.clearRect(0,0,cw*2,ch*2);
+  hctx.scale(2,2);
+  
+  // Draw playhead line
+  const plX=smoothX-offset;
+  hctx.strokeStyle='#f4a261';hctx.lineWidth=2;
+  hctx.beginPath();hctx.moveTo(plX,0);hctx.lineTo(plX,ch);hctx.stroke();
+  
+  // Highlight notes — only glow on current note, leave passed notes alone
+  for(const ne of vexNoteElements){
+    const nx=ne.x-offset;
+    if(nx+ne.w<-20||nx>cw+20)continue;
+    const noteTime=ne.pos*msPerSub;
+    if(Math.abs(noteTime-elapsed)<400){
+      // Current note — gold glow
+      hctx.fillStyle='rgba(244,162,97,0.3)';
+      hctx.beginPath();
+      hctx.roundRect?hctx.roundRect(nx-4,ne.y-4,ne.w+8,ne.h+8,5):hctx.rect(nx-4,ne.y-4,ne.w+8,ne.h+8);
+      hctx.fill();
+      hctx.strokeStyle='#f4a261';hctx.lineWidth=2;
+      hctx.beginPath();
+      hctx.roundRect?hctx.roundRect(nx-4,ne.y-4,ne.w+8,ne.h+8,5):hctx.rect(nx-4,ne.y-4,ne.w+8,ne.h+8);
+      hctx.stroke();
+    }
+  }
+  hctx.setTransform(1,0,0,1,0,0); // reset scale
+  
+  // Hide the old CSS highlight element
+  hl.style.display='none';
+}
+
+// ════════════════════════════════════
+// PITCH DETECTION (autocorrelation)
+// ════════════════════════════════════
+const NOTE_NAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+function freqToNote(freq){
+  if(freq<50||freq>2000)return{note:'',octave:0,cents:0};
+  const n=12*(Math.log2(freq/440));
+  const midi=Math.round(n)+69;
+  const noteIdx=((midi%12)+12)%12;
+  const octave=Math.floor(midi/12)-1;
+  const cents=Math.round((n-(midi-69))*100);
+  return{note:NOTE_NAMES[noteIdx],octave,cents,name:NOTE_NAMES[noteIdx]+octave};
+}
+
+function pitchNameToFreq(name){
+  if(!name)return 0;
+  const m=name.match(/^([A-Ga-g][#b]?)(\d)$/);
+  if(!m)return 0;
+  let note=m[1].toUpperCase();
+  const oct=parseInt(m[2]);
+  const idx={'C':0,'C#':1,'DB':1,'D':2,'D#':3,'EB':3,'E':4,'F':5,'F#':6,'GB':6,'G':7,'G#':8,'AB':8,'A':9,'A#':10,'BB':10,'B':11}[note.replace('b','B')];
+  if(idx===undefined)return 0;
+  return 440*Math.pow(2,(idx-9)/12+(oct-4));
+}
+
+function autoCorrelate(buf,sampleRate){
+  let SIZE=buf.length;
+  let rms=0;
+  for(let i=0;i<SIZE;i++)rms+=buf[i]*buf[i];
+  rms=Math.sqrt(rms/SIZE);
+  if(rms<0.01)return -1; // not enough signal
+
+  let r1=0,r2=SIZE-1;
+  const thresh=0.2;
+  for(let i=0;i<SIZE/2;i++){if(Math.abs(buf[i])<thresh){r1=i;break}}
+  for(let i=1;i<SIZE/2;i++){if(Math.abs(buf[SIZE-i])<thresh){r2=SIZE-i;break}}
+
+  buf=buf.slice(r1,r2);
+  SIZE=buf.length;
+
+  const c=new Float32Array(SIZE);
+  for(let i=0;i<SIZE;i++){
+    let val=0;
+    for(let j=0;j<SIZE-i;j++)val+=buf[j]*buf[j+i];
+    c[i]=val;
+  }
+
+  let d=0;
+  while(c[d]>c[d+1])d++;
+  let maxval=-1,maxpos=-1;
+  for(let i=d;i<SIZE;i++){if(c[i]>maxval){maxval=c[i];maxpos=i}}
+
+  let T0=maxpos;
+  // Parabolic interpolation
+  const x1=c[T0-1]||0,x2=c[T0],x3=c[T0+1]||0;
+  const a=(x1+x3-2*x2)/2;
+  const b=(x3-x1)/2;
+  if(a)T0=T0-b/(2*a);
+
+  return sampleRate/T0;
+}
+
+let pitchBuf=null,pitchAnalyser=null;
+function startPitchDetection(){
+  if(!micOn||!micAn)return;
+  // Use a separate analyser for pitch with larger FFT
+  pitchAnalyser=micAn;
+  pitchBuf=new Float32Array(pitchAnalyser.fftSize);
+  detectPitchLoop();
+}
+
+function detectPitchLoop(){
+  if(gameMode!=='pitch'||!pitchAnalyser){currentDetectedPitch=0;currentDetectedNote='';return}
+  pitchAnalyser.getFloatTimeDomainData(pitchBuf);
+  const sr=pitchAnalyser._ctx?pitchAnalyser._ctx.sampleRate:44100;
+  const freq=autoCorrelate(pitchBuf,sr);
+  if(freq>0){
+    currentDetectedPitch=freq;
+    const info=freqToNote(freq);
+    currentDetectedNote=info.name;
+  }else{
+    currentDetectedPitch=0;
+    currentDetectedNote='';
+  }
+  requestAnimationFrame(detectPitchLoop);
+}
+
+// ════════════════════════════════════
+// TONE.JS BACKING SYNTH
+// ════════════════════════════════════
+function initToneSynths(){
+  if(!window.Tone)return;
+  if(toneSynths.backing)return; // already initialized
+  toneSynths.backing=new Tone.PolySynth(Tone.Synth,{
+    oscillator:{type:'sine'},
+    envelope:{attack:0.05,decay:0.3,sustain:0.4,release:0.5},
+    volume:-12
+  }).toDestination();
+}
+
+function playBackingNote(pitchName,duration){
+  if(!window.Tone||!toneSynths.backing)return;
+  if(!pitchName)return;
+  try{
+    // Convert "D5" to "D5", "F#5" to "F#5" — Tone.js understands this format
+    const dur=Math.max(0.1,duration/1000);
+    toneSynths.backing.triggerAttackRelease(pitchName,dur);
+  }catch(e){}
+}
+
+// ════════════════════════════════════
+// MIC CLAP DETECTION
+// ════════════════════════════════════
+let micOn=false,micAn=null,micD=null,lastClap=0;
+function getMicThreshold(){return(21-micSensitivity)*5}
+async function initMic(){try{const s=await navigator.mediaDevices.getUserMedia({audio:true});const c=new AC(),src=c.createMediaStreamSource(s);micAn=c.createAnalyser();micAn.fftSize=2048;micAn.smoothingTimeConstant=0.3;micAn._ctx=c;src.connect(micAn);micD=new Uint8Array(micAn.frequencyBinCount);micOn=true;monMic()}catch(e){throw e}}
+function monMic(){if(!micOn)return;micAn.getByteFrequencyData(micD);let s=0;for(let i=0;i<micD.length;i++)s+=micD[i]*micD[i];const v=Math.sqrt(s/micD.length);const now=performance.now();if(inputMode==='clap'&&v>getMicThreshold()&&now-lastClap>120){lastClap=now;onHit()}requestAnimationFrame(monMic)}
+
+// ════════════════════════════════════
+// SONG LIBRARY
+// ════════════════════════════════════
+let libraryLoaded=false;
+function songsBase(){
+  const p=location.pathname;
+  // Handle both /score-trainer/ and /score-trainer and /score-trainer/index.html
+  const dir=p.endsWith('/')?p:p.endsWith('.html')?p.substring(0,p.lastIndexOf('/')+1):p+'/';
+  return dir+'songs/';
+}
+async function loadLibrary(){
+  if(libraryLoaded)return;
+  try{
+    const resp=await fetch(songsBase()+'index.json');
+    if(!resp.ok)throw new Error('No index');
+    const data=await resp.json();
+    const list=$('songList');
+    list.innerHTML='';
+    data.songs.forEach(s=>{
+      const card=document.createElement('div');
+      card.className='song-card';
+      const partsHTML=s.parts.map((p,i)=>`<span class="sc-part" style="background:${PC[i%PC.length]}33;color:${PC[i%PC.length]}">${p}</span>`).join('');
+      card.innerHTML=`<div class="sc-title">${s.title}</div>
+        <div class="sc-meta"><span>♩ ${s.bpm}</span><span>${s.timeSig}</span><span>${s.bars} bars</span></div>
+        <div class="sc-parts">${partsHTML}</div>
+        <div class="sc-actions">
+          <button class="sc-btn" onclick="event.stopPropagation();loadSongFile('${s.id}','editor')">✏️ Edit</button>
+          <button class="sc-btn play-btn" onclick="event.stopPropagation();loadSongFile('${s.id}','play')">🎮 Play</button>
+          <button class="sc-btn class-btn" onclick="event.stopPropagation();loadSongFile('${s.id}','classroom')">🏫 Class</button>
+        </div>`;
+      list.appendChild(card);
+    });
+    $('libraryLoading').style.display='none';
+    libraryLoaded=true;
+  }catch(e){$('libraryLoading').textContent='No songs found yet. Ask your teacher for a link, or switch to Editor to create your own!'}
+}
+
+async function loadSongFile(id,mode){
+  try{
+    const resp=await fetch(songsBase()+`${id}.json`);
+    if(!resp.ok)throw new Error('Song not found');
+    const json=await resp.text();
+    fromJSON(json);
+    toast('Loaded: '+song.title);
+    switchTab(mode);
+  }catch(e){toast('Failed to load song: '+e.message)}
+}
+
+// ════════════════════════════════════
+// TAB SWITCHING
+// ════════════════════════════════════
+function switchTab(t){
+  document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('active',el.dataset.tab===t));
+  $('libraryPanel').style.display=t==='library'?'':'none';
+  $('editorPanel').style.display=t==='editor'?'':'none';
+  $('playPanel').style.display=t==='play'?'flex':'none';
+  $('classroomPanel').style.display=t==='classroom'?'block':'none';
+  $('sightreadPanel').style.display=t==='sightread'?'':'none';
+  if(t==='library')loadLibrary();
+  if(t==='play'){showPartSelect();setTimeout(()=>resizeCV(cv),50)}
+  if(t==='classroom'){unlockAudio();setTimeout(()=>{ccv.width=ccv.clientWidth*devicePixelRatio;ccv.height=ccv.clientHeight*devicePixelRatio;startClassroom()},50)}
+  if(t==='editor'){gameOn=false;classActive=false;stopPlayback()}}
+
+// ════════════════════════════════════
+// EVENTS
+// ════════════════════════════════════
+function $(id){return document.getElementById(id)}
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>switchTab(t.dataset.tab)));
+$('btnPlay').addEventListener('click',startPlayback);$('btnStop').addEventListener('click',stopPlayback);
+$('btnSave').addEventListener('click',saveSong);$('btnLoad').addEventListener('click',loadSong);
+$('btnExport').addEventListener('click',exportJSON);$('btnImport').addEventListener('click',importJSON);
+$('btnShare').addEventListener('click',shareSong);$('btnAI').addEventListener('click',openAIModal);$('btnMusicXML').addEventListener('click',importMusicXML);
+['songTitle','bpmInput','timeSigTop','timeSigBot','barCount','subdivSelect'].forEach(id=>{$(id).addEventListener('change',()=>{
+  song.title=$('songTitle').value;song.bpm=+$('bpmInput').value||100;song.timeSigTop=+$('timeSigTop').value;song.timeSigBot=+$('timeSigBot').value;song.bars=+$('barCount').value||4;
+  const m={'4':1,'8':2,'16':4,'12':3};song.subdivPerBeat=m[$('subdivSelect').value]||2;renderGrid()})});
+document.addEventListener('keydown',e=>{if(e.repeat)return;
+  if(e.key==='Escape'&&gameOn){e.preventDefault();gamePaused?resumeGame():pauseGame();return}
+  if(['d','f','j','k',' '].includes(e.key.toLowerCase())){e.preventDefault();onHit()}});
+// Use document-level touch/click so it works even over canvas overlay issues
+document.addEventListener('touchstart',e=>{
+  if(!gameOn||gamePaused)return;
+  if(e.target.closest('.part-select,.results,.hbtn,.diff-btn,.pbtn,.back-btn,.tab,.score-container,#pauseOverlay,#pauseBtn'))return;
+  e.preventDefault();onHit();
+},{passive:false});
+document.addEventListener('mousedown',e=>{
+  if(!gameOn||gamePaused)return;
+  if(e.target.closest('.part-select,.results,.hbtn,.diff-btn,.pbtn,.back-btn,.tab,.score-container,#pauseOverlay,#pauseBtn'))return;
+  onHit();
+});
+$('sensSlider').addEventListener('input',()=>{micSensitivity=parseInt($('sensSlider').value);$('sensVal').textContent=micSensitivity});
+window.addEventListener('resize',()=>{if($('playPanel').style.display!=='none')resizeCV(cv);if($('classroomPanel').style.display!=='none'){ccv.width=ccv.clientWidth*devicePixelRatio;ccv.height=ccv.clientHeight*devicePixelRatio}});
+
+// ════════════════════════════════════
+// SIGHT-READING GENERATOR
+// ════════════════════════════════════
+const SR_SCALES={
+  'C':['C','D','E','F','G','A','B'],
+  'G':['G','A','B','C','D','E','F#'],
+  'D':['D','E','F#','G','A','B','C#'],
+  'A':['A','B','C#','D','E','F#','G#'],
+  'F':['F','G','A','Bb','C','D','E'],
+  'Bb':['Bb','C','D','Eb','F','G','A'],
+  'Eb':['Eb','F','G','Ab','Bb','C','D'],
+};
+let srNotes=[];let srPlaying=false;let srInterval=null;
+
+function generateSightRead(){
+  const key=$('srKey').value;
+  const numBars=parseInt($('srBars').value);
+  const rangeStr=$('srRange').value; // e.g. "C4-G4"
+  const scale=SR_SCALES[key]||SR_SCALES['C'];
+  
+  // Parse range bounds
+  const [loNote,hiNote]=rangeStr.split('-');
+  
+  // Build ALL chromatic notes to use as ordering reference
+  const CHROM=['C','C#','Db','D','D#','Eb','E','F','F#','Gb','G','G#','Ab','A','A#','Bb','B'];
+  function midiNum(p){
+    const m=p.match(/^([A-G][#b]?)(\d)$/);if(!m)return 0;
+    const n=m[1],o=parseInt(m[2]);
+    const base={'C':0,'D':2,'E':4,'F':5,'G':7,'A':9,'B':11};
+    let semi=base[n[0]]||0;
+    if(n.includes('#'))semi++;if(n.includes('b'))semi--;
+    return o*12+semi;
+  }
+  const loMidi=midiNum(loNote),hiMidi=midiNum(hiNote);
+  
+  // Build scale pitches within range
+  const pitchPool=[];
+  for(let oct=2;oct<=6;oct++){
+    for(const n of scale){
+      const p=n+oct;
+      const m=midiNum(p);
+      if(m>=loMidi&&m<=hiMidi) pitchPool.push(p);
+    }
+  }
+  
+  const beatsPerBar=8; // 4/4, subdivPerBeat=2
+  // Notes start at pos=0 for score display
+  // Play mode adds count-in separately via gStart delay
+  srNotes=[];
+  let pos=0;
+  let prevIdx=Math.floor(pitchPool.length/2);
+  const tonicInPool=pitchPool.findIndex(p=>p.startsWith(key));
+  if(tonicInPool>=0) prevIdx=tonicInPool;
+  
+  const totalBeats=numBars*beatsPerBar;
+  while(pos<totalBeats){
+    const remaining=totalBeats-pos;
+    let dur;
+    if(remaining<=2) dur=2;
+    else if(remaining<=4) dur=Math.random()<0.5?2:remaining;
+    else dur=Math.random()<0.6?2:4;
+    
+    // Always stepwise: move by 0 or ±1 step
+    const step=Math.random()<0.15?0:(Math.random()<0.5?1:-1);
+    const nextIdx=Math.max(0,Math.min(pitchPool.length-1,prevIdx+step));
+    
+    srNotes.push({pos,dur,pitch:pitchPool[nextIdx]});
+    prevIdx=nextIdx;
+    pos+=dur;
+  }
+  
+  // Last note: land on tonic if in range, otherwise stay on last note
+  if(srNotes.length>0){
+    const last=srNotes[srNotes.length-1];
+    const tonicP=pitchPool.find(p=>p.startsWith(key));
+    if(tonicP) last.pitch=tonicP;
+    last.dur=Math.min(4,totalBeats-last.pos);
+  }
+  
+  renderSightReadScore(key,numBars);
+  $('srPlayBtn').disabled=false;
+  $('srRevealBtn').disabled=false;
+  $('srPracticeBtn').disabled=false;
+  $('srNoteNames').textContent='';
+}
+
+function renderSightReadScore(key,numBars){
+  const container=$('srScore');
+  container.innerHTML='';
+  if(!window.Vex||!srNotes.length){container.innerHTML='<span style="color:var(--dim)">Generate a phrase first</span>';return;}
+  
+  const VF=Vex.Flow;
+  const staveWidth=240;
+  const firstExtra=90;
+  const startX=10;
+  const firstW=firstExtra+staveWidth;
+  const w=startX+firstW+(numBars-1)*staveWidth+20;
+  const h=150;
+  
+  const renderer=new VF.Renderer(container,VF.Renderer.Backends.SVG);
+  renderer.resize(w,h);
+  const ctx=renderer.getContext();
+  
+  const spBar=8; // 4/4, subdivPerBeat=2
+  
+  for(let bar=0;bar<numBars;bar++){
+    const x=bar===0?startX:startX+firstW+(bar-1)*staveWidth;
+    const thisW=bar===0?firstW:staveWidth;
+    const stave=new VF.Stave(x,15,thisW);
+    if(bar===0){
+      stave.addClef('treble');
+      if(key&&key!=='C')stave.addKeySignature(key);
+      stave.addTimeSignature('4/4');
+    }
+    if(bar===numBars-1)stave.setEndBarType(VF.Barline.type.END);
+    stave.setContext(ctx).draw();
+    
+    const barStart=bar*spBar;
+    const barBeats=srNotes.filter(b=>b.pos>=barStart&&b.pos<barStart+spBar);
+    
+    if(!barBeats.length){
+      const rest=new VF.StaveNote({keys:['b/4'],duration:'wr'});
+      const voice=new VF.Voice({num_beats:4,beat_value:4}).setStrict(false);
+      voice.addTickables([rest]);
+      new VF.Formatter().joinVoices([voice]).format([voice],thisW-40);
+      voice.draw(ctx,stave);
+      continue;
+    }
+    
+    const notes=[];
+    let pos=0;
+    for(const beat of barBeats){
+      const relPos=beat.pos-barStart;
+      if(relPos>pos){
+        const parts=decomposeDur(relPos-pos,2);
+        for(const d of parts){
+          const rd=durToVex(d,2);
+          const rest=new VF.StaveNote({keys:['b/4'],duration:vexDurBase(rd)+'r'});
+          if(isDotted(rd))rest.addDot(0);
+          notes.push(rest);
+        }
+      }
+      const clipped=Math.min(beat.dur,spBar-(beat.pos-barStart));
+      const parts=decomposeDur(clipped,2);
+      const vp=pitchToVex(beat.pitch);
+      for(let ni=0;ni<parts.length;ni++){
+        const vd=durToVex(parts[ni],2);
+        const note=new VF.StaveNote({keys:[vp],duration:vexDurBase(vd),clef:'treble'});
+        if(isDotted(vd))note.addDot(0);
+        // Accidentals only if not in key sig
+        const KEY_ACC={'C':[],'G':['f#'],'D':['f#','c#'],'A':['f#','c#','g#'],'E':['f#','c#','g#','d#'],
+          'B':['f#','c#','g#','d#','a#'],'F':['bb'],'Bb':['bb','eb'],'Eb':['bb','eb','ab'],'Ab':['bb','eb','ab','db']};
+        const kAcc=KEY_ACC[key]||[];
+        const ps=(beat.pitch||'').toLowerCase();
+        const nn=ps.replace(/\d+$/,'');
+        if(!kAcc.includes(nn)){
+          if(ps.includes('#'))note.addAccidental(0,new VF.Accidental('#'));
+          else if(ps.includes('b')&&!ps.startsWith('b'))note.addAccidental(0,new VF.Accidental('b'));
+        }
+        notes.push(note);
+      }
+      pos=relPos+clipped;
+    }
+    if(pos<spBar){
+      const parts=decomposeDur(spBar-pos,2);
+      for(const d of parts){
+        const rd=durToVex(d,2);
+        const rest=new VF.StaveNote({keys:['b/4'],duration:vexDurBase(rd)+'r'});
+        if(isDotted(rd))rest.addDot(0);
+        notes.push(rest);
+      }
+    }
+    
+    try{
+      const voice=new VF.Voice({num_beats:4,beat_value:4}).setStrict(false);
+      voice.addTickables(notes);
+      new VF.Formatter().joinVoices([voice]).format([voice],thisW-40);
+      voice.draw(ctx,stave);
+    }catch(e){console.warn('SR bar',bar,'error:',e.message)}
+  }
+}
+
+function playSightRead(){
+  if(srPlaying){stopSightRead();return;}
+  if(!srNotes.length)return;
+  ia(); // init audio
+  if(window.Tone)Tone.start().catch(()=>{});
+  
+  // Create synth if needed
+  if(!toneSynths.sr){
+    if(window.Tone){
+      toneSynths.sr=new Tone.Synth({oscillator:{type:'triangle'},envelope:{attack:0.05,decay:0.2,sustain:0.5,release:0.3},volume:-6}).toDestination();
+    }
+  }
+  
+  srPlaying=true;
+  $('srPlayBtn').classList.add('hidden');
+  $('srStopBtn').classList.remove('hidden');
+  
+  const bpm=80;
+  const msPerBeat=60000/bpm;
+  const msPerSub=msPerBeat/2;
+  const countInBeats=4; // 4 metronome clicks before notes
+  const countInMs=countInBeats*msPerBeat;
+  let noteIdx=0;
+  let clickIdx=0;
+  const startTime=performance.now();
+  
+  srInterval=setInterval(()=>{
+    const elapsed=performance.now()-startTime;
+    
+    // Count-in clicks
+    while(clickIdx<countInBeats){
+      const clickTime=clickIdx*msPerBeat;
+      if(elapsed>=clickTime){playTick();clickIdx++;}
+      else break;
+    }
+    
+    // Play notes after count-in
+    if(noteIdx>=srNotes.length){stopSightRead();return;}
+    const n=srNotes[noteIdx];
+    const expectedTime=n.pos*msPerSub+countInMs;
+    if(elapsed>=expectedTime){
+      if(toneSynths.sr){
+        try{toneSynths.sr.triggerAttackRelease(n.pitch,n.dur*msPerSub/1000);}catch(e){}
+      }else{
+        playDrum(0);
+      }
+      noteIdx++;
+    }
+  },20);
+}
+
+function stopSightRead(){
+  srPlaying=false;
+  if(srInterval){clearInterval(srInterval);srInterval=null;}
+  $('srPlayBtn').classList.remove('hidden');
+  $('srStopBtn').classList.add('hidden');
+}
+
+function revealNotes(){
+  if(!srNotes.length)return;
+  $('srNoteNames').textContent=srNotes.map(n=>n.pitch).join(' → ');
+}
+
+function loadSightReadToPlay(){
+  if(!srNotes.length)return;
+  const key=$('srKey').value;
+  const numBars=parseInt($('srBars').value);
+  const songData={
+    title:'視唱練習 Sight-Reading',bpm:80,timeSigTop:4,timeSigBot:4,
+    bars:numBars,subdivPerBeat:2,keySig:key,
+    parts:[{name:'Voice',clef:'treble',beats:srNotes.map(n=>({pos:n.pos,dur:n.dur,pitch:n.pitch}))}]
+  };
+  fromJSON(JSON.stringify(songData));
+  switchTab('play');
+}
+
+// Init
+async function init(){
+  const params=new URLSearchParams(location.search);
+  const songFile=params.get('song');
+  const mode=params.get('mode');
+  // Always try to load library first
+  loadLibrary();
+  if(songFile){
+    try{
+      const resp=await fetch(songsBase()+`${encodeURIComponent(songFile)}.json`);
+      if(!resp.ok)throw new Error('Song not found');
+      const json=await resp.text();
+      fromJSON(json);
+      toast('Loaded: '+song.title);
+      if(mode==='play'){switchTab('play')}
+      else if(mode==='classroom'){switchTab('classroom')}
+      else{switchTab('editor')}
+    }catch(e){console.error(e);loadFromHash();try{renderGrid()}catch(e2){console.error('Grid error:',e2)}}
+  }else{
+    loadFromHash();try{renderGrid()}catch(e){console.error('Grid error:',e)}
+  }
+}
+init();
+</script>
+</body>
+</html>
