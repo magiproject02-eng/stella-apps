@@ -1924,8 +1924,8 @@ function generateSightRead(){
   const pitchPool=allPitches.slice(lo,hi+1);
   
   const beatsPerBar=8; // 4/4, subdivPerBeat=2
-  const bufferBar=1; // 1 empty bar before notes start
-  const offset=bufferBar*beatsPerBar; // notes start at pos=8
+  // Notes start at pos=0 for score display
+  // Play mode adds count-in separately via gStart delay
   srNotes=[];
   let pos=0;
   let prevIdx=Math.floor(pitchPool.length/2);
@@ -1944,7 +1944,7 @@ function generateSightRead(){
     const step=Math.random()<0.15?0:(Math.random()<0.5?1:-1);
     const nextIdx=Math.max(0,Math.min(pitchPool.length-1,prevIdx+step));
     
-    srNotes.push({pos:pos+offset,dur,pitch:pitchPool[nextIdx]});
+    srNotes.push({pos,dur,pitch:pitchPool[nextIdx]});
     prevIdx=nextIdx;
     pos+=dur;
   }
@@ -1953,11 +1953,10 @@ function generateSightRead(){
   if(srNotes.length>0){
     const last=srNotes[srNotes.length-1];
     const tonicP=pitchPool.find(p=>p.startsWith(key));
-    if(tonicP){last.pitch=tonicP;last.dur=Math.min(4,totalBeats+offset-last.pos);}
+    if(tonicP){last.pitch=tonicP;last.dur=Math.min(4,totalBeats-last.pos);}
   }
   
-  const totalBarsWithBuffer=numBars+bufferBar;
-  renderSightReadScore(key,totalBarsWithBuffer);
+  renderSightReadScore(key,numBars);
   $('srPlayBtn').disabled=false;
   $('srRevealBtn').disabled=false;
   $('srPracticeBtn').disabled=false;
@@ -2070,15 +2069,28 @@ function playSightRead(){
   $('srStopBtn').classList.remove('hidden');
   
   const bpm=80;
-  const msPerSub=(60000/bpm)/2;
+  const msPerBeat=60000/bpm;
+  const msPerSub=msPerBeat/2;
+  const countInBeats=4; // 4 metronome clicks before notes
+  const countInMs=countInBeats*msPerBeat;
   let noteIdx=0;
+  let clickIdx=0;
   const startTime=performance.now();
   
   srInterval=setInterval(()=>{
+    const elapsed=performance.now()-startTime;
+    
+    // Count-in clicks
+    while(clickIdx<countInBeats){
+      const clickTime=clickIdx*msPerBeat;
+      if(elapsed>=clickTime){playTick();clickIdx++;}
+      else break;
+    }
+    
+    // Play notes after count-in
     if(noteIdx>=srNotes.length){stopSightRead();return;}
     const n=srNotes[noteIdx];
-    const expectedTime=n.pos*msPerSub;
-    const elapsed=performance.now()-startTime;
+    const expectedTime=n.pos*msPerSub+countInMs;
     if(elapsed>=expectedTime){
       if(toneSynths.sr){
         try{toneSynths.sr.triggerAttackRelease(n.pitch,n.dur*msPerSub/1000);}catch(e){}
@@ -2105,11 +2117,13 @@ function revealNotes(){
 function loadSightReadToPlay(){
   if(!srNotes.length)return;
   const key=$('srKey').value;
-  const numBars=parseInt($('srBars').value)+1; // +1 for buffer bar
+  const numBars=parseInt($('srBars').value);
+  const countInBar=1; // 4 metronome beats before notes start
+  const offset=countInBar*8; // shift all notes by 1 bar (8 subdivisions)
   const songData={
     title:'視唱練習 Sight-Reading',bpm:80,timeSigTop:4,timeSigBot:4,
-    bars:numBars,subdivPerBeat:2,keySig:key,
-    parts:[{name:'Voice',clef:'treble',beats:srNotes.map(n=>({pos:n.pos,dur:n.dur,pitch:n.pitch}))}]
+    bars:numBars+countInBar,subdivPerBeat:2,keySig:key,
+    parts:[{name:'Voice',clef:'treble',beats:srNotes.map(n=>({pos:n.pos+offset,dur:n.dur,pitch:n.pitch}))}]
   };
   fromJSON(JSON.stringify(songData));
   switchTab('play');
