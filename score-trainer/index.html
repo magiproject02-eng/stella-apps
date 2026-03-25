@@ -11,25 +11,38 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Manrope:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-:root{--bg:#0f0f14;--surface:#1a1a22;--surface2:#22222e;--border:#2e2e3a;--text:#e8e6f0;--dim:#6b6b80;--red:#e63946;--blue:#457b9d;--green:#2a9d8f;--gold:#f4a261;--purple:#7c3aed;--pink:#ec4899}
-body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
+:root{--bg:#131318;--surface:#1f1f24;--surface2:#2a292f;--border:#434656;--text:#e4e1e9;--dim:#8e90a2;--red:#ffb4ab;--blue:#b8c3ff;--green:#2a9d8f;--gold:#e9c400;--purple:#b8c3ff;--pink:#ddb7ff;--accent:#2e5bff;--accent2:#6f00be}
+body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden;padding-bottom:5.5rem}
+.mat-icon{font-family:'Material Symbols Outlined';font-size:20px;vertical-align:middle;font-variation-settings:'FILL' 0,'wght' 400}
 
-.header{display:flex;align-items:center;justify-content:space-between;padding:0.6rem 1rem;border-bottom:1px solid var(--border);background:var(--surface);flex-wrap:wrap;gap:0.3rem}
-.header h1{font-size:1rem;font-weight:700}
+.header{position:fixed;top:0;left:0;right:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:0 1rem;height:56px;background:var(--bg);border-bottom:1px solid var(--border)}
+.header h1{font-family:'Plus Jakarta Sans',sans-serif;font-size:1.1rem;font-weight:800;font-style:italic;color:var(--accent);letter-spacing:-0.03em}
 .header-btns{display:flex;gap:0.4rem;flex-wrap:wrap}
-.hbtn{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:0.7rem;font-weight:600;padding:0.35rem 0.65rem;border-radius:7px;cursor:pointer;transition:border-color 0.2s;white-space:nowrap}
-.hbtn:hover{border-color:var(--purple)}
-.hbtn.primary{background:var(--purple);border-color:var(--purple);color:#fff}
+.hbtn{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:0.7rem;font-weight:600;padding:0.35rem 0.65rem;border-radius:12px;cursor:pointer;transition:all 0.2s;white-space:nowrap}
+.hbtn:hover{background:var(--surface);border-color:var(--accent)}
+.hbtn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .hbtn.play{background:var(--green);border-color:var(--green);color:#fff}
-.hbtn.stop{background:var(--red);border-color:var(--red);color:#fff}
-.hbtn.ai{background:linear-gradient(135deg,#7c3aed,#ec4899);border-color:#7c3aed;color:#fff}
+.hbtn.stop{background:#e63946;border-color:#e63946;color:#fff}
+.hbtn.ai{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:var(--accent);color:#fff}
+
+/* Bottom Navigation */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:50;height:72px;background:rgba(19,19,24,0.85);backdrop-filter:blur(20px);border-top:1px solid rgba(67,70,86,0.3);display:flex;justify-content:space-around;align-items:center;padding:0 0.5rem;padding-bottom:env(safe-area-inset-bottom)}
+.nav-btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 12px;border:none;background:none;color:var(--dim);cursor:pointer;transition:color 0.2s;font-family:inherit}
+.nav-btn.active{color:var(--accent)}
+.nav-btn .mat-icon{font-size:22px}
+.nav-btn span:last-child{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em}
+.nav-btn.active::after{content:'';display:block;width:4px;height:4px;background:var(--gold);border-radius:50%;margin-top:1px;box-shadow:0 0 8px var(--gold)}
+
+/* Old tabs hidden — using bottom nav now */
+.tabs{display:none}
 
 .controls{display:flex;align-items:center;gap:0.8rem;padding:0.5rem 1rem;border-bottom:1px solid var(--border);background:var(--surface);flex-wrap:wrap}
 .ctrl-group{display:flex;align-items:center;gap:0.3rem}
-.ctrl-group label{font-size:0.65rem;color:var(--dim);text-transform:uppercase;letter-spacing:0.04em}
-.ctrl-group input,.ctrl-group select{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:0.75rem;padding:0.25rem 0.4rem;border-radius:5px}
+.ctrl-group label{font-size:0.6rem;color:var(--dim);text-transform:uppercase;letter-spacing:0.06em;font-weight:700}
+.ctrl-group input,.ctrl-group select{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:0.75rem;padding:0.3rem 0.5rem;border-radius:10px}
 .ctrl-group input[type=number]{width:55px}
 .ctrl-group input[type=text]{width:120px}
 
@@ -100,7 +113,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 .modal-btns{display:flex;gap:0.5rem;justify-content:flex-end}
 
 /* Play Mode */
-.play-container{display:none;height:calc(100dvh - 80px);position:relative;flex-direction:column}
+.play-container{display:none;height:calc(100dvh - 128px);position:relative;flex-direction:column;margin-top:56px}
 .score-container{overflow-x:hidden;overflow-y:hidden;background:#12121a;border-bottom:1px solid var(--border);flex-shrink:0;height:140px;position:relative;white-space:nowrap}
 .score-container svg{display:block;will-change:transform}
 .score-container .vf-notehead path{fill:#e8e6f0!important;stroke:#e8e6f0!important}
@@ -128,15 +141,15 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 #srScore .vf-timesignature path,
 .score-container .vf-timesignature path{fill:#aaa!important;stroke:#aaa!important}
 .play-container canvas{flex:1;width:100%;min-height:0}
-.part-select{position:absolute;inset:0;background:rgba(15,15,20,0.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;gap:0.4rem;padding:1.5rem}
-.part-select h2{font-size:1.3rem;font-weight:700;margin-bottom:0.5rem}
-.part-select .sub{font-size:0.8rem;color:var(--dim);margin-bottom:0.5rem}
+.part-select{position:absolute;inset:0;background:rgba(19,19,24,0.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;gap:0.4rem;padding:1.5rem}
+.part-select h2{font-family:'Plus Jakarta Sans',sans-serif;font-size:1.4rem;font-weight:800;margin-bottom:0.5rem}
+.part-select .sub{font-size:0.8rem;color:var(--dim);margin-bottom:0.5rem;font-weight:600}
 .part-select .diff-row{display:flex;gap:0.5rem;margin-bottom:1rem}
-.part-select .diff-btn{padding:0.3rem 0.8rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-family:inherit;font-size:0.75rem;cursor:pointer;font-weight:600}
-.part-select .diff-btn.active{border-color:var(--purple);background:var(--purple);color:#fff}
-.pbtn{width:220px;padding:0.7rem;border:2px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font-family:inherit;font-size:0.9rem;font-weight:600;cursor:pointer;transition:border-color 0.2s}
-.pbtn:hover{border-color:var(--purple)}
-.back-btn{margin-top:0.8rem;color:var(--dim);font-size:0.8rem;cursor:pointer;text-decoration:underline}
+.part-select .diff-btn{padding:0.35rem 0.9rem;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);font-family:inherit;font-size:0.75rem;cursor:pointer;font-weight:600;transition:all 0.2s}
+.part-select .diff-btn.active{border-color:var(--accent);background:var(--accent);color:#fff}
+.pbtn{width:220px;padding:0.8rem;border:2px solid var(--border);border-radius:16px;background:var(--surface);color:var(--text);font-family:inherit;font-size:0.9rem;font-weight:700;cursor:pointer;transition:all 0.2s}
+.pbtn:hover{border-color:var(--accent);transform:scale(1.02)}
+.back-btn{margin-top:0.8rem;color:var(--dim);font-size:0.8rem;cursor:pointer;text-decoration:underline;font-weight:600}
 
 .results{position:absolute;inset:0;background:rgba(15,15,20,0.96);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:10;padding:1.5rem;text-align:center}
 .results h2{font-size:1.3rem;font-weight:700;margin-bottom:0.3rem}
@@ -149,7 +162,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 .results .rs .l{font-size:0.6rem;color:var(--dim);text-transform:uppercase}
 
 /* Classroom Mode */
-.classroom-container{display:none;height:calc(100dvh - 80px);position:relative;overflow:hidden}
+.classroom-container{display:none;height:calc(100dvh - 128px);position:relative;overflow:hidden;margin-top:56px}
 .classroom-container canvas{width:100%;height:100%}
 
 /* Share toast */
@@ -160,32 +173,32 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* Song cards */
-.song-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:0.8rem 1rem;cursor:pointer;transition:border-color 0.2s,transform 0.1s}
-.song-card:hover{border-color:var(--purple);transform:translateY(-1px)}
-.song-card .sc-title{font-size:0.9rem;font-weight:700;margin-bottom:0.3rem}
-.song-card .sc-meta{font-size:0.65rem;color:var(--dim);display:flex;gap:0.8rem;flex-wrap:wrap;margin-bottom:0.5rem}
+.song-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1rem 1.2rem;cursor:pointer;transition:all 0.2s}
+.song-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 4px 20px rgba(0,0,0,0.3)}
+.song-card .sc-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:0.95rem;font-weight:700;margin-bottom:0.3rem}
+.song-card .sc-meta{font-size:0.6rem;color:var(--dim);display:flex;gap:0.8rem;flex-wrap:wrap;margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.05em;font-weight:600}
 .song-card .sc-parts{display:flex;gap:0.3rem;flex-wrap:wrap;margin-bottom:0.5rem}
-.song-card .sc-part{font-size:0.6rem;padding:0.1rem 0.4rem;border-radius:4px;font-weight:600}
+.song-card .sc-part{font-size:0.6rem;padding:0.15rem 0.5rem;border-radius:8px;font-weight:600}
 .song-card .sc-actions{display:flex;gap:0.4rem}
-.song-card .sc-btn{font-size:0.65rem;padding:0.25rem 0.6rem;border:1px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--text);font-family:inherit;font-weight:600;cursor:pointer;transition:border-color 0.15s}
-.song-card .sc-btn:hover{border-color:var(--purple)}
+.song-card .sc-btn{font-size:0.65rem;padding:0.3rem 0.7rem;border:1px solid var(--border);border-radius:10px;background:var(--surface2);color:var(--text);font-family:inherit;font-weight:600;cursor:pointer;transition:all 0.15s}
+.song-card .sc-btn:hover{border-color:var(--accent);background:var(--accent);color:#fff}
 .song-card .sc-btn.play-btn{background:var(--green);border-color:var(--green);color:#fff}
-.song-card .sc-btn.class-btn{background:var(--purple);border-color:var(--purple);color:#fff}
-.deployed-badge{position:fixed;bottom:0.3rem;right:0.5rem;font-size:0.5rem;color:var(--dim);opacity:0.2;z-index:200}
+.song-card .sc-btn.class-btn{background:var(--accent);border-color:var(--accent);color:#fff}
+.deployed-badge{position:fixed;bottom:80px;right:0.5rem;font-size:0.5rem;color:var(--dim);opacity:0.2;z-index:200}
 </style>
 </head>
 <body>
 
 <div class="header">
-  <h1>🎵 Score Trainer</h1>
+  <h1>Score Trainer</h1>
   <div class="header-btns">
-    <button class="hbtn ai" id="btnAI">🤖 AI Read Score</button>
-    <button class="hbtn primary" id="btnMusicXML">📥 MusicXML</button>
-    <button class="hbtn" id="btnShare">🔗 Share</button>
-    <button class="hbtn" id="btnSave">💾 Save</button>
-    <button class="hbtn" id="btnLoad">📂 Load</button>
-    <button class="hbtn" id="btnExport">📤 JSON</button>
-    <button class="hbtn" id="btnImport">📥 Import</button>
+    <button class="hbtn ai" id="btnAI">🤖 AI</button>
+    <button class="hbtn primary" id="btnMusicXML">📥 MXL</button>
+    <button class="hbtn" id="btnShare">🔗</button>
+    <button class="hbtn" id="btnSave">💾</button>
+    <button class="hbtn" id="btnLoad">📂</button>
+    <button class="hbtn" id="btnExport">📤</button>
+    <button class="hbtn" id="btnImport">📥</button>
   </div>
 </div>
 
@@ -196,18 +209,17 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
   <div class="tab" data-tab="classroom">🏫 Classroom</div>
 </div>
 
-<div id="libraryPanel">
-  <div style="padding:1rem">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-      <div><span style="font-size:1.1rem;font-weight:700">Song Library</span><br><span style="font-size:0.7rem;color:var(--dim)">Tap a song to start practicing</span></div>
-    </div>
-    <div onclick="importMusicXML()" style="background:linear-gradient(135deg,#7c3aed22,#457b9d22);border:1px dashed var(--purple);border-radius:10px;padding:0.8rem 1rem;cursor:pointer;margin-bottom:0.5rem;transition:border-color 0.2s;display:flex;align-items:center;gap:0.8rem">
+<div id="libraryPanel" style="margin-top:56px">
+  <div style="padding:1rem 1rem 0.5rem">
+    <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.6rem;font-weight:800;letter-spacing:-0.03em;margin-bottom:0.2rem">My Music Library</h2>
+    <p style="font-size:0.75rem;color:var(--dim);margin-bottom:1rem;font-weight:500">Ready for your next performance? / 準備好了嗎？</p>
+    <div onclick="importMusicXML()" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:0.9rem 1rem;cursor:pointer;margin-bottom:0.5rem;transition:all 0.2s;display:flex;align-items:center;gap:0.8rem">
       <span style="font-size:1.5rem">📥</span>
-      <div><span style="font-size:0.85rem;font-weight:700">Import MusicXML</span><br><span style="font-size:0.65rem;color:var(--dim)">.musicxml, .mxl, .xml — from MuseScore, Finale, Sibelius, IMSLP</span></div>
+      <div><span style="font-size:0.85rem;font-weight:700">Import MusicXML</span><br><span style="font-size:0.6rem;color:var(--dim)">.musicxml, .mxl, .xml</span></div>
     </div>
-    <div onclick="scanImage()" style="background:linear-gradient(135deg,#2a9d8f22,#06b6d422);border:1px dashed var(--green);border-radius:10px;padding:0.8rem 1rem;cursor:pointer;margin-bottom:0.8rem;transition:border-color 0.2s;display:flex;align-items:center;gap:0.8rem">
+    <div onclick="scanImage()" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:0.9rem 1rem;cursor:pointer;margin-bottom:0.5rem;transition:all 0.2s;display:flex;align-items:center;gap:0.8rem">
       <span style="font-size:1.5rem">🔍</span>
-      <div><span style="font-size:0.85rem;font-weight:700">Scan Sheet Music</span><br><span style="font-size:0.65rem;color:var(--dim)">Upload a photo/scan → AI reads notes → MusicXML (2-5 min)</span></div>
+      <div><span style="font-size:0.85rem;font-weight:700">Scan Sheet Music</span><br><span style="font-size:0.6rem;color:var(--dim)">Photo/scan → AI reads notes</span></div>
     </div>
     <div id="scanStatus" class="hidden" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.8rem 1rem;margin-bottom:0.8rem">
       <div style="display:flex;align-items:center;gap:0.6rem">
@@ -225,7 +237,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 </div>
 
 <!-- Sight-Reading Panel -->
-<div id="sightreadPanel" style="display:none">
+<div id="sightreadPanel" style="display:none;margin-top:56px">
   <div style="padding:1rem;max-width:600px;margin:0 auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
       <div><span style="font-size:1.1rem;font-weight:700">🎯 視唱練習</span><br><span style="font-size:0.7rem;color:var(--dim)">Read the score, then sing!</span></div>
@@ -266,7 +278,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
   </div>
 </div>
 
-<div id="editorPanel" style="display:none">
+<div id="editorPanel" style="display:none;margin-top:56px">
   <div class="controls">
     <div class="ctrl-group"><label>Title</label><input type="text" id="songTitle" value="New Song"></div>
     <div class="ctrl-group"><label>BPM</label><input type="number" id="bpmInput" value="100" min="40" max="300"></div>
@@ -394,6 +406,25 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
     </div>
   </div>
 </div>
+
+<!-- Bottom Navigation -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" data-tab="library" onclick="switchTab('library')">
+    <span class="mat-icon">library_music</span><span>Library</span>
+  </button>
+  <button class="nav-btn" data-tab="editor" onclick="switchTab('editor')">
+    <span class="mat-icon">edit_note</span><span>Editor</span>
+  </button>
+  <button class="nav-btn" data-tab="play" onclick="switchTab('play')">
+    <span class="mat-icon">play_circle</span><span>Play</span>
+  </button>
+  <button class="nav-btn" data-tab="sightread" onclick="switchTab('sightread')">
+    <span class="mat-icon">visibility</span><span>視唱</span>
+  </button>
+  <button class="nav-btn" data-tab="classroom" onclick="switchTab('classroom')">
+    <span class="mat-icon">school</span><span>Class</span>
+  </button>
+</nav>
 
 <div class="toast" id="toast"></div>
 <div class="deployed-badge">Score Trainer · Built by Stella</div>
