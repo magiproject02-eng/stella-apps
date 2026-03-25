@@ -1304,55 +1304,46 @@ function startPlay(pi){
       cx.strokeStyle='rgba(233,196,0,0.5)';cx.lineWidth=2;
       cx.beginPath();cx.moveTo(hx,staffTop-5);cx.lineTo(hx,staffBot+5);cx.stroke();
       
-      // ── CONTINUOUS PITCH CONTOUR ──
-      // Draw a line that stays at note pitch during duration, then steps to next note
-      // This gives continuous visual motion — no "jumps"
+      // ── PIANO ROLL VIEW ──
+      // Each note = solid colored bar at its pitch height, spanning full duration.
+      // This gives constant visual flow — your eye always tracks a filled bar.
       const visNotes=[];
       for(const n of gNotes){
         const x=hx+(n.time-el)*px;
-        const endX=x+n.durMs*px;
-        if(endX<-50||x>w+80)continue;
-        visNotes.push({x,endX,y:pitchToY(n.pitch),time:n.time,durMs:n.durMs,pitch:n.pitch,hit:n.hit,missed:n.missed,nt:n.time-el});
+        const nw=Math.max(6,n.durMs*px);
+        if(x+nw<-20||x>w+20)continue;
+        visNotes.push({x,nw,y:pitchToY(n.pitch),nt:n.time-el,pitch:n.pitch,hit:n.hit,missed:n.missed});
       }
       
       if(visNotes.length>0){
-        // Draw sustained pitch lines (horizontal at note pitch, for note duration)
+        const barH=Math.max(8,lineGap*0.65);
+        
+        // Pass 1: filled duration bars
         for(const vn of visNotes){
           const passed=vn.nt<-100;
           const current=Math.abs(vn.nt)<200;
-          cx.strokeStyle=current?'rgba(233,196,0,0.6)':passed?'rgba(228,225,233,0.15)':'rgba(228,225,233,0.35)';
-          cx.lineWidth=current?4:3;
-          cx.beginPath();cx.moveTo(Math.max(-5,vn.x),vn.y);cx.lineTo(Math.min(w+5,vn.endX),vn.y);cx.stroke();
-        }
-        
-        // Draw transition lines between consecutive notes (diagonal pitch changes)
-        for(let i=0;i<visNotes.length-1;i++){
-          const curr=visNotes[i],next=visNotes[i+1];
-          const fromX=curr.endX; // end of current note
-          const toX=next.x;     // start of next note
-          if(fromX>w+50||toX<-50)continue;
-          const passed=curr.nt<-100&&next.nt<-100;
-          cx.strokeStyle=passed?'rgba(228,225,233,0.08)':'rgba(228,225,233,0.2)';
-          cx.lineWidth=1.5;
-          cx.setLineDash([4,4]);
-          cx.beginPath();cx.moveTo(fromX,curr.y);cx.lineTo(toX,next.y);cx.stroke();
-          cx.setLineDash([]);
-        }
-        
-        // Draw note onset dots (on top of lines)
-        for(const vn of visNotes){
-          const passed=vn.nt<-100;
-          const current=Math.abs(vn.nt)<200;
-          const r=current?7:5;
-          cx.globalAlpha=passed?0.3:1;
-          cx.fillStyle=current?'#e9c400':vn.hit?'#2a9d8f':'#e4e1e9';
-          cx.beginPath();cx.arc(vn.x,vn.y,r,0,Math.PI*2);cx.fill();
-          // White border on current
-          if(current){cx.strokeStyle='#fff';cx.lineWidth=2;cx.beginPath();cx.arc(vn.x,vn.y,r,0,Math.PI*2);cx.stroke();}
+          cx.globalAlpha=passed?0.15:current?0.7:0.45;
+          cx.fillStyle=current?'#e9c400':PC[selPart]||'#b8c3ff';
+          rRect(cx,vn.x,vn.y-barH/2,vn.nw,barH,3);cx.fill();
           cx.globalAlpha=1;
         }
         
-        // Ledger lines for notes outside staff
+        // Pass 2: onset markers + pitch labels
+        for(const vn of visNotes){
+          const passed=vn.nt<-100;
+          const current=Math.abs(vn.nt)<200;
+          cx.globalAlpha=passed?0.3:1;
+          // Bright onset edge
+          cx.fillStyle=current?'#e9c400':'#e4e1e9';
+          cx.fillRect(vn.x-1,vn.y-barH/2-1,3,barH+2);
+          // Pitch label
+          cx.font="bold 9px 'Plus Jakarta Sans'";cx.textAlign='left';cx.textBaseline='middle';
+          cx.fillStyle=current?'#fff':passed?'#555':'#ccc';
+          cx.fillText(vn.pitch||'',vn.x+5,vn.y);
+          cx.globalAlpha=1;
+        }
+        
+        // Ledger lines
         for(const vn of visNotes){
           if(vn.x<-20||vn.x>w+20)continue;
           if(vn.y>staffBot+halfStep*0.8){
