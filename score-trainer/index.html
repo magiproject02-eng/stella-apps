@@ -1304,43 +1304,70 @@ function startPlay(pi){
       cx.strokeStyle='rgba(233,196,0,0.5)';cx.lineWidth=2;
       cx.beginPath();cx.moveTo(hx,staffTop-5);cx.lineTo(hx,staffBot+5);cx.stroke();
       
-      // Draw notes on staff — SAME x coordinate as belt
+      // ── CONTINUOUS PITCH CONTOUR ──
+      // Draw a line that stays at note pitch during duration, then steps to next note
+      // This gives continuous visual motion — no "jumps"
+      const visNotes=[];
       for(const n of gNotes){
-        const nt=n.time-el;
-        const x=hx+nt*px;
-        if(x<-20||x>w+20)continue;
-        const y=pitchToY(n.pitch);
-        const noteR=5;
-        // Note circle
-        const passed=nt<-100;
-        const current=Math.abs(nt)<200;
-        cx.globalAlpha=passed?0.3:1;
-        cx.fillStyle=current?'#e9c400':n.hit?'#2a9d8f':'#e4e1e9';
-        cx.beginPath();cx.ellipse(x,y,noteR+1,noteR,0,0,Math.PI*2);cx.fill();
-        // Stem
-        cx.strokeStyle=cx.fillStyle;cx.lineWidth=1.5;
-        cx.beginPath();cx.moveTo(x+noteR,y);cx.lineTo(x+noteR,y-lineGap*2);cx.stroke();
-        // Duration tail (line to show note length)
-        if(n.durMs>0){
-          const nw=n.durMs*px;
-          cx.strokeStyle=current?'rgba(233,196,0,0.3)':'rgba(228,225,233,0.15)';
-          cx.lineWidth=3;
-          cx.beginPath();cx.moveTo(x,y);cx.lineTo(x+nw,y);cx.stroke();
+        const x=hx+(n.time-el)*px;
+        const endX=x+n.durMs*px;
+        if(endX<-50||x>w+80)continue;
+        visNotes.push({x,endX,y:pitchToY(n.pitch),time:n.time,durMs:n.durMs,pitch:n.pitch,hit:n.hit,missed:n.missed,nt:n.time-el});
+      }
+      
+      if(visNotes.length>0){
+        // Draw sustained pitch lines (horizontal at note pitch, for note duration)
+        for(const vn of visNotes){
+          const passed=vn.nt<-100;
+          const current=Math.abs(vn.nt)<200;
+          cx.strokeStyle=current?'rgba(233,196,0,0.6)':passed?'rgba(228,225,233,0.15)':'rgba(228,225,233,0.35)';
+          cx.lineWidth=current?4:3;
+          cx.beginPath();cx.moveTo(Math.max(-5,vn.x),vn.y);cx.lineTo(Math.min(w+5,vn.endX),vn.y);cx.stroke();
         }
-        // Ledger lines if needed
-        if(y>staffBot+halfStep*0.8){
-          for(let ly=staffBot+lineGap;ly<=y+2;ly+=lineGap){
-            cx.strokeStyle='#444';cx.lineWidth=1;
-            cx.beginPath();cx.moveTo(x-8,ly);cx.lineTo(x+8,ly);cx.stroke();
+        
+        // Draw transition lines between consecutive notes (diagonal pitch changes)
+        for(let i=0;i<visNotes.length-1;i++){
+          const curr=visNotes[i],next=visNotes[i+1];
+          const fromX=curr.endX; // end of current note
+          const toX=next.x;     // start of next note
+          if(fromX>w+50||toX<-50)continue;
+          const passed=curr.nt<-100&&next.nt<-100;
+          cx.strokeStyle=passed?'rgba(228,225,233,0.08)':'rgba(228,225,233,0.2)';
+          cx.lineWidth=1.5;
+          cx.setLineDash([4,4]);
+          cx.beginPath();cx.moveTo(fromX,curr.y);cx.lineTo(toX,next.y);cx.stroke();
+          cx.setLineDash([]);
+        }
+        
+        // Draw note onset dots (on top of lines)
+        for(const vn of visNotes){
+          const passed=vn.nt<-100;
+          const current=Math.abs(vn.nt)<200;
+          const r=current?7:5;
+          cx.globalAlpha=passed?0.3:1;
+          cx.fillStyle=current?'#e9c400':vn.hit?'#2a9d8f':'#e4e1e9';
+          cx.beginPath();cx.arc(vn.x,vn.y,r,0,Math.PI*2);cx.fill();
+          // White border on current
+          if(current){cx.strokeStyle='#fff';cx.lineWidth=2;cx.beginPath();cx.arc(vn.x,vn.y,r,0,Math.PI*2);cx.stroke();}
+          cx.globalAlpha=1;
+        }
+        
+        // Ledger lines for notes outside staff
+        for(const vn of visNotes){
+          if(vn.x<-20||vn.x>w+20)continue;
+          if(vn.y>staffBot+halfStep*0.8){
+            for(let ly=staffBot+lineGap;ly<=vn.y+2;ly+=lineGap){
+              cx.strokeStyle='#444';cx.lineWidth=1;
+              cx.beginPath();cx.moveTo(vn.x-8,ly);cx.lineTo(vn.x+8,ly);cx.stroke();
+            }
+          }
+          if(vn.y<staffTop-halfStep*0.8){
+            for(let ly=staffTop-lineGap;ly>=vn.y-2;ly-=lineGap){
+              cx.strokeStyle='#444';cx.lineWidth=1;
+              cx.beginPath();cx.moveTo(vn.x-8,ly);cx.lineTo(vn.x+8,ly);cx.stroke();
+            }
           }
         }
-        if(y<staffTop-halfStep*0.8){
-          for(let ly=staffTop-lineGap;ly>=y-2;ly-=lineGap){
-            cx.strokeStyle='#444';cx.lineWidth=1;
-            cx.beginPath();cx.moveTo(x-8,ly);cx.lineTo(x+8,ly);cx.stroke();
-          }
-        }
-        cx.globalAlpha=1;
       }
       
       // Divider
