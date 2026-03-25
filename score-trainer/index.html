@@ -1304,58 +1304,95 @@ function startPlay(pi){
       cx.strokeStyle='rgba(233,196,0,0.5)';cx.lineWidth=2;
       cx.beginPath();cx.moveTo(hx,staffTop-5);cx.lineTo(hx,staffBot+5);cx.stroke();
       
-      // ── PIANO ROLL VIEW ──
-      // Each note = solid colored bar at its pitch height, spanning full duration.
-      // This gives constant visual flow — your eye always tracks a filled bar.
+      // ── NOTATION VIEW (noteheads + stems, linear time) ──
       const visNotes=[];
       for(const n of gNotes){
         const x=hx+(n.time-el)*px;
         const nw=Math.max(6,n.durMs*px);
-        if(x+nw<-20||x>w+20)continue;
-        visNotes.push({x,nw,y:pitchToY(n.pitch),nt:n.time-el,pitch:n.pitch,hit:n.hit,missed:n.missed});
+        if(x+nw<-30||x>w+30)continue;
+        visNotes.push({x,nw,y:pitchToY(n.pitch),nt:n.time-el,dur:n.dur,pitch:n.pitch,hit:n.hit,missed:n.missed});
       }
       
       if(visNotes.length>0){
-        const barH=Math.max(8,lineGap*0.65);
+        const noteRx=lineGap*0.42; // notehead horizontal radius
+        const noteRy=lineGap*0.32; // notehead vertical radius
+        const stemLen=lineGap*2.5;
         
-        // Pass 1: filled duration bars
+        // Duration tail (faded line showing note length)
         for(const vn of visNotes){
           const passed=vn.nt<-100;
           const current=Math.abs(vn.nt)<200;
-          cx.globalAlpha=passed?0.15:current?0.7:0.45;
-          cx.fillStyle=current?'#e9c400':PC[selPart]||'#b8c3ff';
-          rRect(cx,vn.x,vn.y-barH/2,vn.nw,barH,3);cx.fill();
+          cx.globalAlpha=passed?0.08:current?0.25:0.12;
+          cx.strokeStyle=current?'#e9c400':PC[selPart]||'#b8c3ff';
+          cx.lineWidth=lineGap*0.4;
+          cx.beginPath();cx.moveTo(vn.x,vn.y);cx.lineTo(vn.x+vn.nw,vn.y);cx.stroke();
           cx.globalAlpha=1;
         }
         
-        // Pass 2: onset markers + pitch labels
+        // Noteheads + stems
         for(const vn of visNotes){
           const passed=vn.nt<-100;
           const current=Math.abs(vn.nt)<200;
           cx.globalAlpha=passed?0.3:1;
-          // Bright onset edge
-          cx.fillStyle=current?'#e9c400':'#e4e1e9';
-          cx.fillRect(vn.x-1,vn.y-barH/2-1,3,barH+2);
-          // Pitch label
-          cx.font="bold 9px 'Plus Jakarta Sans'";cx.textAlign='left';cx.textBaseline='middle';
-          cx.fillStyle=current?'#fff':passed?'#555':'#ccc';
-          cx.fillText(vn.pitch||'',vn.x+5,vn.y);
+          const col=current?'#e9c400':vn.hit?'#2a9d8f':'#e4e1e9';
+          
+          // Determine if notehead is filled (quarter/eighth) or open (half/whole)
+          const isOpen=vn.dur>=4; // half note or longer = open
+          const isWhole=vn.dur>=8; // whole note = no stem
+          
+          // Draw notehead (tilted ellipse)
+          cx.save();
+          cx.translate(vn.x,vn.y);
+          cx.rotate(-0.25); // slight tilt like real noteheads
+          cx.beginPath();
+          cx.ellipse(0,0,noteRx,noteRy,0,0,Math.PI*2);
+          if(isOpen){
+            cx.strokeStyle=col;cx.lineWidth=1.5;cx.stroke();
+          }else{
+            cx.fillStyle=col;cx.fill();
+          }
+          cx.restore();
+          
+          // Stem (not for whole notes)
+          if(!isWhole){
+            const stemUp=vn.y>staffTop+2*lineGap; // stem up if below middle
+            const stemX=stemUp?vn.x+noteRx:vn.x-noteRx;
+            const stemY1=vn.y;
+            const stemY2=stemUp?vn.y-stemLen:vn.y+stemLen;
+            cx.strokeStyle=col;cx.lineWidth=1.5;
+            cx.beginPath();cx.moveTo(stemX,stemY1);cx.lineTo(stemX,stemY2);cx.stroke();
+            
+            // Flag for eighth notes (dur=1)
+            if(vn.dur<=1){
+              const flagDir=stemUp?1:-1;
+              cx.beginPath();
+              cx.moveTo(stemX,stemY2);
+              cx.quadraticCurveTo(stemX+8*flagDir,stemY2+6,stemX+4*flagDir,stemY2+12);
+              cx.strokeStyle=col;cx.lineWidth=1.5;cx.stroke();
+            }
+          }
+          
+          // Current note glow
+          if(current){
+            cx.strokeStyle='#e9c400';cx.lineWidth=2;
+            cx.beginPath();cx.ellipse(vn.x,vn.y,noteRx+4,noteRy+4,0,0,Math.PI*2);cx.stroke();
+          }
+          
           cx.globalAlpha=1;
         }
         
         // Ledger lines
         for(const vn of visNotes){
           if(vn.x<-20||vn.x>w+20)continue;
+          cx.strokeStyle='#555';cx.lineWidth=1;
           if(vn.y>staffBot+halfStep*0.8){
             for(let ly=staffBot+lineGap;ly<=vn.y+2;ly+=lineGap){
-              cx.strokeStyle='#444';cx.lineWidth=1;
-              cx.beginPath();cx.moveTo(vn.x-8,ly);cx.lineTo(vn.x+8,ly);cx.stroke();
+              cx.beginPath();cx.moveTo(vn.x-noteRx-4,ly);cx.lineTo(vn.x+noteRx+4,ly);cx.stroke();
             }
           }
           if(vn.y<staffTop-halfStep*0.8){
             for(let ly=staffTop-lineGap;ly>=vn.y-2;ly-=lineGap){
-              cx.strokeStyle='#444';cx.lineWidth=1;
-              cx.beginPath();cx.moveTo(vn.x-8,ly);cx.lineTo(vn.x+8,ly);cx.stroke();
+              cx.beginPath();cx.moveTo(vn.x-noteRx-4,ly);cx.lineTo(vn.x+noteRx+4,ly);cx.stroke();
             }
           }
         }
