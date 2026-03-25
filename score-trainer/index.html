@@ -1122,7 +1122,7 @@ const cv=$('playCanvas'),cx=cv.getContext('2d');
 let gameOn=false,gamePaused=false,pauseStart=0,totalPaused=0,gameLoop=null,selPart=-1,gStart=0,gNotes=[],gScore=0,gCombo=0,gMaxCombo=0,gPerf=0,gGood=0,gMiss=0;
 let jT='',jC='',jTime=0,dFlash=0,cFlash=0;
 let gPulseMs=750,gPulsesPerBar=4; // set by startPlay for beat grid/metronome
-const PW=100,GW=220,MW=350,NS=350,HX=0.18;
+const PW=100,GW=220,MW=350,NS=200,HX=0.18;
 
 function resizeCV(c){c.width=c.clientWidth*devicePixelRatio;c.height=c.clientHeight*devicePixelRatio;cx.scale(devicePixelRatio,devicePixelRatio)}
 function setDifficulty(d,el){difficulty=d;document.querySelectorAll('[data-diff]').forEach(b=>b.classList.toggle('active',b.dataset.diff===d))}
