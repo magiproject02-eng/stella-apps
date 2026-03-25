@@ -1176,9 +1176,24 @@ function startPlay(pi){
   backingNotes.sort((a,b)=>a.time-b.time);
   let backingIdx=0;
 
-  gScore=0;gCombo=0;gMaxCombo=0;gPerf=0;gGood=0;gMiss=0;gameOn=true;gamePaused=false;totalPaused=0;jT='';gStart=performance.now()+2000;
+  gScore=0;gCombo=0;gMaxCombo=0;gPerf=0;gGood=0;gMiss=0;gameOn=true;gamePaused=false;totalPaused=0;jT='';
+  const beatMs=60000/(song.bpm*bpmMod);
+  const countInBeats=song.timeSigTop; // 4 beats for 4/4, 3 for 3/4
+  gStart=performance.now()+countInBeats*beatMs; // exactly 1 bar of count-in
   $('pauseBtn').style.display='block';
-  const beatMs=60000/(song.bpm*bpmMod);const mid=setInterval(()=>{if(!gameOn){clearInterval(mid);return}if(gamePaused)return;if(metronomeOn)playTick()},beatMs);
+  // Metronome synced to gStart — track which beat we've played
+  let nextMetroBeat=-countInBeats; // start from negative = count-in beats
+  const metroSub=song.subdivPerBeat; // tick on every beat (not every subdivision)
+  const mid=setInterval(()=>{
+    if(!gameOn){clearInterval(mid);return}
+    if(gamePaused)return;
+    const el=performance.now()-gStart-totalPaused;
+    const currentBeat=Math.floor(el/beatMs);
+    while(nextMetroBeat<=currentBeat){
+      if(metronomeOn)playTick();
+      nextMetroBeat++;
+    }
+  },10);
 
   // Render VexFlow score if pitch data available
   const vexAvailable=!!(window.Vex&&window.Vex.Flow);
@@ -2133,12 +2148,10 @@ function loadSightReadToPlay(){
   if(!srNotes.length)return;
   const key=$('srKey').value;
   const numBars=parseInt($('srBars').value);
-  const countInBar=1; // 4 metronome beats before notes start
-  const offset=countInBar*8; // shift all notes by 1 bar (8 subdivisions)
   const songData={
     title:'視唱練習 Sight-Reading',bpm:80,timeSigTop:4,timeSigBot:4,
-    bars:numBars+countInBar,subdivPerBeat:2,keySig:key,
-    parts:[{name:'Voice',clef:'treble',beats:srNotes.map(n=>({pos:n.pos+offset,dur:n.dur,pitch:n.pitch}))}]
+    bars:numBars,subdivPerBeat:2,keySig:key,
+    parts:[{name:'Voice',clef:'treble',beats:srNotes.map(n=>({pos:n.pos,dur:n.dur,pitch:n.pitch}))}]
   };
   fromJSON(JSON.stringify(songData));
   switchTab('play');
