@@ -235,9 +235,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
       <div class="ctrl-group"><label>Range 音域</label>
         <select id="srRange"><option value="5" selected>5 notes</option><option value="8">1 octave</option><option value="12">10th</option></select>
       </div>
-      <div class="ctrl-group"><label>Difficulty 難度</label>
-        <select id="srDiff"><option value="step" selected>Stepwise 級進</option><option value="skip">Small jumps 小跳</option><option value="any">Any 任意</option></select>
-      </div>
     </div>
     <div style="display:flex;gap:0.5rem;margin-bottom:1rem">
       <button class="hbtn primary" onclick="generateSightRead()" style="flex:1;font-size:0.9rem;padding:0.5rem">🎲 Generate 出題</button>
@@ -1908,56 +1905,40 @@ function generateSightRead(){
   const key=$('srKey').value;
   const numBars=parseInt($('srBars').value);
   const rangeSize=parseInt($('srRange').value);
-  const diff=$('srDiff').value;
   const scale=SR_SCALES[key]||SR_SCALES['C'];
   
   // Build available pitches: scale notes across octaves
   const allPitches=[];
-  // Start from octave 4 for treble clef, go up
   for(let oct=3;oct<=5;oct++){
     for(const n of scale) allPitches.push(n+oct);
   }
-  // Find the tonic in octave 4 as center
   const tonicIdx=allPitches.findIndex(p=>p===key+'4')||0;
-  // Limit range around tonic
   const lo=Math.max(0,tonicIdx-Math.floor(rangeSize/2));
   const hi=Math.min(allPitches.length-1,lo+rangeSize-1);
   const pitchPool=allPitches.slice(lo,hi+1);
   
-  // Generate random notes: each note is 1 or 2 beats (dur=2 or dur=4 at subdivPerBeat=2)
   const beatsPerBar=8; // 4/4, subdivPerBeat=2
+  const bufferBar=1; // 1 empty bar before notes start
+  const offset=bufferBar*beatsPerBar; // notes start at pos=8
   srNotes=[];
   let pos=0;
-  let prevIdx=Math.floor(pitchPool.length/2); // start near middle
-  // First note on tonic
+  let prevIdx=Math.floor(pitchPool.length/2);
   const tonicInPool=pitchPool.findIndex(p=>p.startsWith(key));
   if(tonicInPool>=0) prevIdx=tonicInPool;
   
   const totalBeats=numBars*beatsPerBar;
   while(pos<totalBeats){
-    // Duration: quarter (2) or half (4), weighted
     const remaining=totalBeats-pos;
     let dur;
     if(remaining<=2) dur=2;
     else if(remaining<=4) dur=Math.random()<0.5?2:remaining;
-    else dur=Math.random()<0.6?2:4; // 60% quarter, 40% half
+    else dur=Math.random()<0.6?2:4;
     
-    // Pick pitch based on difficulty
-    let nextIdx;
-    if(diff==='step'){
-      // Move by 0 or ±1 step
-      const step=Math.random()<0.2?0:(Math.random()<0.5?1:-1);
-      nextIdx=Math.max(0,Math.min(pitchPool.length-1,prevIdx+step));
-    }else if(diff==='skip'){
-      // Move by 0-3 steps
-      const step=Math.floor(Math.random()*4)*(Math.random()<0.5?1:-1);
-      nextIdx=Math.max(0,Math.min(pitchPool.length-1,prevIdx+step));
-    }else{
-      // Any interval
-      nextIdx=Math.floor(Math.random()*pitchPool.length);
-    }
+    // Always stepwise: move by 0 or ±1 step
+    const step=Math.random()<0.15?0:(Math.random()<0.5?1:-1);
+    const nextIdx=Math.max(0,Math.min(pitchPool.length-1,prevIdx+step));
     
-    srNotes.push({pos,dur,pitch:pitchPool[nextIdx]});
+    srNotes.push({pos:pos+offset,dur,pitch:pitchPool[nextIdx]});
     prevIdx=nextIdx;
     pos+=dur;
   }
@@ -1966,10 +1947,11 @@ function generateSightRead(){
   if(srNotes.length>0){
     const last=srNotes[srNotes.length-1];
     const tonicP=pitchPool.find(p=>p.startsWith(key));
-    if(tonicP){last.pitch=tonicP;last.dur=Math.min(4,totalBeats-last.pos);}
+    if(tonicP){last.pitch=tonicP;last.dur=Math.min(4,totalBeats+offset-last.pos);}
   }
   
-  renderSightReadScore(key,numBars);
+  const totalBarsWithBuffer=numBars+bufferBar;
+  renderSightReadScore(key,totalBarsWithBuffer);
   $('srPlayBtn').disabled=false;
   $('srRevealBtn').disabled=false;
   $('srPracticeBtn').disabled=false;
@@ -2124,7 +2106,7 @@ function revealNotes(){
 function loadSightReadToPlay(){
   if(!srNotes.length)return;
   const key=$('srKey').value;
-  const numBars=parseInt($('srBars').value);
+  const numBars=parseInt($('srBars').value)+1; // +1 for buffer bar
   const songData={
     title:'視唱練習 Sight-Reading',bpm:80,timeSigTop:4,timeSigBot:4,
     bars:numBars,subdivPerBeat:2,keySig:key,
