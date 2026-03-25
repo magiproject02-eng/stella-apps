@@ -239,7 +239,15 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
         <select id="srBars"><option value="2">2</option><option value="4" selected>4</option><option value="8">8</option></select>
       </div>
       <div class="ctrl-group"><label>Range 音域</label>
-        <select id="srRange"><option value="5" selected>5 notes</option><option value="8">1 octave</option><option value="12">10th</option></select>
+        <select id="srRange">
+          <option value="C4-G4">Low 低 (C4-G4)</option>
+          <option value="D4-A4">Mid-Low (D4-A4)</option>
+          <option value="E4-B4" selected>Mid 中 (E4-B4)</option>
+          <option value="G4-D5">Mid-High (G4-D5)</option>
+          <option value="A4-E5">High 高 (A4-E5)</option>
+          <option value="C4-C5">Full Octave (C4-C5)</option>
+          <option value="B3-E5">Wide 寬 (B3-E5)</option>
+        </select>
       </div>
     </div>
     <div style="display:flex;gap:0.5rem;margin-bottom:1rem">
@@ -1082,7 +1090,7 @@ Include ALL bars where ${partName} has notes.`;
 const cv=$('playCanvas'),cx=cv.getContext('2d');
 let gameOn=false,gamePaused=false,pauseStart=0,totalPaused=0,gameLoop=null,selPart=-1,gStart=0,gNotes=[],gScore=0,gCombo=0,gMaxCombo=0,gPerf=0,gGood=0,gMiss=0;
 let jT='',jC='',jTime=0,dFlash=0,cFlash=0;
-const PW=55,GW=130,MW=170,NS=350,HX=0.18;
+const PW=100,GW=220,MW=350,NS=350,HX=0.18;
 
 function resizeCV(c){c.width=c.clientWidth*devicePixelRatio;c.height=c.clientHeight*devicePixelRatio;cx.scale(devicePixelRatio,devicePixelRatio)}
 function setDifficulty(d,el){difficulty=d;document.querySelectorAll('[data-diff]').forEach(b=>b.classList.toggle('active',b.dataset.diff===d))}
@@ -1226,9 +1234,10 @@ function startPlay(pi){
       const sy=5;
       // Beat grid lines
       const bd=60000/(song.bpm*bpmMod);
+      const bpbS=Math.round(song.timeSigTop*(4/song.timeSigBot)); // beats per bar
       for(let i=0;i<300;i++){
         const x=hx+(i*bd-el)*px;if(x<-5||x>w+5)continue;
-        cx.strokeStyle=i%song.timeSigTop===0?'#2e2e3a':'#1e1e28';
+        cx.strokeStyle=i%bpbS===0?'#2e2e3a':'#1e1e28';
         cx.lineWidth=1;cx.beginPath();
         cx.moveTo(x,sy);cx.lineTo(x,sy+allPartsData.length*partH);cx.stroke();
       }
@@ -1289,7 +1298,8 @@ function startPlay(pi){
     // ─── TAIKO BELT ───
     cx.fillStyle='#1a1a22';cx.fillRect(0,by-bh/2,w,bh);cx.strokeStyle='#2e2e3a';cx.lineWidth=1;cx.beginPath();cx.moveTo(0,by-bh/2);cx.lineTo(w,by-bh/2);cx.moveTo(0,by+bh/2);cx.lineTo(w,by+bh/2);cx.stroke();
     const bd2=60000/(song.bpm*(difficulty==='slow'?0.7:1));
-    for(let i=0;i<200;i++){const x=hx+(i*bd2-el)*px;if(x<-10||x>w+10)continue;cx.strokeStyle=i%song.timeSigTop===0?'#444':'#2e2e3a';cx.lineWidth=i%song.timeSigTop===0?2:1;cx.beginPath();cx.moveTo(x,by-bh/2);cx.lineTo(x,by+bh/2);cx.stroke()}
+    const bpb=Math.round(song.timeSigTop*(4/song.timeSigBot)); // beats per bar: 4/4→4, 12/8→6, 6/8→3, 3/4→3
+    for(let i=0;i<200;i++){const x=hx+(i*bd2-el)*px;if(x<-10||x>w+10)continue;cx.strokeStyle=i%bpb===0?'#444':'#2e2e3a';cx.lineWidth=i%bpb===0?2:1;cx.beginPath();cx.moveTo(x,by-bh/2);cx.lineTo(x,by+bh/2);cx.stroke()}
     const dr=32;
     if(cFlash>0){const r=dr+10+(1-cFlash)*30;cx.beginPath();cx.arc(hx,by,r,0,Math.PI*2);cx.strokeStyle=`rgba(244,162,97,${cFlash*0.6})`;cx.lineWidth=3;cx.stroke();cFlash-=0.04}
     if(dFlash>0){cx.fillStyle=`rgba(230,57,70,${dFlash*0.5})`;cx.beginPath();cx.arc(hx,by,dr+12,0,Math.PI*2);cx.fill();dFlash-=0.05}
@@ -1413,8 +1423,9 @@ function startClassroom(){
     ccx.fillText(`${song.title} — ${song.bpm} BPM — Classroom Mode`,w/2,28);
 
     const bd=60000/song.bpm;
+    const bpbC=Math.round(song.timeSigTop*(4/song.timeSigBot));
     for(let i=0;i<200;i++){const x=hx+(i*bd-el)*px;if(x<-5||x>w+5)continue;
-      ccx.strokeStyle=i%song.timeSigTop===0?'#3a3a4a':'#25252f';ccx.lineWidth=i%song.timeSigTop===0?2:1;
+      ccx.strokeStyle=i%bpbC===0?'#3a3a4a':'#25252f';ccx.lineWidth=i%bpbC===0?2:1;
       ccx.beginPath();ccx.moveTo(x,startY-5);ccx.lineTo(x,startY+song.parts.length*partH+5);ccx.stroke()}
 
     ccx.strokeStyle='#f4a26166';ccx.lineWidth=2;ccx.beginPath();ccx.moveTo(hx,startY-10);ccx.lineTo(hx,startY+song.parts.length*partH+10);ccx.stroke();
@@ -1932,18 +1943,33 @@ let srNotes=[];let srPlaying=false;let srInterval=null;
 function generateSightRead(){
   const key=$('srKey').value;
   const numBars=parseInt($('srBars').value);
-  const rangeSize=parseInt($('srRange').value);
+  const rangeStr=$('srRange').value; // e.g. "C4-G4"
   const scale=SR_SCALES[key]||SR_SCALES['C'];
   
-  // Build available pitches: scale notes across octaves
-  const allPitches=[];
-  for(let oct=3;oct<=5;oct++){
-    for(const n of scale) allPitches.push(n+oct);
+  // Parse range bounds
+  const [loNote,hiNote]=rangeStr.split('-');
+  
+  // Build ALL chromatic notes to use as ordering reference
+  const CHROM=['C','C#','Db','D','D#','Eb','E','F','F#','Gb','G','G#','Ab','A','A#','Bb','B'];
+  function midiNum(p){
+    const m=p.match(/^([A-G][#b]?)(\d)$/);if(!m)return 0;
+    const n=m[1],o=parseInt(m[2]);
+    const base={'C':0,'D':2,'E':4,'F':5,'G':7,'A':9,'B':11};
+    let semi=base[n[0]]||0;
+    if(n.includes('#'))semi++;if(n.includes('b'))semi--;
+    return o*12+semi;
   }
-  const tonicIdx=allPitches.findIndex(p=>p===key+'4')||0;
-  const lo=Math.max(0,tonicIdx-Math.floor(rangeSize/2));
-  const hi=Math.min(allPitches.length-1,lo+rangeSize-1);
-  const pitchPool=allPitches.slice(lo,hi+1);
+  const loMidi=midiNum(loNote),hiMidi=midiNum(hiNote);
+  
+  // Build scale pitches within range
+  const pitchPool=[];
+  for(let oct=2;oct<=6;oct++){
+    for(const n of scale){
+      const p=n+oct;
+      const m=midiNum(p);
+      if(m>=loMidi&&m<=hiMidi) pitchPool.push(p);
+    }
+  }
   
   const beatsPerBar=8; // 4/4, subdivPerBeat=2
   // Notes start at pos=0 for score display
@@ -1971,11 +1997,12 @@ function generateSightRead(){
     pos+=dur;
   }
   
-  // Last note: land on tonic, make it a half note
+  // Last note: land on tonic if in range, otherwise stay on last note
   if(srNotes.length>0){
     const last=srNotes[srNotes.length-1];
     const tonicP=pitchPool.find(p=>p.startsWith(key));
-    if(tonicP){last.pitch=tonicP;last.dur=Math.min(4,totalBeats-last.pos);}
+    if(tonicP) last.pitch=tonicP;
+    last.dur=Math.min(4,totalBeats-last.pos);
   }
   
   renderSightReadScore(key,numBars);
