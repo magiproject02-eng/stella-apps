@@ -1483,9 +1483,11 @@ function renderVexScore(partIdx){
   if(!hasPitch){scoreC.style.display='none';return} // fallback to canvas score view
 
   const spBar=Math.round(song.timeSigTop*song.subdivPerBeat*(4/song.timeSigBot));
-  const staveWidth=Math.max(150,Math.round(spBar*30)); // ~30px per subdivision
+  const staveWidth=Math.max(150,Math.round(spBar*30));
   const firstStaveExtra=80;
-  const w=firstStaveExtra+song.bars*staveWidth+100;
+  const startX=10;
+  const firstW=firstStaveExtra+staveWidth;
+  const w=startX+firstW+(song.bars-1)*staveWidth+20;
   const h=130;
 
   const renderer=new VF.Renderer(container,VF.Renderer.Backends.SVG);
@@ -1504,8 +1506,8 @@ function renderVexScore(partIdx){
 
   // Render each measure
   for(let bar=0;bar<song.bars;bar++){
-    const x=bar===0?10:firstStaveExtra+(bar-1)*staveWidth+staveWidth;
-    const thisW=bar===0?firstStaveExtra+staveWidth:staveWidth;
+    const x=bar===0?startX:startX+firstW+(bar-1)*staveWidth;
+    const thisW=bar===0?firstW:staveWidth;
     const y=10;
 
     const stave=new VF.Stave(x,y,thisW);
@@ -1524,7 +1526,7 @@ function renderVexScore(partIdx){
       if(isDotted(restDur))rest.addDot(0);
       const voice=new VF.Voice({num_beats:song.timeSigTop,beat_value:song.timeSigBot}).setStrict(false);
       voice.addTickables([rest]);
-      new VF.Formatter().joinVoices([voice]).format([voice],staveWidth-40);
+      new VF.Formatter().joinVoices([voice]).format([voice],thisW-40);
       voice.draw(ctx,stave);
       continue;
     }
@@ -1545,9 +1547,14 @@ function renderVexScore(partIdx){
       }
     }
     
-    // Helper: add accidentals to a note
+    // Helper: add accidentals to a note (skip if already in key signature)
+    const KEY_SIG_ACC={'C':[],'G':['f#'],'D':['f#','c#'],'A':['f#','c#','g#'],'E':['f#','c#','g#','d#'],
+      'B':['f#','c#','g#','d#','a#'],'F':['bb'],'Bb':['bb','eb'],'Eb':['bb','eb','ab'],'Ab':['bb','eb','ab','db']};
+    const keyAcc=KEY_SIG_ACC[song.keySig||'C']||[];
     function addAcc(note,pitchStr){
       const ps=(pitchStr||'').toLowerCase();
+      const noteName=ps.replace(/\d+$/,''); // e.g. "f#" from "f#4"
+      if(keyAcc.includes(noteName))return; // already in key sig, no explicit accidental needed
       if(ps.includes('#'))note.addAccidental(0,new VF.Accidental('#'));
       else if(ps.includes('b')&&!ps.startsWith('b'))note.addAccidental(0,new VF.Accidental('b'));
     }
@@ -1580,7 +1587,7 @@ function renderVexScore(partIdx){
     try{
       const voice=new VF.Voice({num_beats:song.timeSigTop,beat_value:song.timeSigBot}).setStrict(false);
       voice.addTickables(notes);
-      new VF.Formatter().joinVoices([voice]).format([voice],staveWidth-40);
+      new VF.Formatter().joinVoices([voice]).format([voice],thisW-40);
       voice.draw(ctx,stave);
 
       // Store note positions for highlighting (works with VF3 and VF4)
@@ -1971,7 +1978,9 @@ function renderSightReadScore(key,numBars){
   const VF=Vex.Flow;
   const staveWidth=240;
   const firstExtra=90;
-  const w=firstExtra+numBars*staveWidth+20;
+  const startX=10;
+  const firstW=firstExtra+staveWidth;
+  const w=startX+firstW+(numBars-1)*staveWidth+20;
   const h=150;
   
   const renderer=new VF.Renderer(container,VF.Renderer.Backends.SVG);
@@ -1981,8 +1990,8 @@ function renderSightReadScore(key,numBars){
   const spBar=8; // 4/4, subdivPerBeat=2
   
   for(let bar=0;bar<numBars;bar++){
-    const x=bar===0?10:firstExtra+(bar-1)*staveWidth+staveWidth;
-    const thisW=bar===0?firstExtra+staveWidth:staveWidth;
+    const x=bar===0?startX:startX+firstW+(bar-1)*staveWidth;
+    const thisW=bar===0?firstW:staveWidth;
     const stave=new VF.Stave(x,15,thisW);
     if(bar===0){
       stave.addClef('treble');
@@ -1999,7 +2008,7 @@ function renderSightReadScore(key,numBars){
       const rest=new VF.StaveNote({keys:['b/4'],duration:'wr'});
       const voice=new VF.Voice({num_beats:4,beat_value:4}).setStrict(false);
       voice.addTickables([rest]);
-      new VF.Formatter().joinVoices([voice]).format([voice],staveWidth-40);
+      new VF.Formatter().joinVoices([voice]).format([voice],thisW-40);
       voice.draw(ctx,stave);
       continue;
     }
@@ -2025,9 +2034,15 @@ function renderSightReadScore(key,numBars){
         const note=new VF.StaveNote({keys:[vp],duration:vexDurBase(vd),clef:'treble'});
         if(isDotted(vd))note.addDot(0);
         // Accidentals only if not in key sig
+        const KEY_ACC={'C':[],'G':['f#'],'D':['f#','c#'],'A':['f#','c#','g#'],'E':['f#','c#','g#','d#'],
+          'B':['f#','c#','g#','d#','a#'],'F':['bb'],'Bb':['bb','eb'],'Eb':['bb','eb','ab'],'Ab':['bb','eb','ab','db']};
+        const kAcc=KEY_ACC[key]||[];
         const ps=(beat.pitch||'').toLowerCase();
-        if(ps.includes('#'))note.addAccidental(0,new VF.Accidental('#'));
-        else if(ps.includes('b')&&!ps.startsWith('b'))note.addAccidental(0,new VF.Accidental('b'));
+        const nn=ps.replace(/\d+$/,'');
+        if(!kAcc.includes(nn)){
+          if(ps.includes('#'))note.addAccidental(0,new VF.Accidental('#'));
+          else if(ps.includes('b')&&!ps.startsWith('b'))note.addAccidental(0,new VF.Accidental('b'));
+        }
         notes.push(note);
       }
       pos=relPos+clipped;
@@ -2045,7 +2060,7 @@ function renderSightReadScore(key,numBars){
     try{
       const voice=new VF.Voice({num_beats:4,beat_value:4}).setStrict(false);
       voice.addTickables(notes);
-      new VF.Formatter().joinVoices([voice]).format([voice],staveWidth-40);
+      new VF.Formatter().joinVoices([voice]).format([voice],thisW-40);
       voice.draw(ctx,stave);
     }catch(e){console.warn('SR bar',bar,'error:',e.message)}
   }
