@@ -1290,14 +1290,12 @@ function startPlay(pi){
       }
       
       // ── CLEF + KEY SIG + TIME SIG ──
-      // Fixed at left during count-in (el<0), then scroll away after music starts
+      // Fixed at left during count-in, then scrolls left from that position
       var clefX;
-      if(el<0){
-        // During count-in: fixed at left edge
-        clefX=8;
+      if(el<=0){
+        clefX=8; // fixed during count-in
       }else{
-        // After music starts: scroll with time=0 position (start of bar 1)
-        clefX=hx+(-gPulseMs*1.5-el)*px;
+        clefX=8-el*px; // scroll left from position 8 at music speed
       }
       if(clefX>-80&&clefX<w+40){
         cx.fillStyle='#888';cx.font=(Math.round(lineGap*2.8))+'px serif';cx.textAlign='left';cx.textBaseline='middle';
@@ -1327,17 +1325,17 @@ function startPlay(pi){
         cx.fillText(song.timeSigBot+'',ksX2,staffTop+lineGap*3.2);
       }
       
-      // ── BAR LINES (same grey as staff, offset 2px left so notes don't sit on them) ──
+      // ── BAR LINES (grey, offset left by note radius so notes never sit on them) ──
+      var barOffset=Math.max(6,lineGap*0.4)+3; // note radius + 3px gap
       for(var i=-10;i<200;i++){
         var x=hx+(i*gPulseMs-el)*px;if(x<-10||x>w+10)continue;
         var isBar=i%gPulsesPerBar===0;
         if(isBar){
-          var bx=x-2; // offset left so notehead doesn't overlap
-          cx.strokeStyle='#888';cx.lineWidth=1.5;
-          cx.setLineDash([]);
+          var bx=x-barOffset;
+          cx.strokeStyle='#666';cx.lineWidth=1;
           cx.beginPath();cx.moveTo(bx,staffTop);cx.lineTo(bx,staffBot);cx.stroke();
           if(i>=0){
-            cx.fillStyle='#777';cx.font="bold 8px 'Plus Jakarta Sans'";cx.textAlign='center';cx.textBaseline='bottom';
+            cx.fillStyle='#666';cx.font="bold 8px 'Plus Jakarta Sans'";cx.textAlign='center';cx.textBaseline='bottom';
             cx.fillText(Math.floor(i/gPulsesPerBar)+1+'',bx,staffTop-2);
           }
         }
