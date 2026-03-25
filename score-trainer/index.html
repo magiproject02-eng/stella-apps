@@ -1253,7 +1253,7 @@ function startPlay(pi){
 
     // Layout: staff above, belt below
     const hasPitchData=gNotes.length>0&&gNotes[0].pitch;
-    const staffH=showScore&&hasPitchData?Math.min(150,h*0.3):0;
+    const staffH=showScore&&hasPitchData?Math.min(110,h*0.22):0;
     const by=staffH+(h-staffH)*0.38;
     const bh=70;
 
@@ -1295,38 +1295,40 @@ function startPlay(pi){
         cx.beginPath();cx.moveTo(0,ly);cx.lineTo(w,ly);cx.stroke();
       }
       
-      // ── CLEF + KEY SIG + TIME SIG (fixed at left edge) ──
-      // Treble clef
-      cx.fillStyle='#888';cx.font=`bold ${Math.round(lineGap*4)}px serif`;cx.textAlign='left';cx.textBaseline='middle';
-      cx.fillText('𝄞',4,staffTop+2*lineGap-lineGap*0.3);
-      
-      // Key signature sharps/flats
-      const keySharps={'G':['F'],'D':['F','C'],'A':['F','C','G'],'E':['F','C','G','D']};
-      const keyFlats={'F':['B'],'Bb':['B','E'],'Eb':['B','E','A'],'Ab':['B','E','A','D']};
-      const ks=song.keySig||'C';
-      let ksX=lineGap*3.5;
-      if(keySharps[ks]){
-        cx.fillStyle='#aaa';cx.font=`bold ${Math.round(lineGap*1.2)}px serif`;
-        keySharps[ks].forEach(n=>{
-          const y=pitchToY(n+'5');
-          cx.fillText('♯',ksX,y);
-          ksX+=lineGap*0.8;
-        });
+      // ── CLEF + KEY SIG + TIME SIG (scroll with music, positioned before bar 1) ──
+      // These are at negative time so they scroll past the playhead
+      const clefTime=-gPulseMs*2; // 2 beats before bar 1
+      const clefX=hx+(clefTime-el)*px;
+      if(clefX>-60&&clefX<w+60){
+        cx.fillStyle='#888';cx.font=(Math.round(lineGap*3.5))+'px serif';cx.textAlign='left';cx.textBaseline='middle';
+        cx.fillText('\u{1D11E}',clefX,staffTop+2*lineGap-lineGap*0.2);
+        
+        // Key signature sharps/flats
+        const keySharps={'G':['F'],'D':['F','C'],'A':['F','C','G'],'E':['F','C','G','D']};
+        const keyFlats={'F':['B'],'Bb':['B','E'],'Eb':['B','E','A'],'Ab':['B','E','A','D']};
+        const ks=song.keySig||'C';
+        let ksX=clefX+lineGap*3;
+        if(keySharps[ks]){
+          cx.fillStyle='#aaa';cx.font='bold '+(Math.round(lineGap*1))+'px serif';cx.textBaseline='middle';
+          keySharps[ks].forEach(function(n){
+            cx.fillText('\u266F',ksX,pitchToY(n+'5'));
+            ksX+=lineGap*0.7;
+          });
+        }
+        if(keyFlats[ks]){
+          cx.fillStyle='#aaa';cx.font='bold '+(Math.round(lineGap*1))+'px serif';cx.textBaseline='middle';
+          keyFlats[ks].forEach(function(n){
+            cx.fillText('\u266D',ksX,pitchToY(n+'4'));
+            ksX+=lineGap*0.7;
+          });
+        }
+        
+        // Time signature
+        ksX+=lineGap*0.3;
+        cx.fillStyle='#aaa';cx.font='bold '+(Math.round(lineGap*1.5))+'px Plus Jakarta Sans,sans-serif';cx.textAlign='center';cx.textBaseline='middle';
+        cx.fillText(song.timeSigTop+'',ksX,staffTop+lineGap*0.8);
+        cx.fillText(song.timeSigBot+'',ksX,staffTop+lineGap*3.2);
       }
-      if(keyFlats[ks]){
-        cx.fillStyle='#aaa';cx.font=`bold ${Math.round(lineGap*1.2)}px serif`;
-        keyFlats[ks].forEach(n=>{
-          const y=pitchToY(n+'4');
-          cx.fillText('♭',ksX,y);
-          ksX+=lineGap*0.8;
-        });
-      }
-      
-      // Time signature
-      ksX+=lineGap*0.5;
-      cx.fillStyle='#aaa';cx.font=`bold ${Math.round(lineGap*1.8)}px 'Plus Jakarta Sans'`;cx.textAlign='center';
-      cx.fillText(song.timeSigTop+'',ksX,staffTop+lineGap);
-      cx.fillText(song.timeSigBot+'',ksX,staffTop+3*lineGap);
       
       // ── BAR LINES (thicker, with bar numbers) ──
       for(let i=-10;i<200;i++){
@@ -1494,8 +1496,8 @@ function startPlay(pi){
       cx.globalAlpha=1}
 
     // HUD
-    cx.fillStyle='#e8e6f0';cx.font="bold 22px 'Outfit'";cx.textAlign='left';cx.fillText(gScore+'',20,scoreH+20);cx.fillStyle='#6b6b80';cx.font="600 9px 'Outfit'";cx.fillText('SCORE',20,scoreH+34);
-    cx.textAlign='right';cx.fillStyle='#444';cx.font="600 11px 'Outfit'";cx.fillText(`${song.parts[selPart].name} · ${song.title} · ${song.bpm} BPM${difficulty!=='normal'?' ['+difficulty+']':''} · ${gameMode==='pitch'?'🎤 Pitch':'📱'}`,w-15,scoreH+16);
+    cx.fillStyle='#e8e6f0';cx.font="bold 22px 'Outfit'";cx.textAlign='left';cx.fillText(gScore+'',20,staffH+20);cx.fillStyle='#6b6b80';cx.font="600 9px 'Outfit'";cx.fillText('SCORE',20,staffH+34);
+    cx.textAlign='right';cx.fillStyle='#444';cx.font="600 11px 'Outfit'";cx.fillText(`${song.parts[selPart].name} · ${song.title} · ${song.bpm} BPM${difficulty!=='normal'?' ['+difficulty+']':''} · ${gameMode==='pitch'?'🎤 Pitch':'📱'}`,w-15,staffH+16);
 
     // Pitch mode: show detected note and expected note
     if(gameMode==='pitch'){
@@ -1516,7 +1518,7 @@ function startPlay(pi){
     const td=gNotes.length>0?gNotes[gNotes.length-1].time+1000:1,pr=Math.max(0,Math.min(1,el/td));
     cx.fillStyle='#2e2e3a';cx.fillRect(0,h-3,w,3);cx.fillStyle=pc;cx.fillRect(0,h-3,w*pr,3);
 
-    if(el>td+1000&&allD){endPlay();return}}
+    if(el>td+500&&allD){endPlay();return}}
   requestAnimationFrame(gameLoop)}
 
 function showJ(t,c){jT=t;jC=c;jTime=performance.now()}
