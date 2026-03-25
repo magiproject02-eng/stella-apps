@@ -1253,7 +1253,7 @@ function startPlay(pi){
 
     // Layout: staff above, belt below
     const hasPitchData=gNotes.length>0&&gNotes[0].pitch;
-    const staffH=showScore&&hasPitchData?Math.min(110,h*0.22):0;
+    const staffH=showScore&&hasPitchData?Math.min(80,h*0.18):0;
     const by=staffH+(h-staffH)*0.38;
     const bh=70;
 
@@ -1262,94 +1262,90 @@ function startPlay(pi){
     // ─── STAFF VIEW (same linear time as belt) ───
     try{
     if(staffH>0){
-      const staffTop=20;
-      const staffBot=staffH-15;
+      const staffTop=10;
+      const staffBot=staffH-5;
       const lineGap=(staffBot-staffTop)/4; // 5 lines, 4 gaps
-      // Pitch to Y: map pitch to staff position
-      // Middle line (line 3, B4) is center of staff
-      // Each line/space = half a lineGap
       const halfStep=lineGap/2;
-      // Reference: treble clef, middle = B4
-      // Lines bottom→top: E4=0, G4=1, B4=2, D5=3, F5=4
-      // Spaces: F4=0.5, A4=1.5, C5=2.5, E5=3.5
+      // Proper treble clef: each diatonic step = halfStep
+      // Bottom line = E4 (pos=2), top line = F5 (pos=10)
       function pitchToY(p){
-        if(!p)return staffTop+2*lineGap; // default to middle
-        const m=p.match(/^([A-G][#b]?)(\d)$/);
+        if(!p)return staffTop+2*lineGap;
+        var m=p.match(/^([A-G][#b]?)(\d)$/);
         if(!m)return staffTop+2*lineGap;
-        const note=m[1][0],oct=parseInt(m[2]);
-        const notePos={'C':0,'D':1,'E':2,'F':3,'G':4,'A':5,'B':6};
-        const pos=(notePos[note]||0)+(oct-4)*7; // semitone-ish position relative to C4=0
-        // E4=2, F4=3, G4=4, A4=5, B4=6, C5=7, D5=8, E5=9, F5=10
-        // Map to staff lines: E4=bottom line(4), F5=top line(0)
-        const staffPos=(pos-2)/8; // 0=E4(bottom), 1=F5(top)
-        return staffBot-staffPos*(staffBot-staffTop);
+        var note=m[1][0],oct=parseInt(m[2]);
+        var notePos={'C':0,'D':1,'E':2,'F':3,'G':4,'A':5,'B':6};
+        var pos=(notePos[note]||0)+(oct-4)*7;
+        // E4=pos2=bottom line, each step up = halfStep up on screen
+        return staffBot-(pos-2)*halfStep;
       }
       
       // Draw staff background
       cx.fillStyle='#16161d';cx.fillRect(0,0,w,staffH);
       
       // Draw 5 staff lines
-      for(let i=0;i<5;i++){
-        const ly=staffTop+i*lineGap;
-        cx.strokeStyle='#555';cx.lineWidth=1;
+      for(var i=0;i<5;i++){
+        var ly=staffTop+i*lineGap;
+        cx.strokeStyle='#444';cx.lineWidth=0.8;
         cx.beginPath();cx.moveTo(0,ly);cx.lineTo(w,ly);cx.stroke();
       }
       
-      // ── CLEF + KEY SIG + TIME SIG (scroll with music, positioned before bar 1) ──
-      // These are at negative time so they scroll past the playhead
-      const clefTime=-gPulseMs*2; // 2 beats before bar 1
-      const clefX=hx+(clefTime-el)*px;
-      if(clefX>-60&&clefX<w+60){
-        cx.fillStyle='#888';cx.font=(Math.round(lineGap*3.5))+'px serif';cx.textAlign='left';cx.textBaseline='middle';
-        cx.fillText('\u{1D11E}',clefX,staffTop+2*lineGap-lineGap*0.2);
+      // ── CLEF + KEY SIG + TIME SIG ──
+      // Fixed at left during count-in (el<0), then scroll away after music starts
+      var clefX;
+      if(el<0){
+        // During count-in: fixed at left edge
+        clefX=8;
+      }else{
+        // After music starts: scroll with time=0 position (start of bar 1)
+        clefX=hx+(-gPulseMs*1.5-el)*px;
+      }
+      if(clefX>-80&&clefX<w+40){
+        cx.fillStyle='#888';cx.font=(Math.round(lineGap*2.8))+'px serif';cx.textAlign='left';cx.textBaseline='middle';
+        cx.fillText('\u{1D11E}',clefX,staffTop+2*lineGap);
         
-        // Key signature sharps/flats
-        const keySharps={'G':['F'],'D':['F','C'],'A':['F','C','G'],'E':['F','C','G','D']};
-        const keyFlats={'F':['B'],'Bb':['B','E'],'Eb':['B','E','A'],'Ab':['B','E','A','D']};
-        const ks=song.keySig||'C';
-        let ksX=clefX+lineGap*3;
+        var keySharps={'G':['F'],'D':['F','C'],'A':['F','C','G'],'E':['F','C','G','D']};
+        var keyFlats={'F':['B'],'Bb':['B','E'],'Eb':['B','E','A'],'Ab':['B','E','A','D']};
+        var ks=song.keySig||'C';
+        var ksX2=clefX+lineGap*2.2;
         if(keySharps[ks]){
-          cx.fillStyle='#aaa';cx.font='bold '+(Math.round(lineGap*1))+'px serif';cx.textBaseline='middle';
+          cx.fillStyle='#aaa';cx.font='bold '+(Math.round(lineGap*0.8))+'px serif';cx.textBaseline='middle';
           keySharps[ks].forEach(function(n){
-            cx.fillText('\u266F',ksX,pitchToY(n+'5'));
-            ksX+=lineGap*0.7;
+            cx.fillText('\u266F',ksX2,pitchToY(n+'5'));
+            ksX2+=lineGap*0.55;
           });
         }
         if(keyFlats[ks]){
-          cx.fillStyle='#aaa';cx.font='bold '+(Math.round(lineGap*1))+'px serif';cx.textBaseline='middle';
+          cx.fillStyle='#aaa';cx.font='bold '+(Math.round(lineGap*0.8))+'px serif';cx.textBaseline='middle';
           keyFlats[ks].forEach(function(n){
-            cx.fillText('\u266D',ksX,pitchToY(n+'4'));
-            ksX+=lineGap*0.7;
+            cx.fillText('\u266D',ksX2,pitchToY(n+'4'));
+            ksX2+=lineGap*0.55;
           });
         }
-        
-        // Time signature
-        ksX+=lineGap*0.3;
-        cx.fillStyle='#aaa';cx.font='bold '+(Math.round(lineGap*1.5))+'px Plus Jakarta Sans,sans-serif';cx.textAlign='center';cx.textBaseline='middle';
-        cx.fillText(song.timeSigTop+'',ksX,staffTop+lineGap*0.8);
-        cx.fillText(song.timeSigBot+'',ksX,staffTop+lineGap*3.2);
+        ksX2+=lineGap*0.2;
+        cx.fillStyle='#aaa';cx.font='bold '+(Math.round(lineGap*1.1))+'px Plus Jakarta Sans,sans-serif';cx.textAlign='center';cx.textBaseline='middle';
+        cx.fillText(song.timeSigTop+'',ksX2,staffTop+lineGap*0.8);
+        cx.fillText(song.timeSigBot+'',ksX2,staffTop+lineGap*3.2);
       }
       
-      // ── BAR LINES (bright, extend beyond staff) ──
-      for(let i=-10;i<200;i++){
-        const x=hx+(i*gPulseMs-el)*px;if(x<-10||x>w+10)continue;
-        const isBar=i%gPulsesPerBar===0;
+      // ── BAR LINES (dashed blue, clearly different from solid white stems) ──
+      for(var i=-10;i<200;i++){
+        var x=hx+(i*gPulseMs-el)*px;if(x<-10||x>w+10)continue;
+        var isBar=i%gPulsesPerBar===0;
         if(isBar){
-          // Bold bar line — extends 8px above and below staff
-          cx.strokeStyle='#999';cx.lineWidth=2.5;
-          cx.beginPath();cx.moveTo(x,staffTop-8);cx.lineTo(x,staffBot+8);cx.stroke();
-          // Bar number above
+          cx.strokeStyle='rgba(80,130,255,0.5)';cx.lineWidth=1.5;
+          cx.setLineDash([3,3]);
+          cx.beginPath();cx.moveTo(x,staffTop-4);cx.lineTo(x,staffBot+4);cx.stroke();
+          cx.setLineDash([]);
           if(i>=0){
-            cx.fillStyle='#888';cx.font="bold 10px 'Plus Jakarta Sans'";cx.textAlign='center';cx.textBaseline='bottom';
-            cx.fillText(Math.floor(i/gPulsesPerBar)+1+'',x,staffTop-10);
+            cx.fillStyle='rgba(80,130,255,0.6)';cx.font="bold 8px 'Plus Jakarta Sans'";cx.textAlign='center';cx.textBaseline='bottom';
+            cx.fillText(Math.floor(i/gPulsesPerBar)+1+'',x,staffTop-5);
           }
         }
-        // No beat lines — they look like stems and cause confusion
       }
       
       // Playhead on staff
-      cx.strokeStyle='rgba(233,196,0,0.6)';cx.lineWidth=2.5;
-      cx.beginPath();cx.moveTo(hx,staffTop-5);cx.lineTo(hx,staffBot+5);cx.stroke();
+      cx.strokeStyle='rgba(233,196,0,0.5)';cx.lineWidth=1.5;
+      cx.beginPath();cx.moveTo(hx,staffTop-3);cx.lineTo(hx,staffBot+3);cx.stroke();
       
       // ── NOTES ON STAFF (simple circles, no transform tricks) ──
       const visNotes=[];
@@ -1360,66 +1356,68 @@ function startPlay(pi){
         visNotes.push({x,nw,y:pitchToY(n.pitch),nt:n.time-el,dur:n.dur,pitch:n.pitch,hit:n.hit,missed:n.missed});
       }
       
-      const nr=Math.max(6,lineGap*0.45); // note radius
+      var nr=Math.max(4,lineGap*0.35); // smaller note radius
       
-      // Pass 1: duration bars
-      for(let vi=0;vi<visNotes.length;vi++){
-        const vn=visNotes[vi];
-        const passed=vn.nt<-100;
-        const current=Math.abs(vn.nt)<300;
-        cx.globalAlpha=passed?0.15:current?0.5:0.3;
+      // Pass 1: duration bars (thin)
+      for(var vi=0;vi<visNotes.length;vi++){
+        var vn=visNotes[vi];
+        var passed=vn.nt<-100;
+        var current=Math.abs(vn.nt)<300;
+        cx.globalAlpha=passed?0.12:current?0.4:0.2;
         cx.fillStyle=current?'#e9c400':PC[selPart]||'#b8c3ff';
-        cx.fillRect(vn.x,vn.y-nr*0.4,vn.nw,nr*0.8);
+        cx.fillRect(vn.x,vn.y-nr*0.3,vn.nw,nr*0.6);
         cx.globalAlpha=1;
       }
       
-      // Pass 2: noteheads as circles + stems + labels
-      for(let vi=0;vi<visNotes.length;vi++){
-        const vn=visNotes[vi];
-        const passed=vn.nt<-100;
-        const current=Math.abs(vn.nt)<300;
-        cx.globalAlpha=passed?0.4:1;
-        const col=current?'#e9c400':vn.hit?'#2a9d8f':'#fff';
+      // Pass 2: noteheads + stems + labels
+      for(var vi=0;vi<visNotes.length;vi++){
+        var vn=visNotes[vi];
+        var passed=vn.nt<-100;
+        var current=Math.abs(vn.nt)<300;
+        cx.globalAlpha=passed?0.35:1;
+        var col=current?'#e9c400':vn.hit?'#2a9d8f':'#fff';
         
-        // Filled circle notehead
+        // Notehead circle
         cx.fillStyle=col;
         cx.beginPath();cx.arc(vn.x,vn.y,nr,0,Math.PI*2);cx.fill();
         
-        // Open notehead for half notes
+        // Open for half notes
         if(vn.dur>=4){
           cx.fillStyle='#16161d';
-          cx.beginPath();cx.arc(vn.x,vn.y,nr*0.5,0,Math.PI*2);cx.fill();
+          cx.beginPath();cx.arc(vn.x,vn.y,nr*0.45,0,Math.PI*2);cx.fill();
         }
         
-        // Stem (thin, lighter than bar lines)
+        // Stem (thin, short, white — clearly different from blue bar lines)
         if(vn.dur<8){
-          const stemUp=vn.y>(staffTop+staffBot)/2;
-          const sy2=stemUp?vn.y-lineGap*2.5:vn.y+lineGap*2.5;
-          cx.strokeStyle=passed?'#555':current?'#c8a800':'#bbb';cx.lineWidth=1.2;
+          var stemUp=vn.y>(staffTop+staffBot)/2;
+          var sy2=stemUp?vn.y-lineGap*2:vn.y+lineGap*2;
+          cx.strokeStyle=passed?'#444':current?'#c8a800':'#aaa';cx.lineWidth=1;
           cx.beginPath();cx.moveTo(vn.x+(stemUp?nr:-nr),vn.y);cx.lineTo(vn.x+(stemUp?nr:-nr),sy2);cx.stroke();
         }
         
-        // Current note ring
+        // Current note: small bright dot instead of big ring
         if(current){
-          cx.strokeStyle='#e9c400';cx.lineWidth=3;
-          cx.beginPath();cx.arc(vn.x,vn.y,nr+5,0,Math.PI*2);cx.stroke();
+          cx.fillStyle='#e9c400';
+          cx.beginPath();cx.arc(vn.x,vn.y-nr-3,2,0,Math.PI*2);cx.fill();
         }
         
-        // Pitch label below
-        cx.fillStyle=current?'#e9c400':passed?'#666':'#ccc';
-        cx.font="bold 9px 'Plus Jakarta Sans'";cx.textAlign='center';cx.textBaseline='top';
-        cx.fillText(vn.pitch||'',vn.x,vn.y+nr+2);
+        // Pitch label (tiny, only for current and upcoming)
+        if(!passed){
+          cx.fillStyle=current?'#e9c400':'#999';
+          cx.font="7px 'Plus Jakarta Sans'";cx.textAlign='center';cx.textBaseline='top';
+          cx.fillText(vn.pitch||'',vn.x,vn.y+nr+1);
+        }
         
         // Ledger lines
-        cx.strokeStyle='#666';cx.lineWidth=1;
+        cx.strokeStyle='#555';cx.lineWidth=0.8;
         if(vn.y>staffBot+halfStep*0.5){
-          for(let ly=staffBot+lineGap;ly<=vn.y+2;ly+=lineGap){
-            cx.beginPath();cx.moveTo(vn.x-nr-4,ly);cx.lineTo(vn.x+nr+4,ly);cx.stroke();
+          for(var ly=staffBot+lineGap;ly<=vn.y+2;ly+=lineGap){
+            cx.beginPath();cx.moveTo(vn.x-nr-3,ly);cx.lineTo(vn.x+nr+3,ly);cx.stroke();
           }
         }
         if(vn.y<staffTop-halfStep*0.5){
-          for(let ly=staffTop-lineGap;ly>=vn.y-2;ly-=lineGap){
-            cx.beginPath();cx.moveTo(vn.x-nr-4,ly);cx.lineTo(vn.x+nr+4,ly);cx.stroke();
+          for(var ly=staffTop-lineGap;ly>=vn.y-2;ly-=lineGap){
+            cx.beginPath();cx.moveTo(vn.x-nr-3,ly);cx.lineTo(vn.x+nr+3,ly);cx.stroke();
           }
         }
         
