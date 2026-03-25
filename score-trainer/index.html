@@ -1330,24 +1330,21 @@ function startPlay(pi){
         cx.fillText(song.timeSigBot+'',ksX,staffTop+lineGap*3.2);
       }
       
-      // ── BAR LINES (thicker, with bar numbers) ──
+      // ── BAR LINES (bright, extend beyond staff) ──
       for(let i=-10;i<200;i++){
         const x=hx+(i*gPulseMs-el)*px;if(x<-10||x>w+10)continue;
         const isBar=i%gPulsesPerBar===0;
         if(isBar){
-          // Bold bar line
-          cx.strokeStyle='#777';cx.lineWidth=2;
-          cx.beginPath();cx.moveTo(x,staffTop);cx.lineTo(x,staffBot);cx.stroke();
-          // Bar number
+          // Bold bar line — extends 8px above and below staff
+          cx.strokeStyle='#999';cx.lineWidth=2.5;
+          cx.beginPath();cx.moveTo(x,staffTop-8);cx.lineTo(x,staffBot+8);cx.stroke();
+          // Bar number above
           if(i>=0){
-            cx.fillStyle='#666';cx.font="bold 9px 'Plus Jakarta Sans'";cx.textAlign='center';cx.textBaseline='bottom';
-            cx.fillText(Math.floor(i/gPulsesPerBar)+1+'',x,staffTop-2);
+            cx.fillStyle='#888';cx.font="bold 10px 'Plus Jakarta Sans'";cx.textAlign='center';cx.textBaseline='bottom';
+            cx.fillText(Math.floor(i/gPulsesPerBar)+1+'',x,staffTop-10);
           }
-        }else{
-          // Light beat line
-          cx.strokeStyle='#2a2a35';cx.lineWidth=0.5;
-          cx.beginPath();cx.moveTo(x,staffTop);cx.lineTo(x,staffBot);cx.stroke();
         }
+        // No beat lines — they look like stems and cause confusion
       }
       
       // Playhead on staff
@@ -1394,11 +1391,11 @@ function startPlay(pi){
           cx.beginPath();cx.arc(vn.x,vn.y,nr*0.5,0,Math.PI*2);cx.fill();
         }
         
-        // Stem
+        // Stem (thin, lighter than bar lines)
         if(vn.dur<8){
           const stemUp=vn.y>(staffTop+staffBot)/2;
           const sy2=stemUp?vn.y-lineGap*2.5:vn.y+lineGap*2.5;
-          cx.strokeStyle=col;cx.lineWidth=2;
+          cx.strokeStyle=passed?'#555':current?'#c8a800':'#bbb';cx.lineWidth=1.2;
           cx.beginPath();cx.moveTo(vn.x+(stemUp?nr:-nr),vn.y);cx.lineTo(vn.x+(stemUp?nr:-nr),sy2);cx.stroke();
         }
         
