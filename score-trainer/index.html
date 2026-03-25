@@ -1224,7 +1224,7 @@ function startPlay(pi){
   const pulseMs=isCompound?msPerSub*3:beatMs;
   const pulsesPerBar=isCompound?Math.round(song.timeSigTop/3):song.timeSigTop;
   gPulseMs=pulseMs; gPulsesPerBar=pulsesPerBar; // store for game loop
-  const countInPulses=pulsesPerBar; // 1 bar of count-in (4 for 4/4, 4 for 12/8, 2 for 6/8)
+  const countInPulses=4; // always 4 beats count-in
   gStart=performance.now()+countInPulses*pulseMs;
   $('pauseBtn').style.display='block';
   // Metronome synced to gStart using pulseMs (natural beat)
@@ -1295,16 +1295,61 @@ function startPlay(pi){
         cx.beginPath();cx.moveTo(0,ly);cx.lineTo(w,ly);cx.stroke();
       }
       
-      // Beat grid on staff (same timing as belt)
+      // ── CLEF + KEY SIG + TIME SIG (fixed at left edge) ──
+      // Treble clef
+      cx.fillStyle='#888';cx.font=`bold ${Math.round(lineGap*4)}px serif`;cx.textAlign='left';cx.textBaseline='middle';
+      cx.fillText('𝄞',4,staffTop+2*lineGap-lineGap*0.3);
+      
+      // Key signature sharps/flats
+      const keySharps={'G':['F'],'D':['F','C'],'A':['F','C','G'],'E':['F','C','G','D']};
+      const keyFlats={'F':['B'],'Bb':['B','E'],'Eb':['B','E','A'],'Ab':['B','E','A','D']};
+      const ks=song.keySig||'C';
+      let ksX=lineGap*3.5;
+      if(keySharps[ks]){
+        cx.fillStyle='#aaa';cx.font=`bold ${Math.round(lineGap*1.2)}px serif`;
+        keySharps[ks].forEach(n=>{
+          const y=pitchToY(n+'5');
+          cx.fillText('♯',ksX,y);
+          ksX+=lineGap*0.8;
+        });
+      }
+      if(keyFlats[ks]){
+        cx.fillStyle='#aaa';cx.font=`bold ${Math.round(lineGap*1.2)}px serif`;
+        keyFlats[ks].forEach(n=>{
+          const y=pitchToY(n+'4');
+          cx.fillText('♭',ksX,y);
+          ksX+=lineGap*0.8;
+        });
+      }
+      
+      // Time signature
+      ksX+=lineGap*0.5;
+      cx.fillStyle='#aaa';cx.font=`bold ${Math.round(lineGap*1.8)}px 'Plus Jakarta Sans'`;cx.textAlign='center';
+      cx.fillText(song.timeSigTop+'',ksX,staffTop+lineGap);
+      cx.fillText(song.timeSigBot+'',ksX,staffTop+3*lineGap);
+      
+      // ── BAR LINES (thicker, with bar numbers) ──
       for(let i=-10;i<200;i++){
         const x=hx+(i*gPulseMs-el)*px;if(x<-10||x>w+10)continue;
         const isBar=i%gPulsesPerBar===0;
-        cx.strokeStyle=isBar?'#555':'#333';cx.lineWidth=isBar?1.5:0.5;
-        cx.beginPath();cx.moveTo(x,staffTop-5);cx.lineTo(x,staffBot+5);cx.stroke();
+        if(isBar){
+          // Bold bar line
+          cx.strokeStyle='#777';cx.lineWidth=2;
+          cx.beginPath();cx.moveTo(x,staffTop);cx.lineTo(x,staffBot);cx.stroke();
+          // Bar number
+          if(i>=0){
+            cx.fillStyle='#666';cx.font="bold 9px 'Plus Jakarta Sans'";cx.textAlign='center';cx.textBaseline='bottom';
+            cx.fillText(Math.floor(i/gPulsesPerBar)+1+'',x,staffTop-2);
+          }
+        }else{
+          // Light beat line
+          cx.strokeStyle='#2a2a35';cx.lineWidth=0.5;
+          cx.beginPath();cx.moveTo(x,staffTop);cx.lineTo(x,staffBot);cx.stroke();
+        }
       }
       
       // Playhead on staff
-      cx.strokeStyle='rgba(233,196,0,0.5)';cx.lineWidth=2;
+      cx.strokeStyle='rgba(233,196,0,0.6)';cx.lineWidth=2.5;
       cx.beginPath();cx.moveTo(hx,staffTop-5);cx.lineTo(hx,staffBot+5);cx.stroke();
       
       // ── NOTES ON STAFF (simple circles, no transform tricks) ──
