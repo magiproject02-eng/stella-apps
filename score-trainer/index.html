@@ -1121,6 +1121,7 @@ Include ALL bars where ${partName} has notes.`;
 const cv=$('playCanvas'),cx=cv.getContext('2d');
 let gameOn=false,gamePaused=false,pauseStart=0,totalPaused=0,gameLoop=null,selPart=-1,gStart=0,gNotes=[],gScore=0,gCombo=0,gMaxCombo=0,gPerf=0,gGood=0,gMiss=0;
 let jT='',jC='',jTime=0,dFlash=0,cFlash=0;
+let gPulseMs=750,gPulsesPerBar=4; // set by startPlay for beat grid/metronome
 const PW=100,GW=220,MW=350,NS=350,HX=0.18;
 
 function resizeCV(c){c.width=c.clientWidth*devicePixelRatio;c.height=c.clientHeight*devicePixelRatio;cx.scale(devicePixelRatio,devicePixelRatio)}
@@ -1217,20 +1218,25 @@ function startPlay(pi){
 
   gScore=0;gCombo=0;gMaxCombo=0;gPerf=0;gGood=0;gMiss=0;gameOn=true;gamePaused=false;totalPaused=0;jT='';
   const beatMs=60000/(song.bpm*bpmMod);
-  const countInBeats=song.timeSigTop; // 4 beats for 4/4, 3 for 3/4
-  gStart=performance.now()+countInBeats*beatMs; // exactly 1 bar of count-in
+  // For compound time (x/8), the natural beat is dotted quarter = 3 eighths
+  // For simple time (x/4), the natural beat is quarter = 2 eighths
+  const isCompound=song.timeSigBot===8;
+  const pulseMs=isCompound?msPerSub*3:beatMs;
+  const pulsesPerBar=isCompound?Math.round(song.timeSigTop/3):song.timeSigTop;
+  gPulseMs=pulseMs; gPulsesPerBar=pulsesPerBar; // store for game loop
+  const countInPulses=pulsesPerBar; // 1 bar of count-in (4 for 4/4, 4 for 12/8, 2 for 6/8)
+  gStart=performance.now()+countInPulses*pulseMs;
   $('pauseBtn').style.display='block';
-  // Metronome synced to gStart — track which beat we've played
-  let nextMetroBeat=-countInBeats; // start from negative = count-in beats
-  const metroSub=song.subdivPerBeat; // tick on every beat (not every subdivision)
+  // Metronome synced to gStart using pulseMs (natural beat)
+  let nextMetroPulse=-countInPulses;
   const mid=setInterval(()=>{
     if(!gameOn){clearInterval(mid);return}
     if(gamePaused)return;
     const el=performance.now()-gStart-totalPaused;
-    const currentBeat=Math.floor(el/beatMs);
-    while(nextMetroBeat<=currentBeat){
+    const currentPulse=Math.floor(el/pulseMs);
+    while(nextMetroPulse<=currentPulse){
       if(metronomeOn)playTick();
-      nextMetroBeat++;
+      nextMetroPulse++;
     }
   },10);
 
@@ -1263,12 +1269,10 @@ function startPlay(pi){
     if(canvasScore&&allPartsData.length>0){
       const partH=Math.max(16,Math.min(28,(scoreH-10)/allPartsData.length));
       const sy=5;
-      // Beat grid lines
-      const bd=60000/(song.bpm*bpmMod);
-      const bpbS=Math.round(song.timeSigTop*(4/song.timeSigBot)); // beats per bar
+      // Beat grid lines (using natural pulse: quarter for simple, dotted quarter for compound)
       for(let i=0;i<300;i++){
-        const x=hx+(i*bd-el)*px;if(x<-5||x>w+5)continue;
-        cx.strokeStyle=i%bpbS===0?'#2e2e3a':'#1e1e28';
+        const x=hx+(i*gPulseMs-el)*px;if(x<-5||x>w+5)continue;
+        cx.strokeStyle=i%gPulsesPerBar===0?'#2e2e3a':'#1e1e28';
         cx.lineWidth=1;cx.beginPath();
         cx.moveTo(x,sy);cx.lineTo(x,sy+allPartsData.length*partH);cx.stroke();
       }
@@ -1328,13 +1332,12 @@ function startPlay(pi){
 
     // ─── TAIKO BELT ───
     cx.fillStyle='#1a1a22';cx.fillRect(0,by-bh/2,w,bh);cx.strokeStyle='#2e2e3a';cx.lineWidth=1;cx.beginPath();cx.moveTo(0,by-bh/2);cx.lineTo(w,by-bh/2);cx.moveTo(0,by+bh/2);cx.lineTo(w,by+bh/2);cx.stroke();
-    const bd2=60000/(song.bpm*(difficulty==='slow'?0.7:1));
-    const bpb=Math.round(song.timeSigTop*(4/song.timeSigBot));
-    for(let i=-10;i<200;i++){const x=hx+(i*bd2-el)*px;if(x<-10||x>w+10)continue;
-      const isBar=i%bpb===0;
+    // Beat grid uses gPulseMs (natural beat: quarter for x/4, dotted quarter for x/8)
+    for(let i=-10;i<200;i++){const x=hx+(i*gPulseMs-el)*px;if(x<-10||x>w+10)continue;
+      const isBar=i%gPulsesPerBar===0;
       cx.strokeStyle=isBar?'#666':'#333';cx.lineWidth=isBar?2:1;
       cx.beginPath();cx.moveTo(x,by-bh/2);cx.lineTo(x,by+bh/2);cx.stroke();
-      if(isBar&&i>=0){cx.fillStyle='#555';cx.font="600 9px 'Outfit'";cx.textAlign='center';cx.fillText(Math.floor(i/bpb)+1+'',x,by-bh/2-4)}
+      if(isBar&&i>=0){cx.fillStyle='#555';cx.font="600 9px 'Plus Jakarta Sans'";cx.textAlign='center';cx.fillText(Math.floor(i/gPulsesPerBar)+1+'',x,by-bh/2-4)}
     }
     const dr=32;
     if(cFlash>0){const r=dr+10+(1-cFlash)*30;cx.beginPath();cx.arc(hx,by,r,0,Math.PI*2);cx.strokeStyle=`rgba(244,162,97,${cFlash*0.6})`;cx.lineWidth=3;cx.stroke();cFlash-=0.04}
@@ -1467,9 +1470,11 @@ function startClassroom(){
     ccx.fillText(`${song.title} — ${song.bpm} BPM — Classroom Mode`,w/2,28);
 
     const bd=60000/song.bpm;
-    const bpbC=Math.round(song.timeSigTop*(4/song.timeSigBot));
-    for(let i=0;i<200;i++){const x=hx+(i*bd-el)*px;if(x<-5||x>w+5)continue;
-      ccx.strokeStyle=i%bpbC===0?'#3a3a4a':'#25252f';ccx.lineWidth=i%bpbC===0?2:1;
+    const cIsCompound=song.timeSigBot===8;
+    const cPulseMs=cIsCompound?((60000/song.bpm)/song.subdivPerBeat)*3:bd;
+    const cPulsesPerBar=cIsCompound?Math.round(song.timeSigTop/3):song.timeSigTop;
+    for(let i=0;i<200;i++){const x=hx+(i*cPulseMs-el)*px;if(x<-5||x>w+5)continue;
+      ccx.strokeStyle=i%cPulsesPerBar===0?'#3a3a4a':'#25252f';ccx.lineWidth=i%cPulsesPerBar===0?2:1;
       ccx.beginPath();ccx.moveTo(x,startY-5);ccx.lineTo(x,startY+song.parts.length*partH+5);ccx.stroke()}
 
     ccx.strokeStyle='#f4a26166';ccx.lineWidth=2;ccx.beginPath();ccx.moveTo(hx,startY-10);ccx.lineTo(hx,startY+song.parts.length*partH+10);ccx.stroke();
