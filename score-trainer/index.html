@@ -209,8 +209,49 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
         <div><span id="scanMsg" style="font-size:0.8rem;font-weight:600">Processing...</span><br><span id="scanDetail" style="font-size:0.65rem;color:var(--dim)">This takes 2-5 minutes on server</span></div>
       </div>
     </div>
+    <div onclick="switchTab('sightread')" style="background:linear-gradient(135deg,#f4a26122,#e6394622);border:1px dashed var(--gold);border-radius:10px;padding:0.8rem 1rem;cursor:pointer;margin-bottom:0.8rem;transition:border-color 0.2s;display:flex;align-items:center;gap:0.8rem">
+      <span style="font-size:1.5rem">🎯</span>
+      <div><span style="font-size:0.85rem;font-weight:700">視唱練習 Sight-Reading</span><br><span style="font-size:0.65rem;color:var(--dim)">Random phrases · 1-2 beat notes · Practice reading & singing</span></div>
+    </div>
     <div id="songList" style="display:flex;flex-direction:column;gap:0.5rem"></div>
     <div id="libraryLoading" style="text-align:center;padding:2rem;color:var(--dim);font-size:0.8rem">Loading songs...</div>
+  </div>
+</div>
+
+<!-- Sight-Reading Panel -->
+<div id="sightreadPanel" style="display:none">
+  <div style="padding:1rem;max-width:600px;margin:0 auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <div><span style="font-size:1.1rem;font-weight:700">🎯 視唱練習</span><br><span style="font-size:0.7rem;color:var(--dim)">Read the score, then sing!</span></div>
+      <button class="hbtn" onclick="switchTab('library')">← Back</button>
+    </div>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem">
+      <div class="ctrl-group"><label>Key 調</label>
+        <select id="srKey"><option value="C">C</option><option value="G">G</option><option value="D" selected>D</option><option value="F">F</option><option value="Bb">Bb</option><option value="A">A</option><option value="Eb">Eb</option></select>
+      </div>
+      <div class="ctrl-group"><label>Bars 小節</label>
+        <select id="srBars"><option value="2">2</option><option value="4" selected>4</option><option value="8">8</option></select>
+      </div>
+      <div class="ctrl-group"><label>Range 音域</label>
+        <select id="srRange"><option value="5" selected>5 notes</option><option value="8">1 octave</option><option value="12">10th</option></select>
+      </div>
+      <div class="ctrl-group"><label>Difficulty 難度</label>
+        <select id="srDiff"><option value="step" selected>Stepwise 級進</option><option value="skip">Small jumps 小跳</option><option value="any">Any 任意</option></select>
+      </div>
+    </div>
+    <div style="display:flex;gap:0.5rem;margin-bottom:1rem">
+      <button class="hbtn primary" onclick="generateSightRead()" style="flex:1;font-size:0.9rem;padding:0.5rem">🎲 Generate 出題</button>
+      <button class="hbtn play" id="srPlayBtn" onclick="playSightRead()" style="padding:0.5rem 1rem" disabled>▶ Listen 聽</button>
+      <button class="hbtn stop hidden" id="srStopBtn" onclick="stopSightRead()" style="padding:0.5rem 1rem">■ Stop</button>
+    </div>
+    <div id="srScore" style="background:#12121a;border:1px solid var(--border);border-radius:10px;overflow-x:auto;min-height:160px;display:flex;align-items:center;justify-content:center">
+      <span style="color:var(--dim);font-size:0.9rem">Press Generate to start</span>
+    </div>
+    <div id="srNoteNames" style="margin-top:0.5rem;font-size:0.75rem;color:var(--dim);text-align:center;min-height:1.2em"></div>
+    <div style="margin-top:1rem;display:flex;gap:0.5rem">
+      <button class="hbtn" id="srRevealBtn" onclick="revealNotes()" style="flex:1" disabled>👁 Reveal Note Names 顯示音名</button>
+      <button class="hbtn" onclick="loadSightReadToPlay()" id="srPracticeBtn" style="flex:1;background:var(--green);border-color:var(--green);color:#fff" disabled>🎮 Practice Mode 練習</button>
+    </div>
   </div>
 </div>
 
@@ -1813,6 +1854,7 @@ function switchTab(t){
   $('editorPanel').style.display=t==='editor'?'':'none';
   $('playPanel').style.display=t==='play'?'flex':'none';
   $('classroomPanel').style.display=t==='classroom'?'block':'none';
+  $('sightreadPanel').style.display=t==='sightread'?'':'none';
   if(t==='library')loadLibrary();
   if(t==='play'){showPartSelect();setTimeout(()=>resizeCV(cv),50)}
   if(t==='classroom'){unlockAudio();setTimeout(()=>{ccv.width=ccv.clientWidth*devicePixelRatio;ccv.height=ccv.clientHeight*devicePixelRatio;startClassroom()},50)}
@@ -1847,6 +1889,250 @@ document.addEventListener('mousedown',e=>{
 });
 $('sensSlider').addEventListener('input',()=>{micSensitivity=parseInt($('sensSlider').value);$('sensVal').textContent=micSensitivity});
 window.addEventListener('resize',()=>{if($('playPanel').style.display!=='none')resizeCV(cv);if($('classroomPanel').style.display!=='none'){ccv.width=ccv.clientWidth*devicePixelRatio;ccv.height=ccv.clientHeight*devicePixelRatio}});
+
+// ════════════════════════════════════
+// SIGHT-READING GENERATOR
+// ════════════════════════════════════
+const SR_SCALES={
+  'C':['C','D','E','F','G','A','B'],
+  'G':['G','A','B','C','D','E','F#'],
+  'D':['D','E','F#','G','A','B','C#'],
+  'A':['A','B','C#','D','E','F#','G#'],
+  'F':['F','G','A','Bb','C','D','E'],
+  'Bb':['Bb','C','D','Eb','F','G','A'],
+  'Eb':['Eb','F','G','Ab','Bb','C','D'],
+};
+let srNotes=[];let srPlaying=false;let srInterval=null;
+
+function generateSightRead(){
+  const key=$('srKey').value;
+  const numBars=parseInt($('srBars').value);
+  const rangeSize=parseInt($('srRange').value);
+  const diff=$('srDiff').value;
+  const scale=SR_SCALES[key]||SR_SCALES['C'];
+  
+  // Build available pitches: scale notes across octaves
+  const allPitches=[];
+  // Start from octave 4 for treble clef, go up
+  for(let oct=3;oct<=5;oct++){
+    for(const n of scale) allPitches.push(n+oct);
+  }
+  // Find the tonic in octave 4 as center
+  const tonicIdx=allPitches.findIndex(p=>p===key+'4')||0;
+  // Limit range around tonic
+  const lo=Math.max(0,tonicIdx-Math.floor(rangeSize/2));
+  const hi=Math.min(allPitches.length-1,lo+rangeSize-1);
+  const pitchPool=allPitches.slice(lo,hi+1);
+  
+  // Generate random notes: each note is 1 or 2 beats (dur=2 or dur=4 at subdivPerBeat=2)
+  const beatsPerBar=8; // 4/4, subdivPerBeat=2
+  srNotes=[];
+  let pos=0;
+  let prevIdx=Math.floor(pitchPool.length/2); // start near middle
+  // First note on tonic
+  const tonicInPool=pitchPool.findIndex(p=>p.startsWith(key));
+  if(tonicInPool>=0) prevIdx=tonicInPool;
+  
+  const totalBeats=numBars*beatsPerBar;
+  while(pos<totalBeats){
+    // Duration: quarter (2) or half (4), weighted
+    const remaining=totalBeats-pos;
+    let dur;
+    if(remaining<=2) dur=2;
+    else if(remaining<=4) dur=Math.random()<0.5?2:remaining;
+    else dur=Math.random()<0.6?2:4; // 60% quarter, 40% half
+    
+    // Pick pitch based on difficulty
+    let nextIdx;
+    if(diff==='step'){
+      // Move by 0 or ±1 step
+      const step=Math.random()<0.2?0:(Math.random()<0.5?1:-1);
+      nextIdx=Math.max(0,Math.min(pitchPool.length-1,prevIdx+step));
+    }else if(diff==='skip'){
+      // Move by 0-3 steps
+      const step=Math.floor(Math.random()*4)*(Math.random()<0.5?1:-1);
+      nextIdx=Math.max(0,Math.min(pitchPool.length-1,prevIdx+step));
+    }else{
+      // Any interval
+      nextIdx=Math.floor(Math.random()*pitchPool.length);
+    }
+    
+    srNotes.push({pos,dur,pitch:pitchPool[nextIdx]});
+    prevIdx=nextIdx;
+    pos+=dur;
+  }
+  
+  // Last note: land on tonic, make it a half note
+  if(srNotes.length>0){
+    const last=srNotes[srNotes.length-1];
+    const tonicP=pitchPool.find(p=>p.startsWith(key));
+    if(tonicP){last.pitch=tonicP;last.dur=Math.min(4,totalBeats-last.pos);}
+  }
+  
+  renderSightReadScore(key,numBars);
+  $('srPlayBtn').disabled=false;
+  $('srRevealBtn').disabled=false;
+  $('srPracticeBtn').disabled=false;
+  $('srNoteNames').textContent='';
+}
+
+function renderSightReadScore(key,numBars){
+  const container=$('srScore');
+  container.innerHTML='';
+  if(!window.Vex||!srNotes.length){container.innerHTML='<span style="color:var(--dim)">Generate a phrase first</span>';return;}
+  
+  const VF=Vex.Flow;
+  const staveWidth=240;
+  const firstExtra=90;
+  const w=firstExtra+numBars*staveWidth+20;
+  const h=150;
+  
+  const renderer=new VF.Renderer(container,VF.Renderer.Backends.SVG);
+  renderer.resize(w,h);
+  const ctx=renderer.getContext();
+  
+  const spBar=8; // 4/4, subdivPerBeat=2
+  
+  for(let bar=0;bar<numBars;bar++){
+    const x=bar===0?10:firstExtra+(bar-1)*staveWidth+staveWidth;
+    const thisW=bar===0?firstExtra+staveWidth:staveWidth;
+    const stave=new VF.Stave(x,15,thisW);
+    if(bar===0){
+      stave.addClef('treble');
+      if(key&&key!=='C')stave.addKeySignature(key);
+      stave.addTimeSignature('4/4');
+    }
+    if(bar===numBars-1)stave.setEndBarType(VF.Barline.type.END);
+    stave.setContext(ctx).draw();
+    
+    const barStart=bar*spBar;
+    const barBeats=srNotes.filter(b=>b.pos>=barStart&&b.pos<barStart+spBar);
+    
+    if(!barBeats.length){
+      const rest=new VF.StaveNote({keys:['b/4'],duration:'wr'});
+      const voice=new VF.Voice({num_beats:4,beat_value:4}).setStrict(false);
+      voice.addTickables([rest]);
+      new VF.Formatter().joinVoices([voice]).format([voice],staveWidth-40);
+      voice.draw(ctx,stave);
+      continue;
+    }
+    
+    const notes=[];
+    let pos=0;
+    for(const beat of barBeats){
+      const relPos=beat.pos-barStart;
+      if(relPos>pos){
+        const parts=decomposeDur(relPos-pos,2);
+        for(const d of parts){
+          const rd=durToVex(d,2);
+          const rest=new VF.StaveNote({keys:['b/4'],duration:vexDurBase(rd)+'r'});
+          if(isDotted(rd))rest.addDot(0);
+          notes.push(rest);
+        }
+      }
+      const clipped=Math.min(beat.dur,spBar-(beat.pos-barStart));
+      const parts=decomposeDur(clipped,2);
+      const vp=pitchToVex(beat.pitch);
+      for(let ni=0;ni<parts.length;ni++){
+        const vd=durToVex(parts[ni],2);
+        const note=new VF.StaveNote({keys:[vp],duration:vexDurBase(vd),clef:'treble'});
+        if(isDotted(vd))note.addDot(0);
+        // Accidentals only if not in key sig
+        const ps=(beat.pitch||'').toLowerCase();
+        if(ps.includes('#'))note.addAccidental(0,new VF.Accidental('#'));
+        else if(ps.includes('b')&&!ps.startsWith('b'))note.addAccidental(0,new VF.Accidental('b'));
+        notes.push(note);
+      }
+      pos=relPos+clipped;
+    }
+    if(pos<spBar){
+      const parts=decomposeDur(spBar-pos,2);
+      for(const d of parts){
+        const rd=durToVex(d,2);
+        const rest=new VF.StaveNote({keys:['b/4'],duration:vexDurBase(rd)+'r'});
+        if(isDotted(rd))rest.addDot(0);
+        notes.push(rest);
+      }
+    }
+    
+    try{
+      const voice=new VF.Voice({num_beats:4,beat_value:4}).setStrict(false);
+      voice.addTickables(notes);
+      new VF.Formatter().joinVoices([voice]).format([voice],staveWidth-40);
+      voice.draw(ctx,stave);
+    }catch(e){console.warn('SR bar',bar,'error:',e.message)}
+  }
+  
+  // Style SVG for dark theme
+  container.querySelectorAll('svg path').forEach(p=>{
+    if(!p.style.fill||p.style.fill==='none'){}
+    p.style.fill=p.style.fill||'#e8e6f0';
+    p.style.stroke=p.style.stroke||'#e8e6f0';
+  });
+}
+
+function playSightRead(){
+  if(srPlaying){stopSightRead();return;}
+  if(!srNotes.length)return;
+  ia(); // init audio
+  if(window.Tone)Tone.start().catch(()=>{});
+  
+  // Create synth if needed
+  if(!toneSynths.sr){
+    if(window.Tone){
+      toneSynths.sr=new Tone.Synth({oscillator:{type:'triangle'},envelope:{attack:0.05,decay:0.2,sustain:0.5,release:0.3},volume:-6}).toDestination();
+    }
+  }
+  
+  srPlaying=true;
+  $('srPlayBtn').classList.add('hidden');
+  $('srStopBtn').classList.remove('hidden');
+  
+  const bpm=80;
+  const msPerSub=(60000/bpm)/2;
+  let noteIdx=0;
+  const startTime=performance.now();
+  
+  srInterval=setInterval(()=>{
+    if(noteIdx>=srNotes.length){stopSightRead();return;}
+    const n=srNotes[noteIdx];
+    const expectedTime=n.pos*msPerSub;
+    const elapsed=performance.now()-startTime;
+    if(elapsed>=expectedTime){
+      if(toneSynths.sr){
+        try{toneSynths.sr.triggerAttackRelease(n.pitch,n.dur*msPerSub/1000);}catch(e){}
+      }else{
+        playDrum(0);
+      }
+      noteIdx++;
+    }
+  },20);
+}
+
+function stopSightRead(){
+  srPlaying=false;
+  if(srInterval){clearInterval(srInterval);srInterval=null;}
+  $('srPlayBtn').classList.remove('hidden');
+  $('srStopBtn').classList.add('hidden');
+}
+
+function revealNotes(){
+  if(!srNotes.length)return;
+  $('srNoteNames').textContent=srNotes.map(n=>n.pitch).join(' → ');
+}
+
+function loadSightReadToPlay(){
+  if(!srNotes.length)return;
+  const key=$('srKey').value;
+  const numBars=parseInt($('srBars').value);
+  const songData={
+    title:'視唱練習 Sight-Reading',bpm:80,timeSigTop:4,timeSigBot:4,
+    bars:numBars,subdivPerBeat:2,keySig:key,
+    parts:[{name:'Voice',clef:'treble',beats:srNotes.map(n=>({pos:n.pos,dur:n.dur,pitch:n.pitch}))}]
+  };
+  fromJSON(JSON.stringify(songData));
+  switchTab('play');
+}
 
 // Init
 async function init(){
