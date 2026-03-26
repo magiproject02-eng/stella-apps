@@ -424,9 +424,11 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
     <div id="sbContent" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden">
       <div class="sb-empty">No scores yet. Play a sight-reading challenge!</div>
     </div>
-    <div style="margin-top:1rem;text-align:center">
-      <button class="hbtn" onclick="if(confirm('Clear all scores?')){localStorage.removeItem('sr_scores');renderScoreboard();toast('Scores cleared')}" style="font-size:0.6rem;color:var(--red)">🗑 Clear All Scores</button>
+    <div style="margin-top:1rem;display:flex;gap:0.5rem;justify-content:center;flex-wrap:wrap">
+      <button class="hbtn" onclick="changeName()" style="font-size:0.65rem">✏️ Change Name</button>
+      <button class="hbtn" onclick="clearLocalScores()" style="font-size:0.65rem;color:var(--red)">🗑 Clear Local History</button>
     </div>
+    <div style="text-align:center;margin-top:0.5rem;font-size:0.55rem;color:var(--dim)" id="sbPlayerInfo"></div>
   </div>
 </div>
 
@@ -2340,6 +2342,17 @@ function filterScoreboard(lv){
   document.querySelectorAll('#sbFilterRow .level-btn').forEach(function(b){b.classList.toggle('active',parseInt(b.dataset.lv)===lv)});
   renderScoreboard();
 }
+
+function changeName(){
+  var n=prompt('Enter your name 輸入名字:',playerName);
+  if(n&&n.trim()){playerName=n.trim().slice(0,20);localStorage.setItem('sr_player_name',playerName);toast('Name set: '+playerName);renderScoreboard();}
+}
+function clearLocalScores(){
+  if(!confirm('Clear your local score history? (Online scores are kept)'))return;
+  localStorage.removeItem('sr_scores');
+  toast('Local history cleared');
+  renderScoreboard();
+}
 function showScoreboard(mode){
   sbMode=mode;
   $('sbBestBtn').style.background=mode==='best'?'var(--accent)':'var(--surface2)';
@@ -2412,6 +2425,9 @@ function renderScoreboard(){
     });
     container.innerHTML=html;
   });
+  // Show player info
+  var pi=$('sbPlayerInfo');
+  if(pi)pi.textContent=playerName?'Playing as: '+playerName:'No name set — tap Change Name';
 }
 
 // Init
