@@ -275,7 +275,7 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
     <div id="srNoteNames" style="margin-top:0.5rem;font-size:0.75rem;color:var(--dim);text-align:center;min-height:1.2em"></div>
     <div style="margin-top:1rem;display:flex;gap:0.5rem">
       <button class="hbtn" id="srRevealBtn" onclick="revealNotes()" style="flex:1" disabled>👁 Reveal 顯示</button>
-      <button class="hbtn" onclick="loadSightReadToPlay()" id="srPracticeBtn" style="flex:1;background:var(--green);border-color:var(--green);color:#fff" disabled>🎮 Practice 練習</button>
+      <button class="hbtn" onclick="loadSightReadToPlay()" id="srPracticeBtn" style="flex:1;background:var(--green);border-color:var(--green);color:#fff" disabled>🎤 Sing 練唱</button>
       <button class="hbtn" onclick="saveSightRead()" id="srSaveBtn" style="background:var(--accent);border-color:var(--accent);color:#fff" disabled>💾</button>
     </div>
   </div>
@@ -2307,6 +2307,11 @@ function loadSightReadToPlay(){
     parts:[{name:'Voice',clef:'treble',beats:srNotes.map(n=>({pos:n.pos,dur:n.dur,pitch:n.pitch}))}]
   };
   fromJSON(JSON.stringify(songData));
+  // Force Sing mode for sight-reading
+  inputMode='clap';gameMode='pitch';
+  document.querySelectorAll('[data-pmode]').forEach(function(b){b.classList.toggle('active',b.dataset.pmode==='pitch')});
+  if($('micSetup'))$('micSetup').style.display='block';
+  if($('pitchInfo'))$('pitchInfo').style.display='block';
   switchTab('play');
 }
 
