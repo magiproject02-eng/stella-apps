@@ -332,15 +332,11 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
       <button class="diff-btn" data-diff="hard" onclick="setDifficulty('hard',this)">Hard (no ghost)</button>
       <button class="diff-btn" data-diff="slow" onclick="setDifficulty('slow',this)">Slow (70%)</button>
     </div>
-    <div class="sub">Input method:</div>
+    <div class="sub">Play mode:</div>
     <div class="diff-row">
-      <button class="diff-btn active" data-input="tap" onclick="setInputMode('tap',this)">📱 Tap / Keyboard</button>
-      <button class="diff-btn" data-input="clap" onclick="setInputMode('clap',this)">👏 Clap (Mic)</button>
-    </div>
-    <div class="sub">Metronome:</div>
-    <div class="diff-row">
-      <button class="diff-btn active" data-metro="on" onclick="setMetronome('on',this)">🔊 Beat On</button>
-      <button class="diff-btn" data-metro="off" onclick="setMetronome('off',this)">🔇 Beat Off</button>
+      <button class="diff-btn active" data-pmode="tap" onclick="setPlayMode('tap',this)">📱 Tap</button>
+      <button class="diff-btn" data-pmode="clap" onclick="setPlayMode('clap',this)">👏 Clap</button>
+      <button class="diff-btn" data-pmode="pitch" onclick="setPlayMode('pitch',this)">🎤 Sing</button>
     </div>
     <div id="micSetup" style="display:none;margin-bottom:0.8rem;text-align:center">
       <div id="micStatusPlay" style="font-size:0.7rem;padding:0.3rem 0.6rem;border-radius:6px;margin-bottom:0.5rem;background:#f4a26122;color:var(--gold);border:1px solid #f4a26144">🎤 Mic not active yet</div>
@@ -351,6 +347,9 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
         <span style="font-size:0.65rem;color:var(--gold)" id="sensVal">8</span>
       </div>
     </div>
+    <div id="pitchInfo" style="display:none;font-size:0.65rem;color:var(--dim);text-align:center;margin-bottom:0.5rem">
+      Sing the correct pitch — mic detects your note. Timing + pitch accuracy scored!
+    </div>
     <div id="partButtons"></div>
     <div style="margin-top:0.8rem;width:100%;max-width:220px">
       <div class="sub">Hear other parts (backing):</div>
@@ -360,13 +359,10 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
         <button class="diff-btn active" data-score="on" onclick="setScoreView('on',this)">📋 Score On</button>
         <button class="diff-btn" data-score="off" onclick="setScoreView('off',this)">📋 Score Off</button>
       </div>
-      <div class="sub">Game mode:</div>
+      <div class="sub">Metronome:</div>
       <div class="diff-row">
-        <button class="diff-btn active" data-gmode="clap" onclick="setGameMode('clap',this)">👏 Clap/Tap</button>
-        <button class="diff-btn" data-gmode="pitch" onclick="setGameMode('pitch',this)">🎤 Pitch + Beat</button>
-      </div>
-      <div id="pitchInfo" style="display:none;font-size:0.65rem;color:var(--dim);text-align:center;margin-bottom:0.5rem">
-        Sing the correct pitch — mic detects your note. Timing + pitch accuracy scored!
+        <button class="diff-btn active" data-metro="on" onclick="setMetronome('on',this)">🔊 On</button>
+        <button class="diff-btn" data-metro="off" onclick="setMetronome('off',this)">🔇 Off</button>
       </div>
     </div>
     <div class="back-btn" onclick="switchTab('library')">← Back to Library</div>
@@ -375,12 +371,13 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
     <div id="vexScore"></div>
     <div class="score-highlight" id="scoreHighlight" style="display:none"></div>
   </div>
-  <div id="pauseOverlay" style="display:none;position:absolute;inset:0;background:rgba(15,15,20,0.85);z-index:8;flex-direction:column;align-items:center;justify-content:center">
-    <div style="font-size:2rem;font-weight:800;margin-bottom:0.5rem">⏸ PAUSED</div>
-    <button class="hbtn play" onclick="resumeGame()" style="font-size:1rem;padding:0.6rem 2rem">▶ Resume</button>
-    <div class="back-btn" onclick="quitGame()" style="margin-top:1rem">✕ Quit</div>
+  <div id="pauseOverlay" style="display:none;position:absolute;inset:0;background:rgba(15,15,20,0.9);z-index:8;flex-direction:column;align-items:center;justify-content:center">
+    <div style="font-size:2rem;font-weight:800;margin-bottom:1rem">⏸ PAUSED</div>
+    <button class="hbtn play" onclick="resumeGame()" style="font-size:1rem;padding:0.6rem 2rem;margin-bottom:0.5rem">▶ Resume</button>
+    <button class="hbtn" onclick="replayGame()" style="font-size:0.85rem;padding:0.5rem 1.5rem;margin-bottom:0.5rem">🔄 Replay</button>
+    <div class="back-btn" onclick="quitGame()" style="margin-top:0.5rem">✕ Quit</div>
   </div>
-  <button id="pauseBtn" onclick="pauseGame()" style="display:none;position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:7;background:rgba(30,30,40,0.7);border:1px solid #444;color:#e8e6f0;font-family:inherit;font-size:0.7rem;font-weight:600;padding:0.25rem 0.8rem;border-radius:6px;cursor:pointer">⏸ Pause</button>
+  <button id="pauseBtn" onclick="pauseGame()" style="display:none;position:absolute;top:4px;right:8px;z-index:7;background:rgba(30,30,40,0.7);border:1px solid #444;color:#e8e6f0;font-family:inherit;font-size:0.65rem;font-weight:600;padding:0.2rem 0.6rem;border-radius:6px;cursor:pointer">⏸</button>
   <canvas id="playCanvas"></canvas>
   <div class="results" id="resultsScreen">
     <h2>Results</h2>
@@ -1228,11 +1225,17 @@ const PW=100,GW=220,MW=350,NS=200,HX=0.18;
 
 function resizeCV(c){c.width=c.clientWidth*devicePixelRatio;c.height=c.clientHeight*devicePixelRatio;cx.scale(devicePixelRatio,devicePixelRatio)}
 function setDifficulty(d,el){difficulty=d;document.querySelectorAll('[data-diff]').forEach(b=>b.classList.toggle('active',b.dataset.diff===d))}
-function setInputMode(m,el){
-  inputMode=m;
-  document.querySelectorAll('[data-input]').forEach(b=>b.classList.toggle('active',b.dataset.input===m));
-  $('micSetup').style.display=m==='clap'?'block':'none';
+function setPlayMode(m,el){
+  // Unified: tap, clap, or pitch
+  if(m==='tap'){inputMode='tap';gameMode='clap';}
+  else if(m==='clap'){inputMode='clap';gameMode='clap';}
+  else if(m==='pitch'){inputMode='clap';gameMode='pitch';}
+  document.querySelectorAll('[data-pmode]').forEach(b=>b.classList.toggle('active',b.dataset.pmode===m));
+  $('micSetup').style.display=(m==='clap'||m==='pitch')?'block':'none';
+  $('pitchInfo').style.display=m==='pitch'?'block':'none';
 }
+function setInputMode(m){inputMode=m} // kept for compatibility
+function setGameMode(m){gameMode=m} // kept for compatibility
 function setMetronome(m,el){
   metronomeOn=(m==='on');
   document.querySelectorAll('[data-metro]').forEach(b=>b.classList.toggle('active',b.dataset.metro===m));
@@ -1240,13 +1243,6 @@ function setMetronome(m,el){
 function setScoreView(m,el){
   showScore=(m==='on');
   document.querySelectorAll('[data-score]').forEach(b=>b.classList.toggle('active',b.dataset.score===m));
-}
-function setGameMode(m,el){
-  gameMode=m;
-  document.querySelectorAll('[data-gmode]').forEach(b=>b.classList.toggle('active',b.dataset.gmode===m));
-  $('pitchInfo').style.display=m==='pitch'?'block':'none';
-  // Pitch mode requires mic
-  if(m==='pitch')$('micSetup').style.display='block';
 }
 function initMicManual(){initMic().then(()=>{
   if(micOn){
@@ -1640,6 +1636,11 @@ function quitGame(){
   gamePaused=false;gameOn=false;
   $('pauseOverlay').style.display='none';$('pauseBtn').style.display='none';
   showPartSelect();
+}
+function replayGame(){
+  gamePaused=false;gameOn=false;
+  $('pauseOverlay').style.display='none';$('pauseBtn').style.display='none';
+  startPlay(selPart);
 }
 function onHit(fromPitch){if(!gameOn||gamePaused)return;const el=performance.now()-gStart-totalPaused;
   if(!fromPitch)playHit(); // only play drum sound for manual taps, not auto-pitch
