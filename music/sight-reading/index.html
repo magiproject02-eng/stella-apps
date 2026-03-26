@@ -311,17 +311,21 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
 <div class="play-container" id="playPanel">
   <div class="part-select" id="partSelect">
     <h2>Select Your Part</h2>
+    <div id="diffSection">
     <div class="sub">Choose difficulty:</div>
     <div class="diff-row">
       <button class="diff-btn active" data-diff="normal" onclick="setDifficulty('normal',this)">Normal</button>
       <button class="diff-btn" data-diff="hard" onclick="setDifficulty('hard',this)">Hard (no ghost)</button>
       <button class="diff-btn" data-diff="slow" onclick="setDifficulty('slow',this)">Slow (70%)</button>
     </div>
+    </div>
+    <div id="modeSection">
     <div class="sub">Play mode:</div>
     <div class="diff-row">
       <button class="diff-btn active" data-pmode="tap" onclick="setPlayMode('tap',this)">📱 Tap</button>
       <button class="diff-btn" data-pmode="clap" onclick="setPlayMode('clap',this)">👏 Clap</button>
       <button class="diff-btn" data-pmode="pitch" onclick="setPlayMode('pitch',this)">🎤 Sing</button>
+    </div>
     </div>
     <div id="micSetup" style="display:none;margin-bottom:0.8rem;text-align:center">
       <div id="micStatusPlay" style="font-size:0.7rem;padding:0.3rem 0.6rem;border-radius:6px;margin-bottom:0.5rem;background:#f4a26122;color:var(--gold);border:1px solid #f4a26144">🎤 Mic not active yet</div>
@@ -337,8 +341,10 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
     </div>
     <div id="partButtons"></div>
     <div style="margin-top:0.8rem;width:100%;max-width:220px">
+      <div id="backingSection">
       <div class="sub">Hear other parts (backing):</div>
       <div id="backingParts" style="display:flex;flex-wrap:wrap;gap:0.5rem 1rem;margin-bottom:0.8rem"></div>
+      </div>
       <div class="sub">Show score above:</div>
       <div class="diff-row">
         <button class="diff-btn active" data-score="on" onclick="setScoreView('on',this)">📋 Score On</button>
@@ -1003,6 +1009,11 @@ function initMicManual(){initMic().then(()=>{
 
 function showPartSelect(){$('resultsScreen').style.display='none';$('partSelect').style.display='flex';$('scoreContainer').style.display='none';
   document.querySelector('.header').classList.remove('playing');
+  var isSingle=song.parts.length===1;
+  // Hide irrelevant options for single-part (sight-reading)
+  $('diffSection').style.display=isSingle?'none':'';
+  $('modeSection').style.display=isSingle?'none':'';
+  $('backingSection').style.display=isSingle?'none':'';
   const b=$('partButtons');b.innerHTML='';
   song.parts.forEach((p,i)=>{const btn=document.createElement('button');btn.className='pbtn';btn.style.borderColor=PC[i];btn.textContent=`${p.name} (${p.beats.length} notes)`;btn.onclick=()=>startPlay(i);b.appendChild(btn)});
   // Build backing parts checkboxes
