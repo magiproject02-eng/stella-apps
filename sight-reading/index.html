@@ -1901,67 +1901,176 @@ let srNotes=[];let srPlaying=false;let srInterval=null;
 function generateSightRead(){
   const key=$('srKey').value;
   const numBars=parseInt($('srBars').value);
-  const rangeStr=$('srRange').value; // e.g. "C4-G4"
+  const rangeStr=$('srRange').value;
   const scale=SR_SCALES[key]||SR_SCALES['C'];
   
-  // Parse range bounds
-  const [loNote,hiNote]=rangeStr.split('-');
-  
-  // Build ALL chromatic notes to use as ordering reference
-  const CHROM=['C','C#','Db','D','D#','Eb','E','F','F#','Gb','G','G#','Ab','A','A#','Bb','B'];
   function midiNum(p){
-    const m=p.match(/^([A-G][#b]?)(\d)$/);if(!m)return 0;
-    const n=m[1],o=parseInt(m[2]);
-    const base={'C':0,'D':2,'E':4,'F':5,'G':7,'A':9,'B':11};
-    let semi=base[n[0]]||0;
+    var m=p.match(/^([A-G][#b]?)(\d)$/);if(!m)return 0;
+    var n=m[1],o=parseInt(m[2]);
+    var base={'C':0,'D':2,'E':4,'F':5,'G':7,'A':9,'B':11};
+    var semi=base[n[0]]||0;
     if(n.includes('#'))semi++;if(n.includes('b'))semi--;
     return o*12+semi;
   }
-  const loMidi=midiNum(loNote),hiMidi=midiNum(hiNote);
+  
+  var parts=rangeStr.split('-');
+  var loMidi=midiNum(parts[0]),hiMidi=midiNum(parts[1]);
   
   // Build scale pitches within range
-  const pitchPool=[];
-  for(let oct=2;oct<=6;oct++){
-    for(const n of scale){
-      const p=n+oct;
-      const m=midiNum(p);
+  var pitchPool=[];
+  for(var oct=2;oct<=6;oct++){
+    for(var si=0;si<scale.length;si++){
+      var p=scale[si]+oct;
+      var m=midiNum(p);
       if(m>=loMidi&&m<=hiMidi) pitchPool.push(p);
     }
   }
+  if(pitchPool.length<3){pitchPool=['C4','D4','E4','F4','G4'];}
   
-  const beatsPerBar=8; // 4/4, subdivPerBeat=2
-  // Notes start at pos=0 for score display
-  // Play mode adds count-in separately via gStart delay
+  var poolSize=pitchPool.length;
+  var tonicIdx=pitchPool.findIndex(function(p){return p.startsWith(key)});
+  if(tonicIdx<0)tonicIdx=Math.floor(poolSize/2);
+  
+  // Find scale degree 5 (dominant) in pool
+  var fifthNote=scale[4]||scale[0]; // 5th degree of scale
+  var domIdx=pitchPool.findIndex(function(p){return p.startsWith(fifthNote)});
+  if(domIdx<0)domIdx=tonicIdx;
+  
+  // ═══ RHYTHM PATTERNS (subdivPerBeat=2, so 1=eighth, 2=quarter, 3=dotted quarter, 4=half) ═══
+  // Each pattern fills one bar (8 subdivisions for 4/4)
+  var rhythmPatterns=[
+    [2,2,2,2],           // ♩ ♩ ♩ ♩  (all quarters)
+    [4,2,2],             // 𝅗𝅥 ♩ ♩  (half + two quarters)
+    [2,2,4],             // ♩ ♩ 𝅗𝅥  (two quarters + half)
+    [2,4,2],             // ♩ 𝅗𝅥 ♩  (quarter half quarter)
+    [4,4],               // 𝅗𝅥 𝅗𝅥  (two halves)
+    [1,1,2,2,2],         // ♪♪ ♩ ♩ ♩ (eighth pair + quarters)
+    [2,2,1,1,2],         // ♩ ♩ ♪♪ ♩ (quarters + eighth pair)
+    [2,1,1,2,2],         // ♩ ♪♪ ♩ ♩
+    [1,1,1,1,2,2],       // ♪♪♪♪ ♩ ♩ (four eighths + two quarters)
+    [2,2,2,1,1],         // ♩ ♩ ♩ ♪♪
+    [3,1,2,2],           // ♩. ♪ ♩ ♩ (dotted quarter + eighth + quarters)
+    [2,2,3,1],           // ♩ ♩ ♩. ♪
+    [6,2],               // 𝅗𝅥. ♩ (dotted half + quarter)
+    [2,6],               // ♩ 𝅗𝅥. (quarter + dotted half)
+    [1,1,2,1,1,2],       // ♪♪ ♩ ♪♪ ♩
+  ];
+  
+  // ═══ INTERVAL WEIGHTS (based on research: mostly steps, some thirds, few larger) ═══
+  // Weights for [repeat, step, third, fourth, fifth]
+  // Adjusted by range: narrow range → more steps, wide range → allow bigger leaps
+  var rangeSteps=poolSize;
+  var w_repeat=8, w_step=55, w_third=22, w_fourth=10, w_fifth=5;
+  if(rangeSteps<=5){w_step=70;w_third=15;w_fourth=10;w_fifth=5;} // narrow
+  if(rangeSteps>=10){w_step=45;w_third=25;w_fourth=15;w_fifth=10;} // wide
+  
+  function pickInterval(prevIdx,direction){
+    var r=Math.random()*100;
+    var interval;
+    if(r<w_repeat)interval=0;
+    else if(r<w_repeat+w_step)interval=1;
+    else if(r<w_repeat+w_step+w_third)interval=2;
+    else if(r<w_repeat+w_step+w_third+w_fourth)interval=3;
+    else interval=4;
+    
+    // Direction: 1=up, -1=down, 0=random
+    var dir=direction||(Math.random()<0.5?1:-1);
+    var newIdx=prevIdx+interval*dir;
+    
+    // Clamp to pool bounds
+    newIdx=Math.max(0,Math.min(poolSize-1,newIdx));
+    return newIdx;
+  }
+  
+  // ═══ GENERATE PHRASE ═══
+  var beatsPerBar=8;
+  var totalBeats=numBars*beatsPerBar;
   srNotes=[];
-  let pos=0;
-  let prevIdx=Math.floor(pitchPool.length/2);
-  const tonicInPool=pitchPool.findIndex(p=>p.startsWith(key));
-  if(tonicInPool>=0) prevIdx=tonicInPool;
   
-  const totalBeats=numBars*beatsPerBar;
-  while(pos<totalBeats){
-    const remaining=totalBeats-pos;
-    let dur;
-    if(remaining<=2) dur=2;
-    else if(remaining<=4) dur=Math.random()<0.5?2:remaining;
-    else dur=Math.random()<0.6?2:4;
+  // 1. Start on tonic or dominant (strong opening)
+  var curIdx=Math.random()<0.7?tonicIdx:domIdx;
+  var lastLeap=0; // track last interval size for leap recovery
+  var lastDir=0;
+  
+  // 2. Pick rhythm patterns for each bar
+  var allDurs=[];
+  for(var bar=0;bar<numBars;bar++){
+    var pat;
+    if(bar===numBars-1){
+      // Last bar: end with longer note
+      pat=Math.random()<0.5?[2,2,4]:[2,6];
+    }else if(bar===0){
+      // First bar: simpler rhythm
+      pat=rhythmPatterns[Math.floor(Math.random()*6)]; // first 6 are simpler
+    }else{
+      pat=rhythmPatterns[Math.floor(Math.random()*rhythmPatterns.length)];
+    }
+    for(var di=0;di<pat.length;di++)allDurs.push(pat[di]);
+  }
+  
+  // 3. Assign pitches with musical contour
+  var pos=0;
+  var phraseLen=allDurs.length;
+  var midPoint=Math.floor(phraseLen/2);
+  
+  for(var ni=0;ni<allDurs.length;ni++){
+    var dur=allDurs[ni];
+    if(pos>=totalBeats)break;
     
-    // Always stepwise: move by 0 or ±1 step
-    const step=Math.random()<0.15?0:(Math.random()<0.5?1:-1);
-    const nextIdx=Math.max(0,Math.min(pitchPool.length-1,prevIdx+step));
+    // Phrase contour: rise in first half, fall in second half
+    var progress=ni/phraseLen;
+    var tendUp,tendDown;
+    if(progress<0.4){
+      tendUp=0.6;tendDown=0.3; // tend upward
+    }else if(progress<0.7){
+      tendUp=0.45;tendDown=0.45; // neutral at peak
+    }else{
+      tendUp=0.3;tendDown=0.6; // tend downward toward end
+    }
     
-    srNotes.push({pos,dur,pitch:pitchPool[nextIdx]});
-    prevIdx=nextIdx;
+    // Leap recovery: after a big jump (>2 steps), step back in opposite direction
+    var dir=0;
+    if(lastLeap>=3){
+      dir=-lastDir; // step back
+      lastLeap=0;
+    }else{
+      var r=Math.random();
+      dir=r<tendUp?1:(r<tendUp+tendDown?-1:0);
+    }
+    
+    var newIdx=pickInterval(curIdx,dir);
+    var interval=Math.abs(newIdx-curIdx);
+    
+    // Track for leap recovery
+    lastLeap=interval;
+    lastDir=newIdx>curIdx?1:-1;
+    if(interval===0)lastDir=0;
+    
+    srNotes.push({pos:pos,dur:dur,pitch:pitchPool[newIdx]});
+    curIdx=newIdx;
     pos+=dur;
   }
   
-  // Last note: land on tonic if in range, otherwise stay on last note
-  if(srNotes.length>0){
-    const last=srNotes[srNotes.length-1];
-    const tonicP=pitchPool.find(p=>p.startsWith(key));
-    if(tonicP) last.pitch=tonicP;
-    last.dur=Math.min(4,totalBeats-last.pos);
+  // 4. Fix ending: penultimate note should be step above/below tonic, last note = tonic
+  if(srNotes.length>=2){
+    var last=srNotes[srNotes.length-1];
+    var penult=srNotes[srNotes.length-2];
+    
+    // Last note: tonic with longer duration
+    var tonicP=pitchPool[tonicIdx];
+    last.pitch=tonicP;
+    last.dur=Math.max(last.dur,2);
+    // Ensure doesn't exceed bar
+    if(last.pos+last.dur>totalBeats)last.dur=totalBeats-last.pos;
+    
+    // Penultimate: step above (leading tone feel) or step below tonic
+    var stepAbove=Math.min(tonicIdx+1,poolSize-1);
+    var stepBelow=Math.max(tonicIdx-1,0);
+    penult.pitch=Math.random()<0.6?pitchPool[stepAbove]:pitchPool[stepBelow];
   }
+  
+  // 5. Trim if notes exceed total beats
+  srNotes=srNotes.filter(function(n){return n.pos<totalBeats});
   
   renderSightReadScore(key,numBars);
   $('srPlayBtn').disabled=false;
