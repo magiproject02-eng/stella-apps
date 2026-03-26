@@ -213,7 +213,6 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
 <div class="header">
   <h1>Sight-Reading 🎯</h1>
   <div class="header-btns">
-    <button class="hbtn primary" id="btnMusicXML">📥 MXL</button>
   </div>
 </div>
 
@@ -1941,7 +1940,6 @@ function $(id){return document.getElementById(id)}
 function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
 document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>switchTab(t.dataset.tab)));
 $('btnPlay').addEventListener('click',startPlayback);$('btnStop').addEventListener('click',stopPlayback);
-$('btnMusicXML').addEventListener('click',importMusicXML);
 ['songTitle','bpmInput','timeSigTop','timeSigBot','barCount','subdivSelect'].forEach(id=>{$(id).addEventListener('change',()=>{
   song.title=$('songTitle').value;song.bpm=+$('bpmInput').value||100;song.timeSigTop=+$('timeSigTop').value;song.timeSigBot=+$('timeSigBot').value;song.bars=+$('barCount').value||4;
   const m={'4':1,'8':2,'16':4,'12':3};song.subdivPerBeat=m[$('subdivSelect').value]||2;renderGrid()})});
