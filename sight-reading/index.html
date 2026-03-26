@@ -1729,14 +1729,23 @@ function initToneSynths(){
   }).toDestination();
 }
 
+// Play a pitched note using raw Web Audio (no Tone.js needed, works on mobile Safari)
+function playNote(pitchName,durationMs){
+  ia();if(!pitchName)return;
+  var freq=pitchNameToFreq(pitchName);
+  if(freq<=0)return;
+  var dur=Math.max(0.05,durationMs/1000);
+  var o=ac.createOscillator(),g=ac.createGain();
+  o.type='triangle';o.frequency.value=freq;
+  g.gain.setValueAtTime(0.3,ac.currentTime);
+  g.gain.setValueAtTime(0.3,ac.currentTime+dur*0.7);
+  g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+dur);
+  o.connect(g).connect(ac.destination);
+  o.start();o.stop(ac.currentTime+dur+0.01);
+}
+
 function playBackingNote(pitchName,duration){
-  if(!window.Tone||!toneSynths.backing)return;
-  if(!pitchName)return;
-  try{
-    // Convert "D5" to "D5", "F#5" to "F#5" — Tone.js understands this format
-    const dur=Math.max(0.1,duration/1000);
-    toneSynths.backing.triggerAttackRelease(pitchName,dur);
-  }catch(e){}
+  playNote(pitchName,duration);
 }
 
 // ════════════════════════════════════
@@ -2184,15 +2193,7 @@ function renderSightReadScore(key,numBars){
 function playSightRead(){
   if(srPlaying){stopSightRead();return;}
   if(!srNotes.length)return;
-  unlockAudio(); // needed for mobile Safari
-  if(window.Tone)Tone.start().catch(()=>{});
-  
-  // Create synth if needed
-  if(!toneSynths.sr){
-    if(window.Tone){
-      toneSynths.sr=new Tone.Synth({oscillator:{type:'triangle'},envelope:{attack:0.05,decay:0.2,sustain:0.5,release:0.3},volume:-6}).toDestination();
-    }
-  }
+  unlockAudio();
   
   srPlaying=true;
   $('srPlayBtn').classList.add('hidden');
@@ -2201,7 +2202,7 @@ function playSightRead(){
   const bpm=80;
   const msPerBeat=60000/bpm;
   const msPerSub=msPerBeat/2;
-  const countInBeats=4; // 4 metronome clicks before notes
+  const countInBeats=4;
   const countInMs=countInBeats*msPerBeat;
   let noteIdx=0;
   let clickIdx=0;
@@ -2222,11 +2223,7 @@ function playSightRead(){
     const n=srNotes[noteIdx];
     const expectedTime=n.pos*msPerSub+countInMs;
     if(elapsed>=expectedTime){
-      if(toneSynths.sr){
-        try{toneSynths.sr.triggerAttackRelease(n.pitch,n.dur*msPerSub/1000);}catch(e){}
-      }else{
-        playDrum(0);
-      }
+      playNote(n.pitch,n.dur*msPerSub);
       noteIdx++;
     }
   },20);
