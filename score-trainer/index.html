@@ -381,6 +381,7 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
   <canvas id="playCanvas"></canvas>
   <div class="results" id="resultsScreen">
     <h2>Results</h2>
+    <div id="pModeLabel" style="font-size:0.75rem;color:var(--dim);margin-bottom:0.3rem;font-weight:600;letter-spacing:0.05em;text-transform:uppercase"></div>
     <div class="rank" id="pRank">S</div>
     <div class="score" id="pScore">0</div>
     <div style="font-size:0.65rem;color:var(--dim);margin-bottom:0.4rem">POINTS</div>
@@ -1595,7 +1596,7 @@ function startPlay(pi){
 
     // HUD
     cx.fillStyle='#e8e6f0';cx.font="bold 22px 'Outfit'";cx.textAlign='left';cx.fillText(gScore+'',20,staffH+20);cx.fillStyle='#6b6b80';cx.font="600 9px 'Outfit'";cx.fillText('SCORE',20,staffH+34);
-    cx.textAlign='right';cx.fillStyle='#444';cx.font="600 11px 'Outfit'";cx.fillText(`${song.parts[selPart].name} · ${song.title} · ${song.bpm} BPM${difficulty!=='normal'?' ['+difficulty+']':''} · ${gameMode==='pitch'?'🎤 Pitch':'📱'}`,w-15,staffH+16);
+    cx.textAlign='right';cx.fillStyle='#444';cx.font="600 11px 'Outfit'";const modeLabel=gameMode==='pitch'?'🎤 Sing':inputMode==='clap'?'👏 Clap':'📱 Tap';cx.fillText(`${song.parts[selPart].name} · ${song.title} · ${song.bpm} BPM${difficulty!=='normal'?' ['+difficulty+']':''} · ${modeLabel}`,w-15,staffH+16);
 
     // Pitch mode: show detected note and expected note
     if(gameMode==='pitch'){
@@ -1672,6 +1673,9 @@ function onHit(fromPitch){if(!gameOn||gamePaused)return;const el=performance.now
 
 function endPlay(){gameOn=false;gamePaused=false;currentDetectedPitch=0;currentDetectedNote='';$('scoreContainer').style.display='none';$('pauseBtn').style.display='none';$('pauseOverlay').style.display='none';const t=gPerf+gGood+gMiss,acc=t>0?((gPerf*100+gGood*50)/(t*100))*100:0;
   let rk;if(acc>=95&&gMiss===0)rk='S';else if(acc>=80)rk='A';else if(acc>=60)rk='B';else rk='C';
+  const mLabel=gameMode==='pitch'?'🎤 Sing Mode':inputMode==='clap'?'👏 Clap Mode':'📱 Tap Mode';
+  const isSR=song.title&&song.title.includes('Sight-Reading');
+  $('pModeLabel').textContent=(isSR?'🎯 視唱 Sight-Reading · ':'')+mLabel+' · '+song.parts[selPart].name+' · '+difficulty;
   $('pRank').textContent=rk;$('pRank').className='rank '+rk;$('pScore').textContent=gScore;
   $('pPerf').textContent=gPerf;$('pGood').textContent=gGood;$('pMiss').textContent=gMiss;$('pCombo').textContent=gMaxCombo;$('resultsScreen').style.display='flex'}
 
