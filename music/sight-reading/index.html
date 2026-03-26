@@ -2376,6 +2376,7 @@ function revealNotes(){
 
 function loadSightReadToPlay(){
   if(!srNotes.length)return;
+  unlockAudio();
   var key=srMeta?srMeta.key:'C';
   var numBars=srMeta?srMeta.bars:4;
   const songData={
@@ -2387,9 +2388,20 @@ function loadSightReadToPlay(){
   // Force Sing mode for sight-reading
   inputMode='clap';gameMode='pitch';
   document.querySelectorAll('[data-pmode]').forEach(function(b){b.classList.toggle('active',b.dataset.pmode==='pitch')});
-  if($('micSetup'))$('micSetup').style.display='block';
-  if($('pitchInfo'))$('pitchInfo').style.display='block';
-  switchTab('play');
+  // Auto-request mic permission (needs user gesture — this button click counts)
+  if(!micOn){
+    initMic().then(function(){
+      if(micOn){
+        if($('micStatusPlay')){$('micStatusPlay').textContent='✅ Mic ready';$('micStatusPlay').style.background='#2a9d8f22';$('micStatusPlay').style.color='var(--green)';$('micStatusPlay').style.borderColor='#2a9d8f44';}
+      }
+      switchTab('play');
+    }).catch(function(){
+      // Mic denied — still enter play mode, show warning
+      switchTab('play');
+    });
+  }else{
+    switchTab('play');
+  }
 }
 
 function saveSightRead(){
