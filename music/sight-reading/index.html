@@ -1098,7 +1098,7 @@ function startPlay(pi){
 
     // Layout: staff above, belt below
     const hasPitchData=gNotes.length>0&&gNotes[0].pitch;
-    const staffH=showScore&&hasPitchData?Math.max(130,Math.min(160,h*0.30)):0;
+    const staffH=showScore&&hasPitchData?Math.max(95,Math.min(120,h*0.22)):0;
     const by=staffH+(h-staffH)*0.38;
     const bh=70;
 
@@ -1108,7 +1108,7 @@ function startPlay(pi){
     try{
     if(staffH>0){
       // Staff layout: center the 5 lines in the staff area with good padding
-      const staffPad=Math.max(24,staffH*0.18); // padding top and bottom
+      const staffPad=Math.max(15,staffH*0.15); // padding top and bottom
       const staffTop=staffPad;
       const staffBot=staffH-staffPad;
       const lineGap=(staffBot-staffTop)/4; // 5 lines, 4 gaps
@@ -1136,7 +1136,7 @@ function startPlay(pi){
       // ── CLEF + KEY SIG + TIME SIG ──
       // Positioned BEFORE the first note in the timeline, scrolling at music speed
       // So the player reads: clef → key sig → time sig → first note (left to right)
-      var clefLeadMs=gPulseMs*3; // 3 beats before music starts
+      var clefLeadMs=gPulseMs*1.5; // 1.5 beats before music starts — clef passes just before first note
       var clefX=hx+(-clefLeadMs-el)*px;
       if(clefX>-150&&clefX<w+50){
         // Treble clef
