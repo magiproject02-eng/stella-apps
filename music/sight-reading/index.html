@@ -1107,8 +1107,10 @@ function startPlay(pi){
     // ─── STAFF VIEW (same linear time as belt) ───
     try{
     if(staffH>0){
-      const staffTop=20;
-      const staffBot=staffH-15;
+      // Staff layout: center the 5 lines in the staff area with good padding
+      const staffPad=Math.max(16,staffH*0.12); // padding top and bottom
+      const staffTop=staffPad;
+      const staffBot=staffH-staffPad;
       const lineGap=(staffBot-staffTop)/4; // 5 lines, 4 gaps
       const halfStep=lineGap/2;
       // Proper treble clef: each diatonic step = halfStep
@@ -1124,76 +1126,81 @@ function startPlay(pi){
         return staffBot-(pos-2)*halfStep;
       }
       
-      // Staff area (same background, no visible boundary)
-      // No separate background fill - keeps same #131318 as rest of canvas
-      
-      // Draw 5 staff lines
+      // Draw 5 staff lines (slightly bolder for visibility)
       for(var i=0;i<5;i++){
         var ly=staffTop+i*lineGap;
-        cx.strokeStyle='#444';cx.lineWidth=0.8;
+        cx.strokeStyle='#555';cx.lineWidth=1;
         cx.beginPath();cx.moveTo(0,ly);cx.lineTo(w,ly);cx.stroke();
       }
       
       // ── CLEF + KEY SIG + TIME SIG ──
-      // Fixed at left during count-in, then scrolls left from that position
+      // Fixed at left during count-in, then scrolls left
       var clefX;
       if(el<=0){
-        clefX=8; // fixed during count-in
+        clefX=10;
       }else{
-        clefX=8-el*px; // scroll left from position 8 at music speed
+        clefX=10-el*px;
       }
-      if(clefX>-80&&clefX<w+40){
-        cx.fillStyle='#ccc';cx.font=(Math.round(lineGap*3.5))+'px serif';cx.textAlign='left';cx.textBaseline='middle';
-        cx.fillText('\u{1D11E}',clefX,staffTop+2*lineGap);
+      if(clefX>-120&&clefX<w+40){
+        // Treble clef — large, centered on G line (2nd line from bottom = staffTop+3*lineGap)
+        var clefSize=Math.round(lineGap*4);
+        cx.fillStyle='#ddd';cx.font=clefSize+'px serif';cx.textAlign='left';cx.textBaseline='middle';
+        cx.fillText('\u{1D11E}',clefX,staffTop+2*lineGap+lineGap*0.1);
         
+        // Key signature — positioned after clef with proper spacing
         var keySharps={'G':['F'],'D':['F','C'],'A':['F','C','G'],'E':['F','C','G','D']};
         var keyFlats={'F':['B'],'Bb':['B','E'],'Eb':['B','E','A'],'Ab':['B','E','A','D']};
         var ks=song.keySig||'C';
-        var ksX2=clefX+lineGap*2.8;
+        var ksX=clefX+clefSize*0.75; // space after clef
+        var accSize=Math.round(lineGap*1.4);
         if(keySharps[ks]){
-          cx.fillStyle='#ccc';cx.font='bold '+(Math.round(lineGap*1.1))+'px serif';cx.textBaseline='middle';
+          cx.fillStyle='#ddd';cx.font='bold '+accSize+'px serif';cx.textAlign='center';cx.textBaseline='middle';
           keySharps[ks].forEach(function(n){
-            cx.fillText('\u266F',ksX2,pitchToY(n+'5'));
-            ksX2+=lineGap*0.65;
+            cx.fillText('\u266F',ksX,pitchToY(n+'5'));
+            ksX+=lineGap*0.7;
           });
         }
         if(keyFlats[ks]){
-          cx.fillStyle='#ccc';cx.font='bold '+(Math.round(lineGap*1.1))+'px serif';cx.textBaseline='middle';
+          cx.fillStyle='#ddd';cx.font='bold '+accSize+'px serif';cx.textAlign='center';cx.textBaseline='middle';
           keyFlats[ks].forEach(function(n){
-            cx.fillText('\u266D',ksX2,pitchToY(n+'4'));
-            ksX2+=lineGap*0.65;
+            cx.fillText('\u266D',ksX,pitchToY(n+'4'));
+            ksX+=lineGap*0.7;
           });
         }
-        ksX2+=lineGap*0.3;
-        cx.fillStyle='#ccc';cx.font='bold '+(Math.round(lineGap*1.5))+'px Plus Jakarta Sans,sans-serif';cx.textAlign='center';cx.textBaseline='middle';
-        cx.fillText(song.timeSigTop+'',ksX2,staffTop+lineGap*0.9);
-        cx.fillText(song.timeSigBot+'',ksX2,staffTop+lineGap*3.1);
+        
+        // Time signature — two stacked numbers centered on staff
+        // Top number fills spaces 1-2 (above middle line), bottom fills spaces 3-4
+        ksX+=lineGap*0.5;
+        var tsSize=Math.round(lineGap*1.8);
+        cx.fillStyle='#ddd';cx.font='bold '+tsSize+'px Plus Jakarta Sans,sans-serif';cx.textAlign='center';cx.textBaseline='middle';
+        cx.fillText(song.timeSigTop+'',ksX,staffTop+lineGap*1); // center of top half
+        cx.fillText(song.timeSigBot+'',ksX,staffTop+lineGap*3); // center of bottom half
       }
       
-      // ── BAR LINES (same color as staff, clear gap before beat 1 notes) ──
-      var beatPx=gPulseMs*px; // pixels per beat
-      var barOffset=Math.min(beatPx*0.15, 25); // 15% of beat width, max 25px
-      barOffset=Math.max(barOffset, 12); // at least 12px
+      // ── BAR LINES ──
+      var beatPx=gPulseMs*px;
+      var barOffset=Math.min(beatPx*0.15, 25);
+      barOffset=Math.max(barOffset, 12);
       for(var i=-10;i<200;i++){
         var x=hx+(i*gPulseMs-el)*px;if(x<-10||x>w+10)continue;
         var isBar=i%gPulsesPerBar===0;
         if(isBar){
           var bx=x-barOffset;
           if(bx<-10||bx>w+10)continue;
-          cx.strokeStyle='#555';cx.lineWidth=1;
+          cx.strokeStyle='#666';cx.lineWidth=1;
           cx.beginPath();cx.moveTo(bx,staffTop);cx.lineTo(bx,staffBot);cx.stroke();
           if(i>=0){
-            cx.fillStyle='#666';cx.font="bold 8px 'Plus Jakarta Sans'";cx.textAlign='center';cx.textBaseline='bottom';
-            cx.fillText(Math.floor(i/gPulsesPerBar)+1+'',bx,staffTop-2);
+            cx.fillStyle='#777';cx.font="bold 9px 'Plus Jakarta Sans'";cx.textAlign='center';cx.textBaseline='bottom';
+            cx.fillText(Math.floor(i/gPulsesPerBar)+1+'',bx,staffTop-3);
           }
         }
       }
       
       // Playhead on staff
-      cx.strokeStyle='rgba(233,196,0,0.5)';cx.lineWidth=1.5;
-      cx.beginPath();cx.moveTo(hx,staffTop-3);cx.lineTo(hx,staffBot+3);cx.stroke();
+      cx.strokeStyle='rgba(233,196,0,0.6)';cx.lineWidth=2;
+      cx.beginPath();cx.moveTo(hx,staffTop-4);cx.lineTo(hx,staffBot+4);cx.stroke();
       
-      // ── NOTES ON STAFF (simple circles, no transform tricks) ──
+      // ── NOTES ON STAFF ──
       const visNotes=[];
       for(const n of gNotes){
         const x=hx+(n.time-el)*px;
@@ -1202,9 +1209,10 @@ function startPlay(pi){
         visNotes.push({x,nw,y:pitchToY(n.pitch),nt:n.time-el,dur:n.dur,pitch:n.pitch,hit:n.hit,missed:n.missed});
       }
       
-      var nr=Math.max(4,lineGap*0.35); // smaller note radius
+      // Note radius scales with staff — bigger noteheads
+      var nr=Math.max(5,lineGap*0.42);
       
-      // Pass 1: duration bars (thin)
+      // Pass 1: duration bars (thin tail showing note length)
       for(var vi=0;vi<visNotes.length;vi++){
         var vn=visNotes[vi];
         var passed=vn.nt<-100;
@@ -1223,51 +1231,55 @@ function startPlay(pi){
         cx.globalAlpha=passed?0.35:1;
         var col=current?'#e9c400':vn.hit?'#2a9d8f':'#fff';
         
-        // Notehead circle
+        // Notehead — slightly oval (wider than tall, like real notation)
         cx.fillStyle=col;
-        cx.beginPath();cx.arc(vn.x,vn.y,nr,0,Math.PI*2);cx.fill();
+        cx.beginPath();
+        cx.ellipse(vn.x,vn.y,nr*1.15,nr*0.9,0,0,Math.PI*2);
+        cx.fill();
         
-        // Open for half notes
+        // Open notehead for half notes and longer
         if(vn.dur>=4){
-          cx.fillStyle='#16161d';
-          cx.beginPath();cx.arc(vn.x,vn.y,nr*0.45,0,Math.PI*2);cx.fill();
+          cx.fillStyle='#131318';
+          cx.beginPath();
+          cx.ellipse(vn.x,vn.y,nr*0.6,nr*0.45,0,0,Math.PI*2);
+          cx.fill();
         }
         
-        // Stem: up when below middle line (B4), down when above — standard notation
-        // Length = 3.5 staff spaces (standard)
+        // Stem: up when below middle line (B4), down when above
         if(vn.dur<8){
-          var midY=staffTop+2*lineGap; // middle line = B4
-          var stemUp=vn.y>=midY; // below or on middle → stem up
-          var stemLen=lineGap*2.5;
-          var stemX=stemUp?vn.x+nr:vn.x-nr; // right side up, left side down
+          var midY=staffTop+2*lineGap;
+          var stemUp=vn.y>=midY;
+          var stemLen=lineGap*3;
+          var stemX=stemUp?vn.x+nr*1.1:vn.x-nr*1.1;
           var sy2=stemUp?vn.y-stemLen:vn.y+stemLen;
-          cx.strokeStyle=passed?'#555':current?'#c8a800':'#bbb';cx.lineWidth=1.2;
+          cx.strokeStyle=passed?'#555':current?'#c8a800':'#ccc';cx.lineWidth=1.5;
           cx.beginPath();cx.moveTo(stemX,vn.y);cx.lineTo(stemX,sy2);cx.stroke();
         }
         
-        // Current note: small bright dot instead of big ring
+        // Current note indicator
         if(current){
           cx.fillStyle='#e9c400';
-          cx.beginPath();cx.arc(vn.x,vn.y-nr-3,2,0,Math.PI*2);cx.fill();
+          cx.beginPath();cx.arc(vn.x,vn.y-nr-4,2.5,0,Math.PI*2);cx.fill();
         }
         
-        // Pitch label (tiny, only for current and upcoming)
+        // Pitch label (below note, slightly bigger)
         if(!passed){
-          cx.fillStyle=current?'#e9c400':'#999';
-          cx.font="7px 'Plus Jakarta Sans'";cx.textAlign='center';cx.textBaseline='top';
-          cx.fillText(vn.pitch||'',vn.x,vn.y+nr+1);
+          cx.fillStyle=current?'#e9c400':'#aaa';
+          cx.font="bold 8px 'Plus Jakarta Sans'";cx.textAlign='center';cx.textBaseline='top';
+          cx.fillText(vn.pitch||'',vn.x,vn.y+nr+2);
         }
         
-        // Ledger lines
+        // Ledger lines — white, extend wider than notehead
         cx.strokeStyle='#fff';cx.lineWidth=1.2;
+        var ledgerW=nr*1.8;
         if(vn.y>staffBot+halfStep*0.5){
           for(var ly=staffBot+lineGap;ly<=vn.y+2;ly+=lineGap){
-            cx.beginPath();cx.moveTo(vn.x-nr-3,ly);cx.lineTo(vn.x+nr+3,ly);cx.stroke();
+            cx.beginPath();cx.moveTo(vn.x-ledgerW,ly);cx.lineTo(vn.x+ledgerW,ly);cx.stroke();
           }
         }
         if(vn.y<staffTop-halfStep*0.5){
           for(var ly=staffTop-lineGap;ly>=vn.y-2;ly-=lineGap){
-            cx.beginPath();cx.moveTo(vn.x-nr-3,ly);cx.lineTo(vn.x+nr+3,ly);cx.stroke();
+            cx.beginPath();cx.moveTo(vn.x-ledgerW,ly);cx.lineTo(vn.x+ledgerW,ly);cx.stroke();
           }
         }
         
