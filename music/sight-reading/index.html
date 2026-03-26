@@ -1872,30 +1872,11 @@ function yinDetect(buf,sampleRate){
   return sampleRate/tauMin;
 }
 
-// Pitch smoothing: average last N readings to reduce jitter
-var pitchHistory=[];
-var PITCH_SMOOTH_N=3;
-function smoothPitch(freq){
-  if(freq<=0){pitchHistory=[];return 0;}
-  pitchHistory.push(freq);
-  if(pitchHistory.length>PITCH_SMOOTH_N)pitchHistory.shift();
-  if(pitchHistory.length<2)return freq;
-  // Reject outliers: if newest reading is >3 semitones from median, ignore it
-  var sorted=pitchHistory.slice().sort(function(a,b){return a-b});
-  var median=sorted[Math.floor(sorted.length/2)];
-  var semDiff=Math.abs(12*Math.log2(freq/median));
-  if(semDiff>3){pitchHistory.pop();return median;}
-  // Return average
-  var sum=0;for(var i=0;i<pitchHistory.length;i++)sum+=pitchHistory[i];
-  return sum/pitchHistory.length;
-}
-
 let pitchBuf=null,pitchAnalyser=null;
 function startPitchDetection(){
   if(!micOn||!micAn)return;
   pitchAnalyser=micAn;
   pitchBuf=new Float32Array(pitchAnalyser.fftSize);
-  pitchHistory=[];
   detectPitchLoop();
 }
 
@@ -1903,8 +1884,9 @@ function detectPitchLoop(){
   if(gameMode!=='pitch'||!pitchAnalyser){currentDetectedPitch=0;currentDetectedNote='';return}
   pitchAnalyser.getFloatTimeDomainData(pitchBuf);
   const sr=pitchAnalyser._ctx?pitchAnalyser._ctx.sampleRate:44100;
-  var rawFreq=yinDetect(pitchBuf,sr);
-  var freq=smoothPitch(rawFreq);
+  var freq=yinDetect(pitchBuf,sr);
+  // Trust YIN directly — no smoothing, no averaging
+  // YIN only returns a value when confident (threshold check built in)
   if(freq>60&&freq<1200){
     currentDetectedPitch=freq;
     const info=freqToNote(freq);
