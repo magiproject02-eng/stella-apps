@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Music Apps — Stella</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Space Grotesk',system-ui;background:#0a0a12;color:#e8e6f0;min-height:100vh;display:flex;justify-content:center;padding:3rem 1.5rem}
+  .container{max-width:480px;width:100%}
+  h1{font-size:2rem;font-weight:700;letter-spacing:-0.03em;margin-bottom:0.25rem}
+  .icon{font-size:2.2rem;margin-right:0.4rem;vertical-align:middle}
+  .sub{color:#6b6b80;font-size:0.85rem;margin-bottom:2rem}
+  .back{color:#6b6b80;font-size:0.8rem;text-decoration:none;display:inline-block;margin-bottom:1.2rem}
+  .back:hover{color:#e8e6f0}
+  .app-card{display:block;background:#14141f;border:1px solid #222233;border-radius:12px;padding:1.25rem;margin-bottom:0.75rem;text-decoration:none;color:#e8e6f0;transition:border-color 0.2s,transform 0.1s}
+  .app-card:hover{border-color:#7c3aed;transform:translateY(-1px)}
+  .app-card h3{font-size:1rem;font-weight:600;margin-bottom:0.3rem}
+  .app-card p{color:#6b6b80;font-size:0.8rem}
+  .app-card .tag{display:inline-block;margin-top:0.5rem;padding:0.15rem 0.5rem;border-radius:999px;font-size:0.7rem}
+  .tag.edu{background:#2a9d8f18;border:1px solid #2a9d8f33;color:#2a9d8f}
+  .tag.rhythm{background:#e6394618;border:1px solid #e6394633;color:#e63946}
+  .tag.new{background:#f4a26118;border:1px solid #f4a26133;color:#f4a261}
+  .tag.snap{background:#7c3aed18;border:1px solid #7c3aed33;color:#7c3aed}
+  .footer{margin-top:2rem;text-align:center;color:#6b6b8044;font-size:0.7rem}
+</style>
+</head>
+<body>
+<div class="container">
+  <a class="back" href="/">← All Stella Apps</a>
+  <h1><span class="icon">🎵</span> Music Apps</h1>
+  <div class="sub">Classroom music tools — rhythm, sight-reading, and more</div>
+  <a class="app-card" href="/music/score-trainer/">
+    <h3>🎵 Score Trainer</h3>
+    <p>Multi-voice rhythm trainer for choral classrooms. Import MusicXML or scan sheet music. Tap / Clap / Sing modes with VexFlow score display.</p>
+    <span class="tag edu">education</span> <span class="tag new">full featured</span>
+  </a>
+  <a class="app-card" href="/music/sight-reading/">
+    <h3>🎯 視唱練習 Sight-Reading</h3>
+    <p>Standalone sight-reading practice. Random phrase generation, MusicXML import, stricter scoring with wrong-note penalties.</p>
+    <span class="tag edu">education</span> <span class="tag new">latest</span>
+  </a>
+  <a class="app-card" href="/music/sight-reading-v1p/">
+    <h3>🎯 Sight-Reading v1p</h3>
+    <p>Preserved snapshot of the sight-reading app for reference.</p>
+    <span class="tag snap">snapshot</span>
+  </a>
+  <a class="app-card" href="/music/taiko/">
+    <h3>👏🥁 Clap Taiko</h3>
+    <p>The original clap-detection rhythm game. 3 built-in songs, mic input, keyboard & tap fallback.</p>
+    <span class="tag rhythm">rhythm</span>
+  </a>
+  <div class="footer">stella-apps.vercel.app/music · March 2026</div>
+</div>
+</body>
+</html>

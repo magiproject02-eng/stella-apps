@@ -1,5 +1,11 @@
 {
   "buildCommand": "",
   "outputDirectory": ".",
-  "cleanUrls": true
+  "cleanUrls": true,
+  "redirects": [
+    { "source": "/score-trainer/:path*", "destination": "/music/score-trainer/:path*", "statusCode": 301 },
+    { "source": "/sight-reading/:path*", "destination": "/music/sight-reading/:path*", "statusCode": 301 },
+    { "source": "/sight-reading-v1p/:path*", "destination": "/music/sight-reading-v1p/:path*", "statusCode": 301 },
+    { "source": "/taiko/:path*", "destination": "/music/taiko/:path*", "statusCode": 301 }
+  ]
 }
