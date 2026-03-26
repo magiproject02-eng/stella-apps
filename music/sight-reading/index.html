@@ -1448,9 +1448,16 @@ function onHit(fromPitch){if(!gameOn||gamePaused)return;
   gMaxCombo=Math.max(gMaxCombo,gCombo)}
 
 function endPlay(){gameOn=false;gamePaused=false;currentDetectedPitch=0;currentDetectedNote='';$('scoreContainer').style.display='none';$('pauseBtn').style.display='none';$('pauseOverlay').style.display='none';
-  // Accuracy = correct notes / all attempts (wrongs count against you)
-  const totalNotes=gPerf+gGood+gMiss+gWrong;
-  const acc=totalNotes>0?((gPerf+gGood)/totalNotes)*100:0;
+  // Weighted composite score (ABRSM-inspired)
+  // pitchScore: of notes you attempted, how many had correct pitch?
+  // continuity: did you keep singing or stop (miss)?
+  // timingScore: of correct notes, how many were perfectly timed?
+  const attempted=gPerf+gGood+gWrong; // notes you tried to sing
+  const totalNotes=gPerf+gGood+gMiss+gWrong; // everything
+  const pitchScore=attempted>0?((gPerf+gGood)/attempted)*100:0;
+  const continuity=totalNotes>0?(attempted/totalNotes)*100:0;
+  const timingScore=(gPerf+gGood)>0?(gPerf/(gPerf+gGood))*100:0;
+  const acc=pitchScore*0.5+continuity*0.3+timingScore*0.2;
   let rk;if(acc>=95&&gMiss===0&&gWrong<=1)rk='S';else if(acc>=85)rk='A';else if(acc>=60)rk='B';else rk='C';
   const mLabel=gameMode==='pitch'?'🎤 Sing Mode':inputMode==='clap'?'👏 Clap Mode':'📱 Tap Mode';
   const isSR=song.title&&song.title.includes('Sight-Reading');
@@ -1459,7 +1466,7 @@ function endPlay(){gameOn=false;gamePaused=false;currentDetectedPitch=0;currentD
   const dailyLabel=srMeta&&srMeta.daily?'📅 Daily · ':'';
   $('pModeLabel').textContent=(isSR?'🎯 視唱 · ':'')+dailyLabel+lvLabel+mLabel+' · '+difficulty;
   $('pRank').textContent=rk;$('pRank').className='rank '+rk;$('pScore').textContent=gScore;
-  $('pAcc').textContent=Math.round(acc)+'% accuracy · '+totalNotes+' notes'+(gWrong>0?' · '+gWrong+' wrong pitch':'');
+  $('pAcc').innerHTML=Math.round(acc)+'% <span style="font-size:0.6rem;color:var(--dim)">Pitch '+Math.round(pitchScore)+'% · Flow '+Math.round(continuity)+'% · Timing '+Math.round(timingScore)+'%</span>';
   $('pPerf').textContent=gPerf;$('pGood').textContent=gGood;$('pMiss').textContent=gMiss;$('pWrong').textContent=gWrong;$('pCombo').textContent=gMaxCombo;$('resultsScreen').style.display='flex';
   // Save score to localStorage
   if(isSR&&srMeta&&srMeta.level){
