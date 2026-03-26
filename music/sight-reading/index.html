@@ -1796,49 +1796,106 @@ function pitchNameToFreq(name){
   return 440*Math.pow(2,(idx-9)/12+(oct-4));
 }
 
-function autoCorrelate(buf,sampleRate){
-  let SIZE=buf.length;
-  let rms=0;
-  for(let i=0;i<SIZE;i++)rms+=buf[i]*buf[i];
+// ═══ YIN PITCH DETECTION ALGORITHM ═══
+// Replaces basic autocorrelation — much better for singing voice
+// Based on de Cheveigné & Kawahara (2002)
+function yinDetect(buf,sampleRate){
+  var SIZE=buf.length;
+  var halfSize=Math.floor(SIZE/2);
+  
+  // Step 0: RMS check — skip if too quiet (noise floor)
+  var rms=0;
+  for(var i=0;i<SIZE;i++)rms+=buf[i]*buf[i];
   rms=Math.sqrt(rms/SIZE);
-  if(rms<0.01)return -1; // not enough signal
-
-  let r1=0,r2=SIZE-1;
-  const thresh=0.2;
-  for(let i=0;i<SIZE/2;i++){if(Math.abs(buf[i])<thresh){r1=i;break}}
-  for(let i=1;i<SIZE/2;i++){if(Math.abs(buf[SIZE-i])<thresh){r2=SIZE-i;break}}
-
-  buf=buf.slice(r1,r2);
-  SIZE=buf.length;
-
-  const c=new Float32Array(SIZE);
-  for(let i=0;i<SIZE;i++){
-    let val=0;
-    for(let j=0;j<SIZE-i;j++)val+=buf[j]*buf[j+i];
-    c[i]=val;
+  if(rms<0.008)return -1; // silence threshold (lower = more sensitive)
+  
+  // Step 1: Difference function d(τ)
+  // d(τ) = Σ(x[j] - x[j+τ])² for j=0..W-1-τ
+  var d=new Float32Array(halfSize);
+  for(var tau=0;tau<halfSize;tau++){
+    var sum=0;
+    for(var j=0;j<halfSize;j++){
+      var diff=buf[j]-buf[j+tau];
+      sum+=diff*diff;
+    }
+    d[tau]=sum;
   }
+  
+  // Step 2: Cumulative mean normalized difference d'(τ)
+  // d'(τ) = d(τ) / ((1/τ) * Σd(j) for j=1..τ)
+  // d'(0) = 1
+  var dPrime=new Float32Array(halfSize);
+  dPrime[0]=1;
+  var runningSum=0;
+  for(var tau=1;tau<halfSize;tau++){
+    runningSum+=d[tau];
+    dPrime[tau]=d[tau]*tau/runningSum;
+  }
+  
+  // Step 3: Absolute threshold — find first tau where d'(tau) < threshold
+  // Then find the minimum in that dip
+  var threshold=0.15; // lower = stricter (0.10-0.20 typical for voice)
+  var tauMin=-1;
+  // Skip tau < minTau (corresponds to max detectable frequency ~1000Hz)
+  var minTau=Math.max(2,Math.floor(sampleRate/1000));
+  // Max tau corresponds to min detectable frequency ~60Hz
+  var maxTau=Math.min(halfSize-1,Math.floor(sampleRate/60));
+  
+  for(var tau=minTau;tau<maxTau;tau++){
+    if(dPrime[tau]<threshold){
+      // Found a dip below threshold — find the local minimum
+      while(tau+1<maxTau&&dPrime[tau+1]<dPrime[tau])tau++;
+      tauMin=tau;
+      break;
+    }
+  }
+  
+  // If no dip found below threshold, find global minimum as fallback
+  if(tauMin<0){
+    var minVal=Infinity;
+    for(var tau=minTau;tau<maxTau;tau++){
+      if(dPrime[tau]<minVal){minVal=dPrime[tau];tauMin=tau;}
+    }
+    // Only accept if reasonably periodic (minVal < 0.5)
+    if(minVal>0.5)return -1;
+  }
+  
+  // Step 4: Parabolic interpolation around tauMin for sub-sample accuracy
+  if(tauMin>0&&tauMin<halfSize-1){
+    var s0=dPrime[tauMin-1];
+    var s1=dPrime[tauMin];
+    var s2=dPrime[tauMin+1];
+    var betterTau=tauMin+(s2-s0)/(2*(2*s1-s2-s0));
+    if(isFinite(betterTau))tauMin=betterTau;
+  }
+  
+  return sampleRate/tauMin;
+}
 
-  let d=0;
-  while(c[d]>c[d+1])d++;
-  let maxval=-1,maxpos=-1;
-  for(let i=d;i<SIZE;i++){if(c[i]>maxval){maxval=c[i];maxpos=i}}
-
-  let T0=maxpos;
-  // Parabolic interpolation
-  const x1=c[T0-1]||0,x2=c[T0],x3=c[T0+1]||0;
-  const a=(x1+x3-2*x2)/2;
-  const b=(x3-x1)/2;
-  if(a)T0=T0-b/(2*a);
-
-  return sampleRate/T0;
+// Pitch smoothing: average last N readings to reduce jitter
+var pitchHistory=[];
+var PITCH_SMOOTH_N=3;
+function smoothPitch(freq){
+  if(freq<=0){pitchHistory=[];return 0;}
+  pitchHistory.push(freq);
+  if(pitchHistory.length>PITCH_SMOOTH_N)pitchHistory.shift();
+  if(pitchHistory.length<2)return freq;
+  // Reject outliers: if newest reading is >3 semitones from median, ignore it
+  var sorted=pitchHistory.slice().sort(function(a,b){return a-b});
+  var median=sorted[Math.floor(sorted.length/2)];
+  var semDiff=Math.abs(12*Math.log2(freq/median));
+  if(semDiff>3){pitchHistory.pop();return median;}
+  // Return average
+  var sum=0;for(var i=0;i<pitchHistory.length;i++)sum+=pitchHistory[i];
+  return sum/pitchHistory.length;
 }
 
 let pitchBuf=null,pitchAnalyser=null;
 function startPitchDetection(){
   if(!micOn||!micAn)return;
-  // Use a separate analyser for pitch with larger FFT
   pitchAnalyser=micAn;
   pitchBuf=new Float32Array(pitchAnalyser.fftSize);
+  pitchHistory=[];
   detectPitchLoop();
 }
 
@@ -1846,10 +1903,9 @@ function detectPitchLoop(){
   if(gameMode!=='pitch'||!pitchAnalyser){currentDetectedPitch=0;currentDetectedNote='';return}
   pitchAnalyser.getFloatTimeDomainData(pitchBuf);
   const sr=pitchAnalyser._ctx?pitchAnalyser._ctx.sampleRate:44100;
-  const freq=autoCorrelate(pitchBuf,sr);
-  if(freq>0){
-    // Ignore very low frequencies (rumble, not singing)
-    if(freq<70){requestAnimationFrame(detectPitchLoop);return}
+  var rawFreq=yinDetect(pitchBuf,sr);
+  var freq=smoothPitch(rawFreq);
+  if(freq>60&&freq<1200){
     currentDetectedPitch=freq;
     const info=freqToNote(freq);
     currentDetectedNote=info.name;
@@ -1888,7 +1944,7 @@ function playBackingNote(pitchName,duration){
 // ════════════════════════════════════
 let micOn=false,micAn=null,micD=null,lastClap=0;
 function getMicThreshold(){return(21-micSensitivity)*5}
-async function initMic(){try{const s=await navigator.mediaDevices.getUserMedia({audio:true});const c=new AC(),src=c.createMediaStreamSource(s);micAn=c.createAnalyser();micAn.fftSize=2048;micAn.smoothingTimeConstant=0.3;micAn._ctx=c;src.connect(micAn);micD=new Uint8Array(micAn.frequencyBinCount);micOn=true;monMic()}catch(e){throw e}}
+async function initMic(){try{const s=await navigator.mediaDevices.getUserMedia({audio:true});const c=new AC(),src=c.createMediaStreamSource(s);micAn=c.createAnalyser();micAn.fftSize=4096;micAn.smoothingTimeConstant=0.1;micAn._ctx=c;src.connect(micAn);micD=new Uint8Array(micAn.frequencyBinCount);micOn=true;monMic()}catch(e){throw e}}
 function monMic(){if(!micOn)return;micAn.getByteFrequencyData(micD);let s=0;for(let i=0;i<micD.length;i++)s+=micD[i]*micD[i];const v=Math.sqrt(s/micD.length);const now=performance.now();if(inputMode==='clap'&&v>getMicThreshold()&&now-lastClap>120){lastClap=now;onHit()}requestAnimationFrame(monMic)}
 
 // ════════════════════════════════════
