@@ -367,7 +367,8 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
     <div id="pModeLabel" style="font-size:0.75rem;color:var(--dim);margin-bottom:0.3rem;font-weight:600;letter-spacing:0.05em;text-transform:uppercase"></div>
     <div class="rank" id="pRank">S</div>
     <div class="score" id="pScore">0</div>
-    <div style="font-size:0.65rem;color:var(--dim);margin-bottom:0.4rem">POINTS</div>
+    <div style="font-size:0.65rem;color:var(--dim);margin-bottom:0.1rem">POINTS</div>
+    <div id="pAcc" style="font-size:0.8rem;color:var(--dim);margin-bottom:0.4rem;font-weight:600"></div>
     <div class="stats">
       <div class="rs"><div class="v" id="pPerf" style="color:var(--gold)">0</div><div class="l">Perfect</div></div>
       <div class="rs"><div class="v" id="pGood" style="color:var(--green)">0</div><div class="l">Good</div></div>
@@ -1416,8 +1417,10 @@ function onHit(fromPitch){if(!gameOn||gamePaused)return;const el=performance.now
   gMaxCombo=Math.max(gMaxCombo,gCombo)}
 
 function endPlay(){gameOn=false;gamePaused=false;currentDetectedPitch=0;currentDetectedNote='';$('scoreContainer').style.display='none';$('pauseBtn').style.display='none';$('pauseOverlay').style.display='none';
-  const t=gPerf+gGood+gMiss+gWrong,acc=t>0?((gPerf*100+gGood*50)/(t*100))*100:0;
-  let rk;if(acc>=95&&gMiss===0&&gWrong===0)rk='S';else if(acc>=80)rk='A';else if(acc>=60)rk='B';else rk='C';
+  // Accuracy = notes correctly sung / total notes in phrase (wrongs don't count in denominator)
+  const totalNotes=gPerf+gGood+gMiss; // actual notes in the phrase
+  const acc=totalNotes>0?((gPerf+gGood)/totalNotes)*100:0;
+  let rk;if(acc>=95&&gMiss===0&&gWrong<=1)rk='S';else if(acc>=80)rk='A';else if(acc>=60)rk='B';else rk='C';
   const mLabel=gameMode==='pitch'?'🎤 Sing Mode':inputMode==='clap'?'👏 Clap Mode':'📱 Tap Mode';
   const isSR=song.title&&song.title.includes('Sight-Reading');
   const lvInfo=srMeta&&srMeta.level?LEVEL_CONFIGS[srMeta.level]:null;
@@ -1425,6 +1428,7 @@ function endPlay(){gameOn=false;gamePaused=false;currentDetectedPitch=0;currentD
   const dailyLabel=srMeta&&srMeta.daily?'📅 Daily · ':'';
   $('pModeLabel').textContent=(isSR?'🎯 視唱 · ':'')+dailyLabel+lvLabel+mLabel+' · '+difficulty;
   $('pRank').textContent=rk;$('pRank').className='rank '+rk;$('pScore').textContent=gScore;
+  $('pAcc').textContent=Math.round(acc)+'% accuracy · '+totalNotes+' notes'+(gWrong>0?' · '+gWrong+' wrong pitch':'');
   $('pPerf').textContent=gPerf;$('pGood').textContent=gGood;$('pMiss').textContent=gMiss;$('pWrong').textContent=gWrong;$('pCombo').textContent=gMaxCombo;$('resultsScreen').style.display='flex';
   // Save score to localStorage
   if(isSR&&srMeta&&srMeta.level){
