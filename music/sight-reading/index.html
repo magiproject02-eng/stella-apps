@@ -2306,12 +2306,33 @@ function saveSightRead(){
 var srMeta=null;
 var sbFilter=0; // 0=all, 1-5=level filter
 var sbMode='best'; // 'best','recent','daily'
+var SCORE_API='https://sight-reading-scoreboard.magiproject01.workers.dev';
+var playerName=localStorage.getItem('sr_player_name')||'';
+
+function promptName(){
+  if(playerName)return true;
+  var n=prompt('Enter your name for the scoreboard 輸入你的名字:');
+  if(!n||!n.trim())return false;
+  playerName=n.trim().slice(0,20);
+  localStorage.setItem('sr_player_name',playerName);
+  return true;
+}
 
 function saveScore(entry){
+  // Save locally
   var scores=JSON.parse(localStorage.getItem('sr_scores')||'[]');
   scores.unshift(entry);
   if(scores.length>200)scores.length=200;
   localStorage.setItem('sr_scores',JSON.stringify(scores));
+  // Submit online
+  if(!playerName)promptName();
+  if(playerName){
+    entry.name=playerName;
+    fetch(SCORE_API+'/api/score',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(entry)})
+    .then(function(r){return r.json()})
+    .then(function(d){if(d.ok)toast('🏆 Score submitted! #'+d.position)})
+    .catch(function(){});
+  }
 }
 
 function filterScoreboard(lv){
@@ -2334,53 +2355,63 @@ function showScoreboard(mode){
 }
 
 function renderScoreboard(){
-  var scores=JSON.parse(localStorage.getItem('sr_scores')||'[]');
   var container=$('sbContent');
+  container.innerHTML='<div class="sb-empty" style="padding:1rem">Loading...</div>';
   
-  // Filter by level
-  if(sbFilter>0) scores=scores.filter(function(s){return s.level===sbFilter});
+  var url=SCORE_API+'/api/scores?type='+sbMode;
+  if(sbFilter>0) url+='&level='+sbFilter;
+  if(sbMode==='daily') url+='&date='+getTodayStr()+'&level='+(sbFilter||1);
   
-  // Filter by mode
-  if(sbMode==='daily') scores=scores.filter(function(s){return s.daily});
-  
-  // Sort
-  if(sbMode==='best'){
-    // Group by level, show best per level
-    var bestByLevel={};
-    scores.forEach(function(s){
-      var k=s.level;
-      if(!bestByLevel[k]||s.score>bestByLevel[k].score) bestByLevel[k]=s;
+  fetch(url).then(function(r){return r.json()}).then(function(data){
+    var scores=Array.isArray(data)?data:[];
+    // For 'best' with no level filter, data is {1:[...],2:[...]}
+    if(!Array.isArray(data)&&sbMode==='best'&&sbFilter===0){
+      scores=[];
+      for(var lv=1;lv<=5;lv++){if(data[lv])data[lv].forEach(function(s){scores.push(s)})}
+      // Show top 3 per level
+      var seen={};scores=scores.filter(function(s){
+        var k=s.level+'_'+s.name;if(seen[k])return false;seen[k]=true;return true;
+      });
+      scores.sort(function(a,b){return a.level-b.level||b.score-a.score});
+    }
+    
+    if(!scores.length){
+      container.innerHTML='<div class="sb-empty">No scores yet. Play a sight-reading challenge!</div>';
+      return;
+    }
+    
+    var html='';
+    scores.forEach(function(s,i){
+      var cfg=LEVEL_CONFIGS[s.level]||LEVEL_CONFIGS[1];
+      var posClass=i===0?'gold':i===1?'silver':i===2?'bronze':'';
+      var modeIcon=s.mode==='sing'?'🎤':s.mode==='clap'?'👏':'📱';
+      var dailyTag=s.daily?'<span style="font-size:0.55rem;color:var(--gold);font-weight:600"> 📅</span>':'';
+      var isMe=s.name===playerName?' ⭐':'';
+      html+='<div class="sb-row">'+
+        '<div class="sb-pos '+posClass+'">'+(i+1)+'</div>'+
+        '<div class="sb-info">'+
+          '<span class="sb-name">'+cfg.icon+' '+(s.name||'?')+isMe+dailyTag+'</span>'+
+          '<span class="sb-date"> · '+s.date+' · '+modeIcon+' · Key: '+(s.key||'?')+'</span>'+
+          '<div style="font-size:0.55rem;color:var(--dim);margin-top:1px">P:'+s.perfect+' G:'+s.good+' M:'+s.miss+' W:'+(s.wrong||0)+' Combo:'+s.combo+'</div>'+
+        '</div>'+
+        '<span class="sb-rank '+s.rank+'">'+s.rank+'</span>'+
+        '<span class="sb-score">'+s.score+'</span>'+
+      '</div>';
     });
-    scores=Object.values(bestByLevel).sort(function(a,b){return a.level-b.level});
-  }else{
-    // Recent or daily: sort by timestamp
-    scores.sort(function(a,b){return(b.ts||0)-(a.ts||0)});
-    scores=scores.slice(0,30);
-  }
-  
-  if(!scores.length){
-    container.innerHTML='<div class="sb-empty">No scores yet. Play a sight-reading challenge!</div>';
-    return;
-  }
-  
-  var html='';
-  scores.forEach(function(s,i){
-    var cfg=LEVEL_CONFIGS[s.level]||LEVEL_CONFIGS[1];
-    var posClass=i===0?'gold':i===1?'silver':i===2?'bronze':'';
-    var modeIcon=s.mode==='sing'?'🎤':s.mode==='clap'?'👏':'📱';
-    var dailyTag=s.daily?'<span style="font-size:0.55rem;color:var(--gold);font-weight:600"> 📅</span>':'';
-    html+='<div class="sb-row">'+
-      '<div class="sb-pos '+posClass+'">'+(i+1)+'</div>'+
-      '<div class="sb-info">'+
-        '<span class="sb-name">'+cfg.icon+' '+cfg.name+dailyTag+'</span>'+
-        '<span class="sb-date"> · '+s.date+' · '+modeIcon+' · Key: '+(s.key||'?')+'</span>'+
-        '<div style="font-size:0.55rem;color:var(--dim);margin-top:1px">P:'+s.perfect+' G:'+s.good+' M:'+s.miss+' W:'+(s.wrong||0)+' Combo:'+s.combo+'</div>'+
-      '</div>'+
-      '<span class="sb-rank '+s.rank+'">'+s.rank+'</span>'+
-      '<span class="sb-score">'+s.score+'</span>'+
-    '</div>';
+    container.innerHTML=html;
+  }).catch(function(e){
+    // Fallback to localStorage
+    var scores=JSON.parse(localStorage.getItem('sr_scores')||'[]');
+    if(sbFilter>0) scores=scores.filter(function(s){return s.level===sbFilter});
+    if(!scores.length){container.innerHTML='<div class="sb-empty">Offline — no local scores</div>';return;}
+    scores.sort(function(a,b){return b.score-a.score});scores=scores.slice(0,20);
+    var html='<div style="padding:0.4rem 0.8rem;font-size:0.6rem;color:var(--gold);font-weight:600">⚠️ Offline — showing local scores</div>';
+    scores.forEach(function(s,i){
+      var cfg=LEVEL_CONFIGS[s.level]||LEVEL_CONFIGS[1];
+      html+='<div class="sb-row"><div class="sb-pos">'+(i+1)+'</div><div class="sb-info"><span class="sb-name">'+cfg.icon+' '+cfg.name+'</span><span class="sb-date"> · '+s.date+'</span></div><span class="sb-rank '+s.rank+'">'+s.rank+'</span><span class="sb-score">'+s.score+'</span></div>';
+    });
+    container.innerHTML=html;
   });
-  container.innerHTML=html;
 }
 
 // Init
