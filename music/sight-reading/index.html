@@ -1265,6 +1265,23 @@ function startPlay(pi){
           var sy2=stemUp?vn.y-stemLen:vn.y+stemLen;
           cx.strokeStyle=passed?'#555':current?'#c8a800':'#ccc';cx.lineWidth=1.5;
           cx.beginPath();cx.moveTo(stemX,vn.y);cx.lineTo(stemX,sy2);cx.stroke();
+          
+          // Flag for eighth notes (dur=1 in subdivPerBeat=2)
+          if(vn.dur===1){
+            cx.strokeStyle=passed?'#555':current?'#c8a800':'#ccc';cx.lineWidth=1.5;
+            var flagLen=lineGap*1.5;
+            if(stemUp){
+              // Flag curves right and down from top of stem
+              cx.beginPath();cx.moveTo(stemX,sy2);
+              cx.quadraticCurveTo(stemX+lineGap*0.8,sy2+flagLen*0.4,stemX+lineGap*0.3,sy2+flagLen);
+              cx.stroke();
+            }else{
+              // Flag curves right and up from bottom of stem
+              cx.beginPath();cx.moveTo(stemX,sy2);
+              cx.quadraticCurveTo(stemX+lineGap*0.8,sy2-flagLen*0.4,stemX+lineGap*0.3,sy2-flagLen);
+              cx.stroke();
+            }
+          }
         }
         
         // Current note indicator
