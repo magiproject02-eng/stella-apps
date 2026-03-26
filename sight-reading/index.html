@@ -373,6 +373,7 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
       <div class="rs"><div class="v" id="pPerf" style="color:var(--gold)">0</div><div class="l">Perfect</div></div>
       <div class="rs"><div class="v" id="pGood" style="color:var(--green)">0</div><div class="l">Good</div></div>
       <div class="rs"><div class="v" id="pMiss" style="color:var(--red)">0</div><div class="l">Miss</div></div>
+      <div class="rs"><div class="v" id="pWrong" style="color:#ff6b6b">0</div><div class="l">Wrong</div></div>
       <div class="rs"><div class="v" id="pCombo" style="color:var(--gold)">0</div><div class="l">Max Combo</div></div>
     </div>
     <button class="hbtn primary" onclick="showPartSelect()" style="font-size:0.85rem;padding:0.5rem 1.5rem">Play Again</button>
@@ -902,7 +903,7 @@ function loadDemo(n){fromJSON(JSON.stringify(DEMOS[n]))}
 // PLAY MODE
 // ════════════════════════════════════
 const cv=$('playCanvas'),cx=cv.getContext('2d');
-let gameOn=false,gamePaused=false,pauseStart=0,totalPaused=0,gameLoop=null,selPart=-1,gStart=0,gNotes=[],gScore=0,gCombo=0,gMaxCombo=0,gPerf=0,gGood=0,gMiss=0;
+let gameOn=false,gamePaused=false,pauseStart=0,totalPaused=0,gameLoop=null,selPart=-1,gStart=0,gNotes=[],gScore=0,gCombo=0,gMaxCombo=0,gPerf=0,gGood=0,gMiss=0,gWrong=0;
 let jT='',jC='',jTime=0,dFlash=0,cFlash=0;
 let gPulseMs=750,gPulsesPerBar=4; // set by startPlay for beat grid/metronome
 const PW=100,GW=220,MW=350,NS=200,HX=0.18;
@@ -998,7 +999,7 @@ function startPlay(pi){
   backingNotes.sort((a,b)=>a.time-b.time);
   let backingIdx=0;
 
-  gScore=0;gCombo=0;gMaxCombo=0;gPerf=0;gGood=0;gMiss=0;gameOn=true;gamePaused=false;totalPaused=0;jT='';
+  gScore=0;gCombo=0;gMaxCombo=0;gPerf=0;gGood=0;gMiss=0;gWrong=0;gameOn=true;gamePaused=false;totalPaused=0;jT='';
   const beatMs=60000/(song.bpm*bpmMod);
   // For compound time (x/8), the natural beat is dotted quarter = 3 eighths
   // For simple time (x/4), the natural beat is quarter = 2 eighths
@@ -1259,7 +1260,7 @@ function startPlay(pi){
     // Main notes on belt
     let allD=true;const pc=PC[selPart];
     for(const n of gNotes){const nt=n.time-el,x=hx+nt*px,nw=Math.max(12,n.durMs*px);
-      if(!n.hit&&!n.missed){allD=false;if(nt<-MW){n.missed=true;gMiss++;gCombo=0;showJ('MISS','#e63946');continue}}
+      if(!n.hit&&!n.missed){allD=false;if(nt<-MW){n.missed=true;gMiss++;gCombo=0;gScore=Math.max(0,gScore-100);showJ('MISS','#e63946');continue}}
       if(x+nw<-50||x>w+50)continue;
       if(n.hit){if(n.ha>0){const r=14+(1-n.ha)*15;cx.beginPath();cx.arc(hx,by,r,0,Math.PI*2);cx.strokeStyle=`rgba(42,157,143,${n.ha})`;cx.lineWidth=2;cx.stroke();n.ha-=0.03}continue}
       if(n.missed)cx.globalAlpha=0.25;
@@ -1327,10 +1328,13 @@ function replayGame(){
   startPlay(selPart);
 }
 function onHit(fromPitch){if(!gameOn||gamePaused)return;const el=performance.now()-gStart-totalPaused;
-  if(!fromPitch)playHit(); // only play drum sound for manual taps, not auto-pitch
+  if(!fromPitch)playHit();
   dFlash=1;cFlash=1;
   let cl=null,cd=Infinity;for(const n of gNotes){if(n.hit||n.missed)continue;const d=Math.abs(n.time-el);if(d<cd&&d<MW){cl=n;cd=d}}
-  if(!cl)return;cl.hit=true;cl.ha=1;
+  
+  // No note nearby = wrong tap → penalty
+  if(!cl){gScore=Math.max(0,gScore-50);gCombo=0;gWrong++;showJ('WRONG ✗','#e63946');return}
+  cl.hit=true;cl.ha=1;
 
   // Pitch accuracy check (pitch mode only)
   let pitchAccurate=true;
@@ -1350,14 +1354,15 @@ function onHit(fromPitch){if(!gameOn||gamePaused)return;const el=performance.now
 
   if(cd<=PW&&pitchAccurate){gScore+=300+gCombo*10;gCombo++;gPerf++;showJ('PERFECT ✨'+(pitchMsg?' '+pitchMsg:''),'#f4a261')}
   else if(cd<=GW&&pitchAccurate){gScore+=100+gCombo*5;gCombo++;gGood++;showJ('GOOD'+(pitchMsg?' '+pitchMsg:''),'#2a9d8f')}
-  else if(cd<=GW&&!pitchAccurate){gScore+=50;gCombo=0;showJ('TIMING OK '+pitchMsg,'#6b6b80')}
-  else{gScore+=30;gCombo=0;showJ('OK'+(pitchMsg?' '+pitchMsg:''),'#6b6b80')}
+  else if(cd<=GW&&!pitchAccurate){gScore=Math.max(0,gScore-30);gCombo=0;gWrong++;showJ('WRONG PITCH '+pitchMsg,'#e63946')}
+  else{gCombo=0;showJ('BAD','#6b6b80')} // late hit: no points, no penalty
   gMaxCombo=Math.max(gMaxCombo,gCombo)}
 
-function endPlay(){gameOn=false;gamePaused=false;currentDetectedPitch=0;currentDetectedNote='';$('scoreContainer').style.display='none';$('pauseBtn').style.display='none';$('pauseOverlay').style.display='none';const t=gPerf+gGood+gMiss,acc=t>0?((gPerf*100+gGood*50)/(t*100))*100:0;
-  let rk;if(acc>=95&&gMiss===0)rk='S';else if(acc>=80)rk='A';else if(acc>=60)rk='B';else rk='C';
+function endPlay(){gameOn=false;gamePaused=false;currentDetectedPitch=0;currentDetectedNote='';$('scoreContainer').style.display='none';$('pauseBtn').style.display='none';$('pauseOverlay').style.display='none';
+  const t=gPerf+gGood+gMiss+gWrong,acc=t>0?((gPerf*100+gGood*50)/(t*100))*100:0;
+  let rk;if(acc>=95&&gMiss===0&&gWrong===0)rk='S';else if(acc>=80)rk='A';else if(acc>=60)rk='B';else rk='C';
   $('pRank').textContent=rk;$('pRank').className='rank '+rk;$('pScore').textContent=gScore;
-  $('pPerf').textContent=gPerf;$('pGood').textContent=gGood;$('pMiss').textContent=gMiss;$('pCombo').textContent=gMaxCombo;$('resultsScreen').style.display='flex'}
+  $('pPerf').textContent=gPerf;$('pGood').textContent=gGood;$('pMiss').textContent=gMiss;$('pWrong').textContent=gWrong;$('pCombo').textContent=gMaxCombo;$('resultsScreen').style.display='flex'}
 
 
 // ════════════════════════════════════
@@ -2179,7 +2184,7 @@ function renderSightReadScore(key,numBars){
 function playSightRead(){
   if(srPlaying){stopSightRead();return;}
   if(!srNotes.length)return;
-  ia(); // init audio
+  unlockAudio(); // needed for mobile Safari
   if(window.Tone)Tone.start().catch(()=>{});
   
   // Create synth if needed
