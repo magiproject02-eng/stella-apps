@@ -222,6 +222,41 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
   <div class="tab active" data-tab="library">📚 Library</div>
   <div class="tab" data-tab="editor">✏️ Editor</div>
   <div class="tab" data-tab="play">🎮 Play</div>
+</div>
+
+<div id="libraryPanel" style="margin-top:56px">
+  <div style="padding:1rem 1rem 0.5rem">
+    <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.6rem;font-weight:800;letter-spacing:-0.03em;margin-bottom:0.2rem">Sight-Reading Practice</h2>
+    <p style="font-size:0.75rem;color:var(--dim);margin-bottom:1rem;font-weight:500">練習視唱，提升音樂能力 · Practice reading &amp; singing</p>
+    <div onclick="importMusicXML()" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:0.9rem 1rem;cursor:pointer;margin-bottom:0.5rem;transition:all 0.2s;display:flex;align-items:center;gap:0.8rem">
+      <span style="font-size:1.5rem">📥</span>
+      <div><span style="font-size:0.85rem;font-weight:700">Import MusicXML</span><br><span style="font-size:0.6rem;color:var(--dim)">.musicxml, .mxl, .xml</span></div>
+    </div>
+    <div onclick="scanImage()" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:0.9rem 1rem;cursor:pointer;margin-bottom:0.5rem;transition:all 0.2s;display:flex;align-items:center;gap:0.8rem">
+      <span style="font-size:1.5rem">🔍</span>
+      <div><span style="font-size:0.85rem;font-weight:700">Scan Sheet Music</span><br><span style="font-size:0.6rem;color:var(--dim)">Photo/scan → AI reads notes</span></div>
+    </div>
+    <div id="scanStatus" class="hidden" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.8rem 1rem;margin-bottom:0.8rem">
+      <div style="display:flex;align-items:center;gap:0.6rem">
+        <div id="scanSpinner" style="width:18px;height:18px;border:2px solid var(--dim);border-top-color:var(--green);border-radius:50%;animation:spin 1s linear infinite"></div>
+        <div><span id="scanMsg" style="font-size:0.8rem;font-weight:600">Processing...</span><br><span id="scanDetail" style="font-size:0.65rem;color:var(--dim)">This takes 2-5 minutes on server</span></div>
+      </div>
+    </div>
+    <div onclick="switchTab('sightread')" style="background:linear-gradient(135deg,#f4a26122,#e6394622);border:1px dashed var(--gold);border-radius:10px;padding:0.8rem 1rem;cursor:pointer;margin-bottom:0.8rem;transition:border-color 0.2s;display:flex;align-items:center;gap:0.8rem">
+      <span style="font-size:1.5rem">🎯</span>
+      <div><span style="font-size:0.85rem;font-weight:700">視唱練習 Sight-Reading</span><br><span style="font-size:0.65rem;color:var(--dim)">Random phrases · Practice reading &amp; singing</span></div>
+    </div>
+    <div id="songList" style="display:flex;flex-direction:column;gap:0.5rem"></div>
+    <div id="libraryLoading" style="text-align:center;padding:2rem;color:var(--dim);font-size:0.8rem">Loading songs...</div>
+  </div>
+</div>
+
+<!-- Sight-Reading Panel -->
+<div id="sightreadPanel" style="display:none;margin-top:56px">
+  <div style="padding:1rem;max-width:600px;margin:0 auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <div><span style="font-size:1.1rem;font-weight:700">🎯 視唱練習</span><br><span style="font-size:0.7rem;color:var(--dim)">Read the score, then sing!</span></div>
+      <button class="hbtn" onclick="switchTab('library')">← Back</button>
     </div>
     <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem">
       <div class="ctrl-group"><label>Key 調</label>
