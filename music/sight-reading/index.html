@@ -101,7 +101,7 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
 .score-container .vf-stem path{stroke:#ccc!important}
 .score-container .vf-beam path{fill:#ccc!important;stroke:#ccc!important}
 .score-container .vf-flag path{fill:#ccc!important;stroke:#ccc!important}
-.score-container .vf-ledgerline path{stroke:#888!important}
+.score-container .vf-ledgerline path{stroke:#fff!important}
 .score-container .vf-stave-section text{fill:#888!important}
 .score-highlight{position:absolute;background:rgba(244,162,97,0.4);border-left:2px solid var(--gold);pointer-events:none;z-index:5;top:0;bottom:0;width:3px}
 
@@ -1256,7 +1256,7 @@ function startPlay(pi){
         }
         
         // Ledger lines
-        cx.strokeStyle='#555';cx.lineWidth=0.8;
+        cx.strokeStyle='#fff';cx.lineWidth=1.2;
         if(vn.y>staffBot+halfStep*0.5){
           for(var ly=staffBot+lineGap;ly<=vn.y+2;ly+=lineGap){
             cx.beginPath();cx.moveTo(vn.x-nr-3,ly);cx.lineTo(vn.x+nr+3,ly);cx.stroke();
