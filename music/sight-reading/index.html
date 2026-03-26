@@ -160,6 +160,34 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
 .song-card .sc-btn.play-btn{background:var(--green);border-color:var(--green);color:#fff}
 .deployed-badge{position:fixed;bottom:80px;right:0.5rem;font-size:0.5rem;color:var(--dim);opacity:0.2;z-index:200}
 
+/* Level Buttons */
+.level-row{display:flex;gap:0.4rem;margin-bottom:1rem;flex-wrap:wrap}
+.level-btn{flex:1;min-width:55px;padding:0.5rem 0.3rem;border:2px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);font-family:inherit;font-size:0.7rem;font-weight:700;cursor:pointer;text-align:center;transition:all 0.2s}
+.level-btn:hover{transform:translateY(-1px)}
+.level-btn.active{border-width:2px}
+.level-btn[data-lv="1"]{--lc:#cd7f32}.level-btn[data-lv="2"]{--lc:#c0c0c0}.level-btn[data-lv="3"]{--lc:#e9c400}.level-btn[data-lv="4"]{--lc:#7c3aed}.level-btn[data-lv="5"]{--lc:#06b6d4}
+.level-btn.active{border-color:var(--lc);background:color-mix(in srgb,var(--lc) 15%,var(--surface));color:var(--lc)}
+.level-btn .lv-icon{font-size:1.1rem;display:block;margin-bottom:2px}
+.level-btn .lv-detail{font-size:0.5rem;color:var(--dim);font-weight:500;display:block;margin-top:2px}
+
+/* Daily Challenge card */
+.daily-card{background:linear-gradient(135deg,#7c3aed22,#06b6d422);border:1px solid #7c3aed44;border-radius:14px;padding:0.9rem 1rem;margin-bottom:0.8rem;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:0.8rem}
+.daily-card:hover{border-color:#7c3aed;transform:translateY(-1px)}
+
+/* Scoreboard */
+.sb-row{display:flex;align-items:center;padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);gap:0.6rem;font-size:0.75rem}
+.sb-row:last-child{border-bottom:none}
+.sb-pos{width:24px;font-weight:800;color:var(--dim);text-align:center}
+.sb-pos.gold{color:var(--gold)}.sb-pos.silver{color:#c0c0c0}.sb-pos.bronze{color:#cd7f32}
+.sb-info{flex:1}
+.sb-name{font-weight:700}
+.sb-date{font-size:0.6rem;color:var(--dim)}
+.sb-score{font-weight:800;color:var(--gold);font-size:0.85rem}
+.sb-rank{font-size:0.7rem;font-weight:800;padding:0.1rem 0.4rem;border-radius:6px}
+.sb-rank.S{background:#e9c40022;color:var(--gold)}.sb-rank.A{background:#2a9d8f22;color:var(--green)}.sb-rank.B{background:#b8c3ff22;color:var(--blue)}.sb-rank.C{background:#8e90a222;color:var(--dim)}
+.sb-level{font-size:0.55rem;font-weight:700;padding:0.1rem 0.35rem;border-radius:4px}
+.sb-empty{text-align:center;padding:2rem;color:var(--dim);font-size:0.8rem}
+
 /* Pitch Picker */
 .pitch-picker{position:fixed;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:0.5rem;box-shadow:0 8px 30px rgba(0,0,0,0.5);max-height:60vh;overflow-y:auto;width:200px}
 .pitch-picker .pp-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;padding:0 0.2rem}
@@ -203,9 +231,13 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
       <span style="font-size:1.5rem">📥</span>
       <div><span style="font-size:0.85rem;font-weight:700">Import MusicXML</span><br><span style="font-size:0.6rem;color:var(--dim)">.musicxml, .mxl, .xml</span></div>
     </div>
-    <div onclick="switchTab('sightread')" style="background:linear-gradient(135deg,#f4a26122,#e6394622);border:1px dashed var(--gold);border-radius:10px;padding:0.8rem 1rem;cursor:pointer;margin-bottom:0.8rem;transition:border-color 0.2s;display:flex;align-items:center;gap:0.8rem">
+    <div onclick="switchTab('sightread')" style="background:linear-gradient(135deg,#f4a26122,#e6394622);border:1px dashed var(--gold);border-radius:10px;padding:0.8rem 1rem;cursor:pointer;margin-bottom:0.5rem;transition:border-color 0.2s;display:flex;align-items:center;gap:0.8rem">
       <span style="font-size:1.5rem">🎯</span>
-      <div><span style="font-size:0.85rem;font-weight:700">視唱練習 Sight-Reading</span><br><span style="font-size:0.65rem;color:var(--dim)">Random phrases · 1-2 beat notes · Practice reading & singing</span></div>
+      <div><span style="font-size:0.85rem;font-weight:700">視唱練習 Sight-Reading</span><br><span style="font-size:0.65rem;color:var(--dim)">5 levels · Random or Daily challenge · Scoreboard</span></div>
+    </div>
+    <div onclick="switchTab('sightread');setTimeout(function(){generateDaily()},100)" class="daily-card">
+      <span style="font-size:1.5rem">📅</span>
+      <div><span style="font-size:0.85rem;font-weight:700">Daily Challenge 每日挑戰</span><br><span style="font-size:0.65rem;color:var(--dim)">Same phrase for everyone today · Compare scores!</span></div>
     </div>
     <div id="songList" style="display:flex;flex-direction:column;gap:0.5rem"></div>
     <div id="libraryLoading" style="text-align:center;padding:2rem;color:var(--dim);font-size:0.8rem">Loading songs...</div>
@@ -215,36 +247,30 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
 <!-- Sight-Reading Panel -->
 <div id="sightreadPanel" style="display:none;margin-top:56px">
   <div style="padding:1rem;max-width:600px;margin:0 auto">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.8rem">
       <div><span style="font-size:1.1rem;font-weight:700">🎯 視唱練習</span><br><span style="font-size:0.7rem;color:var(--dim)">Read the score, then sing!</span></div>
       <button class="hbtn" onclick="switchTab('library')">← Back</button>
     </div>
-    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem">
-      <div class="ctrl-group"><label>Key 調</label>
-        <select id="srKey"><option value="C">C</option><option value="G">G</option><option value="D" selected>D</option><option value="F">F</option><option value="Bb">Bb</option><option value="A">A</option><option value="Eb">Eb</option></select>
-      </div>
-      <div class="ctrl-group"><label>Bars 小節</label>
-        <select id="srBars"><option value="2">2</option><option value="4" selected>4</option><option value="8">8</option></select>
-      </div>
-      <div class="ctrl-group"><label>Range 音域</label>
-        <select id="srRange">
-          <option value="C4-G4">Low 低 (C4-G4)</option>
-          <option value="D4-A4">Mid-Low (D4-A4)</option>
-          <option value="E4-B4" selected>Mid 中 (E4-B4)</option>
-          <option value="G4-D5">Mid-High (G4-D5)</option>
-          <option value="A4-E5">High 高 (A4-E5)</option>
-          <option value="C4-C5">Full Octave (C4-C5)</option>
-          <option value="B3-E5">Wide 寬 (B3-E5)</option>
-        </select>
-      </div>
+    <div style="font-size:0.65rem;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4rem">Level 等級</div>
+    <div class="level-row" id="levelRow">
+      <button class="level-btn active" data-lv="1" onclick="setLevel(1)"><span class="lv-icon">🥉</span>Bronze<span class="lv-detail">C · steps</span></button>
+      <button class="level-btn" data-lv="2" onclick="setLevel(2)"><span class="lv-icon">🥈</span>Silver<span class="lv-detail">C,G · 3rds</span></button>
+      <button class="level-btn" data-lv="3" onclick="setLevel(3)"><span class="lv-icon">🥇</span>Gold<span class="lv-detail">4 keys · 4ths</span></button>
+      <button class="level-btn" data-lv="4" onclick="setLevel(4)"><span class="lv-icon">💎</span>Platinum<span class="lv-detail">all · 5ths</span></button>
+      <button class="level-btn" data-lv="5" onclick="setLevel(5)"><span class="lv-icon">👑</span>Diamond<span class="lv-detail">wide · oct</span></button>
     </div>
-    <div style="display:flex;gap:0.5rem;margin-bottom:1rem">
-      <button class="hbtn primary" onclick="unlockAudio();generateSightRead()" style="flex:1;font-size:0.9rem;padding:0.5rem">🎲 Generate 出題</button>
+    <div id="levelDesc" style="font-size:0.65rem;color:var(--dim);margin-bottom:0.8rem;padding:0 0.2rem">Key: C major · Range: 5th (C4–G4) · Steps only · ♩ 𝅗𝅥 only · 4 bars</div>
+    <div style="display:flex;gap:0.5rem;margin-bottom:0.8rem">
+      <button class="hbtn primary" onclick="unlockAudio();generateSightRead()" style="flex:1;font-size:0.9rem;padding:0.5rem" id="srGenBtn">🎲 Random 出題</button>
+      <button class="hbtn" onclick="unlockAudio();generateDaily()" style="flex:1;font-size:0.9rem;padding:0.5rem;background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:var(--accent);color:#fff" id="srDailyBtn">📅 Daily 每日</button>
+    </div>
+    <div id="srDailyInfo" class="hidden" style="font-size:0.6rem;color:var(--gold);text-align:center;margin-bottom:0.5rem;font-weight:600"></div>
+    <div style="display:flex;gap:0.5rem;margin-bottom:0.8rem">
       <button class="hbtn play" id="srPlayBtn" onclick="playSightRead()" style="padding:0.5rem 1rem" disabled>▶ Listen 聽</button>
       <button class="hbtn stop hidden" id="srStopBtn" onclick="stopSightRead()" style="padding:0.5rem 1rem">■ Stop</button>
     </div>
     <div id="srScore" style="background:#12121a;border:1px solid var(--border);border-radius:10px;overflow-x:auto;min-height:160px;display:flex;align-items:center;justify-content:center">
-      <span style="color:var(--dim);font-size:0.9rem">Press Generate to start</span>
+      <span style="color:var(--dim);font-size:0.9rem">Choose a level, then Generate or Daily</span>
     </div>
     <div id="srNoteNames" style="margin-top:0.5rem;font-size:0.75rem;color:var(--dim);text-align:center;min-height:1.2em"></div>
     <div style="margin-top:1rem;display:flex;gap:0.5rem">
@@ -363,19 +389,49 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
   <button class="nav-btn active" data-tab="library" onclick="switchTab('library')">
     <span class="mat-icon">library_music</span><span>Library</span>
   </button>
-  <button class="nav-btn" data-tab="editor" onclick="switchTab('editor')">
-    <span class="mat-icon">edit_note</span><span>Editor</span>
+  <button class="nav-btn" data-tab="sightread" onclick="switchTab('sightread')">
+    <span class="mat-icon">visibility</span><span>視唱</span>
+  </button>
+  <button class="nav-btn" data-tab="scores" onclick="switchTab('scores')">
+    <span class="mat-icon">leaderboard</span><span>Scores</span>
   </button>
   <button class="nav-btn" data-tab="play" onclick="switchTab('play')">
     <span class="mat-icon">play_circle</span><span>Play</span>
   </button>
-  <button class="nav-btn" data-tab="sightread" onclick="switchTab('sightread')">
-    <span class="mat-icon">visibility</span><span>視唱</span>
+  <button class="nav-btn" data-tab="editor" onclick="switchTab('editor')">
+    <span class="mat-icon">edit_note</span><span>Editor</span>
   </button>
 </nav>
 
+<!-- Scoreboard Panel -->
+<div id="scoresPanel" style="display:none;margin-top:56px;padding-bottom:80px">
+  <div style="padding:1rem;max-width:600px;margin:0 auto">
+    <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.4rem;font-weight:800;letter-spacing:-0.03em;margin-bottom:0.2rem">🏆 Scoreboard</h2>
+    <p style="font-size:0.7rem;color:var(--dim);margin-bottom:1rem">Your best sight-reading scores</p>
+    <div style="display:flex;gap:0.3rem;margin-bottom:1rem;flex-wrap:wrap" id="sbFilterRow">
+      <button class="level-btn active" data-lv="0" onclick="filterScoreboard(0)" style="flex:none;min-width:40px;padding:0.3rem 0.6rem">All</button>
+      <button class="level-btn" data-lv="1" onclick="filterScoreboard(1)" style="flex:none;min-width:40px;padding:0.3rem 0.5rem">🥉</button>
+      <button class="level-btn" data-lv="2" onclick="filterScoreboard(2)" style="flex:none;min-width:40px;padding:0.3rem 0.5rem">🥈</button>
+      <button class="level-btn" data-lv="3" onclick="filterScoreboard(3)" style="flex:none;min-width:40px;padding:0.3rem 0.5rem">🥇</button>
+      <button class="level-btn" data-lv="4" onclick="filterScoreboard(4)" style="flex:none;min-width:40px;padding:0.3rem 0.5rem">💎</button>
+      <button class="level-btn" data-lv="5" onclick="filterScoreboard(5)" style="flex:none;min-width:40px;padding:0.3rem 0.5rem">👑</button>
+    </div>
+    <div style="display:flex;gap:0.5rem;margin-bottom:1rem">
+      <button class="hbtn" onclick="showScoreboard('best')" id="sbBestBtn" style="flex:1;font-weight:700;background:var(--accent);border-color:var(--accent);color:#fff">🏅 Best</button>
+      <button class="hbtn" onclick="showScoreboard('recent')" id="sbRecentBtn" style="flex:1;font-weight:700">📅 Recent</button>
+      <button class="hbtn" onclick="showScoreboard('daily')" id="sbDailyBtn" style="flex:1;font-weight:700">🌟 Daily</button>
+    </div>
+    <div id="sbContent" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+      <div class="sb-empty">No scores yet. Play a sight-reading challenge!</div>
+    </div>
+    <div style="margin-top:1rem;text-align:center">
+      <button class="hbtn" onclick="if(confirm('Clear all scores?')){localStorage.removeItem('sr_scores');renderScoreboard();toast('Scores cleared')}" style="font-size:0.6rem;color:var(--red)">🗑 Clear All Scores</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
-<div class="deployed-badge">視唱練習 · Built by Stella</div>
+<div class="deployed-badge">視唱練習 v2 · Built by Stella</div>
 
 <script>
 // ════════════════════════════════════
@@ -1340,9 +1396,20 @@ function endPlay(){gameOn=false;gamePaused=false;currentDetectedPitch=0;currentD
   let rk;if(acc>=95&&gMiss===0&&gWrong===0)rk='S';else if(acc>=80)rk='A';else if(acc>=60)rk='B';else rk='C';
   const mLabel=gameMode==='pitch'?'🎤 Sing Mode':inputMode==='clap'?'👏 Clap Mode':'📱 Tap Mode';
   const isSR=song.title&&song.title.includes('Sight-Reading');
-  $('pModeLabel').textContent=(isSR?'🎯 視唱 · ':'')+mLabel+' · '+song.parts[selPart].name+' · '+difficulty;
+  const lvInfo=srMeta&&srMeta.level?LEVEL_CONFIGS[srMeta.level]:null;
+  const lvLabel=lvInfo?(lvInfo.icon+' '+lvInfo.name+' · '):'';
+  const dailyLabel=srMeta&&srMeta.daily?'📅 Daily · ':'';
+  $('pModeLabel').textContent=(isSR?'🎯 視唱 · ':'')+dailyLabel+lvLabel+mLabel+' · '+difficulty;
   $('pRank').textContent=rk;$('pRank').className='rank '+rk;$('pScore').textContent=gScore;
-  $('pPerf').textContent=gPerf;$('pGood').textContent=gGood;$('pMiss').textContent=gMiss;$('pWrong').textContent=gWrong;$('pCombo').textContent=gMaxCombo;$('resultsScreen').style.display='flex'}
+  $('pPerf').textContent=gPerf;$('pGood').textContent=gGood;$('pMiss').textContent=gMiss;$('pWrong').textContent=gWrong;$('pCombo').textContent=gMaxCombo;$('resultsScreen').style.display='flex';
+  // Save score to localStorage
+  if(isSR&&srMeta&&srMeta.level){
+    saveScore({level:srMeta.level,score:gScore,rank:rk,date:srMeta.date||getTodayStr(),
+      daily:srMeta.daily||false,key:srMeta.key,bars:srMeta.bars,
+      perfect:gPerf,good:gGood,miss:gMiss,wrong:gWrong,combo:gMaxCombo,
+      mode:gameMode==='pitch'?'sing':inputMode,difficulty:difficulty,
+      seed:srMeta.seed||null,ts:Date.now()});
+  }}
 
 
 // ════════════════════════════════════
@@ -1831,12 +1898,14 @@ async function loadSongFile(id,mode){
 // TAB SWITCHING
 // ════════════════════════════════════
 function switchTab(t){
-  document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('active',el.dataset.tab===t));
+  document.querySelectorAll('.nav-btn').forEach(el=>el.classList.toggle('active',el.dataset.tab===t));
   $('libraryPanel').style.display=t==='library'?'':'none';
   $('editorPanel').style.display=t==='editor'?'':'none';
   $('playPanel').style.display=t==='play'?'flex':'none';
   $('sightreadPanel').style.display=t==='sightread'?'':'none';
+  $('scoresPanel').style.display=t==='scores'?'':'none';
   if(t==='library')loadLibrary();
+  if(t==='scores')renderScoreboard();
   if(t==='play'){showPartSelect();setTimeout(()=>resizeCV(cv),50)}
   if(t==='editor'){gameOn=false;stopPlayback()}}
 
@@ -1881,12 +1950,67 @@ const SR_SCALES={
   'Eb':['Eb','F','G','Ab','Bb','C','D'],
 };
 let srNotes=[];let srPlaying=false;let srInterval=null;
+let currentLevel=1;let currentSeed=null;let isDaily=false;
+
+// ═══ LEVEL DEFINITIONS (ABRSM-based research) ═══
+const LEVEL_CONFIGS={
+  1:{name:'Bronze',icon:'🥉',keys:['C'],range:'C4-G4',maxStep:1,
+    rhythms:[[2,2,2,2],[4,2,2],[2,2,4],[2,4,2],[4,4]],
+    lastBarPats:[[2,2,4],[4,4]],bars:4,
+    desc:'Key: C major · Range: 5th (C4–G4) · Steps only · ♩ 𝅗𝅥 only · 4 bars'},
+  2:{name:'Silver',icon:'🥈',keys:['C','G'],range:'C4-A4',maxStep:2,
+    rhythms:[[2,2,2,2],[4,2,2],[2,2,4],[2,4,2],[4,4],[1,1,2,2,2],[2,2,1,1,2],[2,1,1,2,2]],
+    lastBarPats:[[2,2,4],[2,6]],bars:4,
+    desc:'Keys: C, G · Range: 6th (C4–A4) · Steps + 3rds · add ♪ pairs · 4 bars'},
+  3:{name:'Gold',icon:'🥇',keys:['C','G','D','F'],range:'C4-C5',maxStep:3,
+    rhythms:[[2,2,2,2],[4,2,2],[2,2,4],[4,4],[1,1,2,2,2],[2,2,1,1,2],[2,1,1,2,2],[1,1,1,1,2,2],[2,2,2,1,1],[3,1,2,2],[2,2,3,1]],
+    lastBarPats:[[2,2,4],[2,6],[6,2]],bars:4,
+    desc:'Keys: C, G, D, F · Range: octave (C4–C5) · Up to 4ths · dotted ♩ · 4 bars'},
+  4:{name:'Platinum',icon:'💎',keys:['C','G','D','F','Bb','A','Eb'],range:'B3-D5',maxStep:4,
+    rhythms:[[2,2,2,2],[4,2,2],[2,2,4],[4,4],[1,1,2,2,2],[2,2,1,1,2],[2,1,1,2,2],[1,1,1,1,2,2],[2,2,2,1,1],[3,1,2,2],[2,2,3,1],[6,2],[2,6],[1,1,2,1,1,2]],
+    lastBarPats:[[2,2,4],[2,6],[6,2]],bars:8,
+    desc:'All major keys · Range: B3–D5 · Up to 5ths · syncopation · 8 bars'},
+  5:{name:'Diamond',icon:'👑',keys:['C','G','D','F','Bb','A','Eb'],range:'A3-E5',maxStep:7,
+    rhythms:[[2,2,2,2],[4,2,2],[2,2,4],[4,4],[1,1,2,2,2],[2,2,1,1,2],[2,1,1,2,2],[1,1,1,1,2,2],[2,2,2,1,1],[3,1,2,2],[2,2,3,1],[6,2],[2,6],[1,1,2,1,1,2]],
+    lastBarPats:[[2,2,4],[2,6],[6,2]],bars:8,
+    desc:'All keys · Wide range (A3–E5) · Up to octave · all rhythms · 8 bars'}
+};
+
+// ═══ SEEDED PRNG ═══
+function seededPRNG(seed){
+  var s=seed>>>0;
+  return function(){s=(s*1664525+1013904223)&0xFFFFFFFF;return(s>>>0)/0xFFFFFFFF;};
+}
+function makeDailySeed(level){
+  var d=new Date();var str=d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+'-L'+level;
+  var hash=0;for(var i=0;i<str.length;i++){hash=((hash<<5)-hash)+str.charCodeAt(i);hash|=0;}
+  return Math.abs(hash);
+}
+function getTodayStr(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+
+function setLevel(lv){
+  currentLevel=lv;
+  document.querySelectorAll('#levelRow .level-btn').forEach(function(b){b.classList.toggle('active',parseInt(b.dataset.lv)===lv)});
+  $('levelDesc').textContent=LEVEL_CONFIGS[lv].desc;
+}
+function generateDaily(){
+  isDaily=true;
+  currentSeed=makeDailySeed(currentLevel);
+  generateSightRead();
+  $('srDailyInfo').textContent='📅 Daily Challenge · '+getTodayStr()+' · '+LEVEL_CONFIGS[currentLevel].icon+' '+LEVEL_CONFIGS[currentLevel].name;
+  $('srDailyInfo').classList.remove('hidden');
+}
 
 function generateSightRead(){
-  const key=$('srKey').value;
-  const numBars=parseInt($('srBars').value);
-  const rangeStr=$('srRange').value;
-  const scale=SR_SCALES[key]||SR_SCALES['C'];
+  var cfg=LEVEL_CONFIGS[currentLevel];
+  var rng=currentSeed?seededPRNG(currentSeed):function(){return Math.random()};
+  if(!isDaily){currentSeed=null;$('srDailyInfo').classList.add('hidden');}
+  
+  // Pick key from allowed keys for this level
+  var key=cfg.keys[Math.floor(rng()*cfg.keys.length)];
+  var scale=SR_SCALES[key]||SR_SCALES['C'];
+  var numBars=cfg.bars;
+  var rangeStr=cfg.range;
   
   function midiNum(p){
     var m=p.match(/^([A-G][#b]?)(\d)$/);if(!m)return 0;
@@ -1900,7 +2024,6 @@ function generateSightRead(){
   var parts=rangeStr.split('-');
   var loMidi=midiNum(parts[0]),hiMidi=midiNum(parts[1]);
   
-  // Build scale pitches within range
   var pitchPool=[];
   for(var oct=2;oct<=6;oct++){
     for(var si=0;si<scale.length;si++){
@@ -1914,147 +2037,85 @@ function generateSightRead(){
   var poolSize=pitchPool.length;
   var tonicIdx=pitchPool.findIndex(function(p){return p.startsWith(key)});
   if(tonicIdx<0)tonicIdx=Math.floor(poolSize/2);
-  
-  // Find scale degree 5 (dominant) in pool
-  var fifthNote=scale[4]||scale[0]; // 5th degree of scale
+  var fifthNote=scale[4]||scale[0];
   var domIdx=pitchPool.findIndex(function(p){return p.startsWith(fifthNote)});
   if(domIdx<0)domIdx=tonicIdx;
   
-  // ═══ RHYTHM PATTERNS (subdivPerBeat=2, so 1=eighth, 2=quarter, 3=dotted quarter, 4=half) ═══
-  // Each pattern fills one bar (8 subdivisions for 4/4)
-  var rhythmPatterns=[
-    [2,2,2,2],           // ♩ ♩ ♩ ♩  (all quarters)
-    [4,2,2],             // 𝅗𝅥 ♩ ♩  (half + two quarters)
-    [2,2,4],             // ♩ ♩ 𝅗𝅥  (two quarters + half)
-    [2,4,2],             // ♩ 𝅗𝅥 ♩  (quarter half quarter)
-    [4,4],               // 𝅗𝅥 𝅗𝅥  (two halves)
-    [1,1,2,2,2],         // ♪♪ ♩ ♩ ♩ (eighth pair + quarters)
-    [2,2,1,1,2],         // ♩ ♩ ♪♪ ♩ (quarters + eighth pair)
-    [2,1,1,2,2],         // ♩ ♪♪ ♩ ♩
-    [1,1,1,1,2,2],       // ♪♪♪♪ ♩ ♩ (four eighths + two quarters)
-    [2,2,2,1,1],         // ♩ ♩ ♩ ♪♪
-    [3,1,2,2],           // ♩. ♪ ♩ ♩ (dotted quarter + eighth + quarters)
-    [2,2,3,1],           // ♩ ♩ ♩. ♪
-    [6,2],               // 𝅗𝅥. ♩ (dotted half + quarter)
-    [2,6],               // ♩ 𝅗𝅥. (quarter + dotted half)
-    [1,1,2,1,1,2],       // ♪♪ ♩ ♪♪ ♩
-  ];
+  var maxStep=cfg.maxStep;
+  var rhythmPatterns=cfg.rhythms;
   
-  // ═══ INTERVAL WEIGHTS (based on research: mostly steps, some thirds, few larger) ═══
-  // Weights for [repeat, step, third, fourth, fifth]
-  // Adjusted by range: narrow range → more steps, wide range → allow bigger leaps
-  var rangeSteps=poolSize;
-  var w_repeat=8, w_step=55, w_third=22, w_fourth=10, w_fifth=5;
-  if(rangeSteps<=5){w_step=70;w_third=15;w_fourth=10;w_fifth=5;} // narrow
-  if(rangeSteps>=10){w_step=45;w_third=25;w_fourth=15;w_fifth=10;} // wide
-  
+  // Interval weights adjusted by maxStep
   function pickInterval(prevIdx,direction){
-    var r=Math.random()*100;
+    var r=rng()*100;
     var interval;
-    if(r<w_repeat)interval=0;
-    else if(r<w_repeat+w_step)interval=1;
-    else if(r<w_repeat+w_step+w_third)interval=2;
-    else if(r<w_repeat+w_step+w_third+w_fourth)interval=3;
-    else interval=4;
-    
-    // Direction: 1=up, -1=down, 0=random
-    var dir=direction||(Math.random()<0.5?1:-1);
+    if(maxStep<=1){interval=r<15?0:1;} // Bronze: steps only
+    else if(maxStep<=2){if(r<10)interval=0;else if(r<65)interval=1;else interval=2;} // Silver: steps + 3rds
+    else if(maxStep<=3){if(r<8)interval=0;else if(r<55)interval=1;else if(r<80)interval=2;else interval=3;} // Gold: + 4ths
+    else if(maxStep<=4){if(r<8)interval=0;else if(r<50)interval=1;else if(r<72)interval=2;else if(r<88)interval=3;else interval=4;} // Platinum: + 5ths
+    else{if(r<5)interval=0;else if(r<40)interval=1;else if(r<60)interval=2;else if(r<75)interval=3;else if(r<88)interval=4;else interval=Math.floor(rng()*3)+5;} // Diamond: any
+    var dir=direction||(rng()<0.5?1:-1);
     var newIdx=prevIdx+interval*dir;
-    
-    // Clamp to pool bounds
     newIdx=Math.max(0,Math.min(poolSize-1,newIdx));
     return newIdx;
   }
   
-  // ═══ GENERATE PHRASE ═══
   var beatsPerBar=8;
   var totalBeats=numBars*beatsPerBar;
   srNotes=[];
   
-  // 1. Start on tonic or dominant (strong opening)
-  var curIdx=Math.random()<0.7?tonicIdx:domIdx;
-  var lastLeap=0; // track last interval size for leap recovery
-  var lastDir=0;
+  var curIdx=rng()<0.7?tonicIdx:domIdx;
+  var lastLeap=0,lastDir=0;
   
-  // 2. Pick rhythm patterns for each bar
   var allDurs=[];
   for(var bar=0;bar<numBars;bar++){
     var pat;
     if(bar===numBars-1){
-      // Last bar: end with longer note
-      pat=Math.random()<0.5?[2,2,4]:[2,6];
+      pat=cfg.lastBarPats[Math.floor(rng()*cfg.lastBarPats.length)];
     }else if(bar===0){
-      // First bar: simpler rhythm
-      pat=rhythmPatterns[Math.floor(Math.random()*6)]; // first 6 are simpler
+      var simpleCount=Math.min(5,rhythmPatterns.length);
+      pat=rhythmPatterns[Math.floor(rng()*simpleCount)];
     }else{
-      pat=rhythmPatterns[Math.floor(Math.random()*rhythmPatterns.length)];
+      pat=rhythmPatterns[Math.floor(rng()*rhythmPatterns.length)];
     }
     for(var di=0;di<pat.length;di++)allDurs.push(pat[di]);
   }
   
-  // 3. Assign pitches with musical contour
   var pos=0;
   var phraseLen=allDurs.length;
-  var midPoint=Math.floor(phraseLen/2);
-  
   for(var ni=0;ni<allDurs.length;ni++){
     var dur=allDurs[ni];
     if(pos>=totalBeats)break;
-    
-    // Phrase contour: rise in first half, fall in second half
     var progress=ni/phraseLen;
     var tendUp,tendDown;
-    if(progress<0.4){
-      tendUp=0.6;tendDown=0.3; // tend upward
-    }else if(progress<0.7){
-      tendUp=0.45;tendDown=0.45; // neutral at peak
-    }else{
-      tendUp=0.3;tendDown=0.6; // tend downward toward end
-    }
-    
-    // Leap recovery: after a big jump (>2 steps), step back in opposite direction
+    if(progress<0.4){tendUp=0.6;tendDown=0.3;}
+    else if(progress<0.7){tendUp=0.45;tendDown=0.45;}
+    else{tendUp=0.3;tendDown=0.6;}
     var dir=0;
-    if(lastLeap>=3){
-      dir=-lastDir; // step back
-      lastLeap=0;
-    }else{
-      var r=Math.random();
-      dir=r<tendUp?1:(r<tendUp+tendDown?-1:0);
-    }
-    
+    if(lastLeap>=3){dir=-lastDir;lastLeap=0;}
+    else{var r=rng();dir=r<tendUp?1:(r<tendUp+tendDown?-1:0);}
     var newIdx=pickInterval(curIdx,dir);
     var interval=Math.abs(newIdx-curIdx);
-    
-    // Track for leap recovery
-    lastLeap=interval;
-    lastDir=newIdx>curIdx?1:-1;
-    if(interval===0)lastDir=0;
-    
+    lastLeap=interval;lastDir=newIdx>curIdx?1:-1;if(interval===0)lastDir=0;
     srNotes.push({pos:pos,dur:dur,pitch:pitchPool[newIdx]});
-    curIdx=newIdx;
-    pos+=dur;
+    curIdx=newIdx;pos+=dur;
   }
   
-  // 4. Fix ending: penultimate note should be step above/below tonic, last note = tonic
   if(srNotes.length>=2){
     var last=srNotes[srNotes.length-1];
     var penult=srNotes[srNotes.length-2];
-    
-    // Last note: tonic with longer duration
     var tonicP=pitchPool[tonicIdx];
-    last.pitch=tonicP;
-    last.dur=Math.max(last.dur,2);
-    // Ensure doesn't exceed bar
+    last.pitch=tonicP;last.dur=Math.max(last.dur,2);
     if(last.pos+last.dur>totalBeats)last.dur=totalBeats-last.pos;
-    
-    // Penultimate: step above (leading tone feel) or step below tonic
     var stepAbove=Math.min(tonicIdx+1,poolSize-1);
     var stepBelow=Math.max(tonicIdx-1,0);
-    penult.pitch=Math.random()<0.6?pitchPool[stepAbove]:pitchPool[stepBelow];
+    penult.pitch=rng()<0.6?pitchPool[stepAbove]:pitchPool[stepBelow];
   }
   
-  // 5. Trim if notes exceed total beats
   srNotes=srNotes.filter(function(n){return n.pos<totalBeats});
+  
+  // Store metadata for scoreboard
+  srMeta={level:currentLevel,key:key,bars:numBars,range:rangeStr,daily:isDaily,date:getTodayStr(),seed:currentSeed};
+  isDaily=false; // reset for next generate
   
   renderSightReadScore(key,numBars);
   $('srPlayBtn').disabled=false;
@@ -2213,8 +2274,8 @@ function revealNotes(){
 
 function loadSightReadToPlay(){
   if(!srNotes.length)return;
-  const key=$('srKey').value;
-  const numBars=parseInt($('srBars').value);
+  var key=srMeta?srMeta.key:'C';
+  var numBars=srMeta?srMeta.bars:4;
   const songData={
     title:'視唱練習 Sight-Reading',bpm:80,timeSigTop:4,timeSigBot:4,
     bars:numBars,subdivPerBeat:2,keySig:key,
@@ -2226,17 +2287,100 @@ function loadSightReadToPlay(){
 
 function saveSightRead(){
   if(!srNotes.length)return;
-  const key=$('srKey').value;
-  const numBars=parseInt($('srBars').value);
-  const range=$('srRange').value;
+  var key=srMeta?srMeta.key:'C';
+  var numBars=srMeta?srMeta.bars:4;
+  var range=srMeta?srMeta.range:'C4-G4';
   const id='sr_'+Date.now();
-  const saved={id,key,numBars,range,notes:srNotes,created:new Date().toLocaleDateString()};
+  const saved={id,key,numBars,range,level:currentLevel,notes:srNotes,created:new Date().toLocaleDateString()};
   const list=JSON.parse(localStorage.getItem('sr_saved_list')||'[]');
   list.unshift(saved);
-  if(list.length>20)list.length=20; // keep max 20
+  if(list.length>20)list.length=20;
   localStorage.setItem('sr_saved_list',JSON.stringify(list));
   toast('Saved! Find it in Library');
-  libraryLoaded=false; // force reload
+  libraryLoaded=false;
+}
+
+// ════════════════════════════════════
+// SCOREBOARD
+// ════════════════════════════════════
+var srMeta=null;
+var sbFilter=0; // 0=all, 1-5=level filter
+var sbMode='best'; // 'best','recent','daily'
+
+function saveScore(entry){
+  var scores=JSON.parse(localStorage.getItem('sr_scores')||'[]');
+  scores.unshift(entry);
+  if(scores.length>200)scores.length=200;
+  localStorage.setItem('sr_scores',JSON.stringify(scores));
+}
+
+function filterScoreboard(lv){
+  sbFilter=lv;
+  document.querySelectorAll('#sbFilterRow .level-btn').forEach(function(b){b.classList.toggle('active',parseInt(b.dataset.lv)===lv)});
+  renderScoreboard();
+}
+function showScoreboard(mode){
+  sbMode=mode;
+  $('sbBestBtn').style.background=mode==='best'?'var(--accent)':'var(--surface2)';
+  $('sbBestBtn').style.borderColor=mode==='best'?'var(--accent)':'var(--border)';
+  $('sbBestBtn').style.color=mode==='best'?'#fff':'var(--text)';
+  $('sbRecentBtn').style.background=mode==='recent'?'var(--accent)':'var(--surface2)';
+  $('sbRecentBtn').style.borderColor=mode==='recent'?'var(--accent)':'var(--border)';
+  $('sbRecentBtn').style.color=mode==='recent'?'#fff':'var(--text)';
+  $('sbDailyBtn').style.background=mode==='daily'?'var(--accent)':'var(--surface2)';
+  $('sbDailyBtn').style.borderColor=mode==='daily'?'var(--accent)':'var(--border)';
+  $('sbDailyBtn').style.color=mode==='daily'?'#fff':'var(--text)';
+  renderScoreboard();
+}
+
+function renderScoreboard(){
+  var scores=JSON.parse(localStorage.getItem('sr_scores')||'[]');
+  var container=$('sbContent');
+  
+  // Filter by level
+  if(sbFilter>0) scores=scores.filter(function(s){return s.level===sbFilter});
+  
+  // Filter by mode
+  if(sbMode==='daily') scores=scores.filter(function(s){return s.daily});
+  
+  // Sort
+  if(sbMode==='best'){
+    // Group by level, show best per level
+    var bestByLevel={};
+    scores.forEach(function(s){
+      var k=s.level;
+      if(!bestByLevel[k]||s.score>bestByLevel[k].score) bestByLevel[k]=s;
+    });
+    scores=Object.values(bestByLevel).sort(function(a,b){return a.level-b.level});
+  }else{
+    // Recent or daily: sort by timestamp
+    scores.sort(function(a,b){return(b.ts||0)-(a.ts||0)});
+    scores=scores.slice(0,30);
+  }
+  
+  if(!scores.length){
+    container.innerHTML='<div class="sb-empty">No scores yet. Play a sight-reading challenge!</div>';
+    return;
+  }
+  
+  var html='';
+  scores.forEach(function(s,i){
+    var cfg=LEVEL_CONFIGS[s.level]||LEVEL_CONFIGS[1];
+    var posClass=i===0?'gold':i===1?'silver':i===2?'bronze':'';
+    var modeIcon=s.mode==='sing'?'🎤':s.mode==='clap'?'👏':'📱';
+    var dailyTag=s.daily?'<span style="font-size:0.55rem;color:var(--gold);font-weight:600"> 📅</span>':'';
+    html+='<div class="sb-row">'+
+      '<div class="sb-pos '+posClass+'">'+(i+1)+'</div>'+
+      '<div class="sb-info">'+
+        '<span class="sb-name">'+cfg.icon+' '+cfg.name+dailyTag+'</span>'+
+        '<span class="sb-date"> · '+s.date+' · '+modeIcon+' · Key: '+(s.key||'?')+'</span>'+
+        '<div style="font-size:0.55rem;color:var(--dim);margin-top:1px">P:'+s.perfect+' G:'+s.good+' M:'+s.miss+' W:'+(s.wrong||0)+' Combo:'+s.combo+'</div>'+
+      '</div>'+
+      '<span class="sb-rank '+s.rank+'">'+s.rank+'</span>'+
+      '<span class="sb-score">'+s.score+'</span>'+
+    '</div>';
+  });
+  container.innerHTML=html;
 }
 
 // Init
