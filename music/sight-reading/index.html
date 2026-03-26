@@ -1448,8 +1448,8 @@ function onHit(fromPitch){if(!gameOn||gamePaused)return;
   gMaxCombo=Math.max(gMaxCombo,gCombo)}
 
 function endPlay(){gameOn=false;gamePaused=false;currentDetectedPitch=0;currentDetectedNote='';$('scoreContainer').style.display='none';$('pauseBtn').style.display='none';$('pauseOverlay').style.display='none';
-  // Accuracy = notes correctly sung / total notes in phrase (wrongs don't count in denominator)
-  const totalNotes=gPerf+gGood+gMiss; // actual notes in the phrase
+  // Accuracy = correct notes / all attempts (wrongs count against you)
+  const totalNotes=gPerf+gGood+gMiss+gWrong;
   const acc=totalNotes>0?((gPerf+gGood)/totalNotes)*100:0;
   let rk;if(acc>=95&&gMiss===0&&gWrong<=1)rk='S';else if(acc>=85)rk='A';else if(acc>=60)rk='B';else rk='C';
   const mLabel=gameMode==='pitch'?'🎤 Sing Mode':inputMode==='clap'?'👏 Clap Mode':'📱 Tap Mode';
