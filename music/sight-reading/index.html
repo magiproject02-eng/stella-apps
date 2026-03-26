@@ -1318,8 +1318,7 @@ function startPlay(pi){
 
     // ─── PITCH MODE AUTO-HIT ───
     if(gameMode==='pitch'&&currentDetectedPitch>0){
-      // Find any upcoming or recent note within a wide window (singing is less precise than tapping)
-      var pitchHitWindow=500; // 500ms window for singing (vs 220ms for tap)
+      var pitchHitWindow=500;
       for(var ni2=0;ni2<gNotes.length;ni2++){
         var pn=gNotes[ni2];
         if(pn.hit||pn.missed)continue;
@@ -1329,7 +1328,15 @@ function startPlay(pi){
         var pExpFreq=pitchNameToFreq(pn.pitch);
         if(pExpFreq<=0)continue;
         var pSemitones=Math.abs(12*Math.log2(currentDetectedPitch/pExpFreq));
-        if(pSemitones<2.5){onHit(true);break;} // 2.5 semitone tolerance
+        if(pSemitones<2.5){
+          // Directly score this specific note — don't go through onHit's time search
+          pn.hit=true;pn.ha=1;dFlash=1;cFlash=1;
+          var pitchMsg2=pSemitones<=0.5?'🎯':pSemitones<=1.5?'~':'';
+          if(pTimeDist<=250){gScore+=300+gCombo*10;gCombo++;gPerf++;showJ('PERFECT ✨ '+pitchMsg2,'#f4a261')}
+          else{gScore+=100+gCombo*5;gCombo++;gGood++;showJ('GOOD '+pitchMsg2,'#2a9d8f')}
+          gMaxCombo=Math.max(gMaxCombo,gCombo);
+          break;
+        }
       }
     }
 
