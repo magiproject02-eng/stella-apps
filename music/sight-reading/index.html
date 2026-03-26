@@ -265,6 +265,7 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
     </div>
     <div id="srDailyInfo" class="hidden" style="font-size:0.6rem;color:var(--gold);text-align:center;margin-bottom:0.5rem;font-weight:600"></div>
     <div style="display:flex;gap:0.5rem;margin-bottom:0.8rem">
+      <button class="hbtn" id="srFirstNote" onclick="playFirstNote()" style="padding:0.5rem 0.8rem;background:#7c3aed22;border-color:#7c3aed;color:#ddb7ff" disabled>🎵 First Note</button>
       <button class="hbtn play" id="srPlayBtn" onclick="playSightRead()" style="padding:0.5rem 1rem" disabled>▶ Listen 聽</button>
       <button class="hbtn stop hidden" id="srStopBtn" onclick="stopSightRead()" style="padding:0.5rem 1rem">■ Stop</button>
     </div>
@@ -1420,7 +1421,7 @@ function endPlay(){gameOn=false;gamePaused=false;currentDetectedPitch=0;currentD
   // Accuracy = notes correctly sung / total notes in phrase (wrongs don't count in denominator)
   const totalNotes=gPerf+gGood+gMiss; // actual notes in the phrase
   const acc=totalNotes>0?((gPerf+gGood)/totalNotes)*100:0;
-  let rk;if(acc>=95&&gMiss===0&&gWrong<=1)rk='S';else if(acc>=80)rk='A';else if(acc>=60)rk='B';else rk='C';
+  let rk;if(acc>=95&&gMiss===0&&gWrong<=1)rk='S';else if(acc>=85)rk='A';else if(acc>=60)rk='B';else rk='C';
   const mLabel=gameMode==='pitch'?'🎤 Sing Mode':inputMode==='clap'?'👏 Clap Mode':'📱 Tap Mode';
   const isSR=song.title&&song.title.includes('Sight-Reading');
   const lvInfo=srMeta&&srMeta.level?LEVEL_CONFIGS[srMeta.level]:null;
@@ -2146,6 +2147,7 @@ function generateSightRead(){
   
   renderSightReadScore(key,numBars);
   $('srPlayBtn').disabled=false;
+  $('srFirstNote').disabled=false;
   $('srRevealBtn').disabled=false;
   $('srPracticeBtn').disabled=false;
   $('srSaveBtn').disabled=false;
@@ -2246,6 +2248,17 @@ function renderSightReadScore(key,numBars){
       voice.draw(ctx,stave);
     }catch(e){console.warn('SR bar',bar,'error:',e.message)}
   }
+}
+
+function playFirstNote(){
+  if(!srNotes.length)return;
+  unlockAudio();
+  var pitch=srNotes[0].pitch;
+  if(!pitch)return;
+  // Play the first note for 1.5 seconds so singer can find the pitch
+  playNote(pitch,1500);
+  // Show which note it is
+  toast('🎵 First note: '+pitch);
 }
 
 function playSightRead(){
