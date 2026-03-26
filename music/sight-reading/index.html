@@ -2185,8 +2185,12 @@ function renderSightReadScore(key,numBars){
   // Extra space needed below (E4=pos2 is bottom line)
   var extraBelow=Math.max(0,(2-lowestPos))*8; // 8px per ledger line step
   var extraAbove=Math.max(0,(highestPos-10))*8;
-  var staveY=20+extraAbove;
-  var h=Math.max(150,100+extraAbove+extraBelow+40);
+  // Always keep minimum padding above and below for visual balance
+  var padTop=Math.max(25,extraAbove+15);
+  var padBot=Math.max(25,extraBelow+15);
+  var staveY=padTop;
+  var h=padTop+80+padBot; // 80 = staff height approx
+  h=Math.max(160,h); // minimum overall height
   
   // Update container min-height
   container.style.minHeight=h+'px';
