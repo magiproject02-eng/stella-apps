@@ -1080,7 +1080,10 @@ function startPlay(pi){
     const el=performance.now()-gStart-totalPaused;
     const currentPulse=Math.floor(el/pulseMs);
     while(nextMetroPulse<=currentPulse){
-      if(metronomeOn)playTick();
+      // Skip metronome tick when a note plays at the same time (avoids double sound on downbeat)
+      var pulseTimeMs=nextMetroPulse*pulseMs;
+      var hasNoteHere=nextMetroPulse>=0&&gNotes.some(function(n){return Math.abs(n.time-pulseTimeMs)<30});
+      if(metronomeOn&&!hasNoteHere)playTick();
       nextMetroPulse++;
     }
   },10);
