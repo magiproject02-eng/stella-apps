@@ -161,6 +161,9 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
 .results .rs .v{font-size:1.2rem;font-weight:700}
 .results .rs .l{font-size:0.6rem;color:var(--dim);text-transform:uppercase}
 
+/* Classroom Mode */
+.classroom-container{display:none;height:calc(100dvh - 128px);position:relative;overflow:hidden;margin-top:56px}
+.classroom-container canvas{width:100%;height:100%}
 
 /* Share toast */
 .toast{position:fixed;top:1rem;right:1rem;background:var(--green);color:#fff;padding:0.5rem 1rem;border-radius:8px;font-size:0.8rem;font-weight:600;z-index:999;opacity:0;transition:opacity 0.3s;pointer-events:none}
@@ -206,15 +209,9 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
 <body>
 
 <div class="header">
-  <h1>Sight-Reading</h1>
+  <h1>Sight-Reading 🎯</h1>
   <div class="header-btns">
-    <button class="hbtn ai" id="btnAI">🤖 AI</button>
     <button class="hbtn primary" id="btnMusicXML">📥 MXL</button>
-    <button class="hbtn" id="btnShare">🔗</button>
-    <button class="hbtn" id="btnSave">💾</button>
-    <button class="hbtn" id="btnLoad">📂</button>
-    <button class="hbtn" id="btnExport">📤</button>
-    <button class="hbtn" id="btnImport">📥</button>
   </div>
 </div>
 
@@ -222,29 +219,20 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
   <div class="tab active" data-tab="library">📚 Library</div>
   <div class="tab" data-tab="editor">✏️ Editor</div>
   <div class="tab" data-tab="play">🎮 Play</div>
+  <div class="tab" data-tab="classroom">🏫 Classroom</div>
 </div>
 
 <div id="libraryPanel" style="margin-top:56px">
   <div style="padding:1rem 1rem 0.5rem">
     <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.6rem;font-weight:800;letter-spacing:-0.03em;margin-bottom:0.2rem">Sight-Reading Practice</h2>
-    <p style="font-size:0.75rem;color:var(--dim);margin-bottom:1rem;font-weight:500">練習視唱，提升音樂能力 · Practice reading &amp; singing</p>
+    <p style="font-size:0.75rem;color:var(--dim);margin-bottom:1rem;font-weight:500">練習視唱，提升音樂能力</p>
     <div onclick="importMusicXML()" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:0.9rem 1rem;cursor:pointer;margin-bottom:0.5rem;transition:all 0.2s;display:flex;align-items:center;gap:0.8rem">
       <span style="font-size:1.5rem">📥</span>
       <div><span style="font-size:0.85rem;font-weight:700">Import MusicXML</span><br><span style="font-size:0.6rem;color:var(--dim)">.musicxml, .mxl, .xml</span></div>
     </div>
-    <div onclick="scanImage()" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:0.9rem 1rem;cursor:pointer;margin-bottom:0.5rem;transition:all 0.2s;display:flex;align-items:center;gap:0.8rem">
-      <span style="font-size:1.5rem">🔍</span>
-      <div><span style="font-size:0.85rem;font-weight:700">Scan Sheet Music</span><br><span style="font-size:0.6rem;color:var(--dim)">Photo/scan → AI reads notes</span></div>
-    </div>
-    <div id="scanStatus" class="hidden" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.8rem 1rem;margin-bottom:0.8rem">
-      <div style="display:flex;align-items:center;gap:0.6rem">
-        <div id="scanSpinner" style="width:18px;height:18px;border:2px solid var(--dim);border-top-color:var(--green);border-radius:50%;animation:spin 1s linear infinite"></div>
-        <div><span id="scanMsg" style="font-size:0.8rem;font-weight:600">Processing...</span><br><span id="scanDetail" style="font-size:0.65rem;color:var(--dim)">This takes 2-5 minutes on server</span></div>
-      </div>
-    </div>
     <div onclick="switchTab('sightread')" style="background:linear-gradient(135deg,#f4a26122,#e6394622);border:1px dashed var(--gold);border-radius:10px;padding:0.8rem 1rem;cursor:pointer;margin-bottom:0.8rem;transition:border-color 0.2s;display:flex;align-items:center;gap:0.8rem">
       <span style="font-size:1.5rem">🎯</span>
-      <div><span style="font-size:0.85rem;font-weight:700">視唱練習 Sight-Reading</span><br><span style="font-size:0.65rem;color:var(--dim)">Random phrases · Practice reading &amp; singing</span></div>
+      <div><span style="font-size:0.85rem;font-weight:700">視唱練習 Sight-Reading</span><br><span style="font-size:0.65rem;color:var(--dim)">Random phrases · 1-2 beat notes · Practice reading & singing</span></div>
     </div>
     <div id="songList" style="display:flex;flex-direction:column;gap:0.5rem"></div>
     <div id="libraryLoading" style="text-align:center;padding:2rem;color:var(--dim);font-size:0.8rem">Loading songs...</div>
@@ -287,8 +275,9 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
     </div>
     <div id="srNoteNames" style="margin-top:0.5rem;font-size:0.75rem;color:var(--dim);text-align:center;min-height:1.2em"></div>
     <div style="margin-top:1rem;display:flex;gap:0.5rem">
-      <button class="hbtn" id="srRevealBtn" onclick="revealNotes()" style="flex:1" disabled>👁 Reveal Note Names 顯示音名</button>
-      <button class="hbtn" onclick="loadSightReadToPlay()" id="srPracticeBtn" style="flex:1;background:var(--green);border-color:var(--green);color:#fff" disabled>🎮 Practice Mode 練習</button>
+      <button class="hbtn" id="srRevealBtn" onclick="revealNotes()" style="flex:1" disabled>👁 Reveal 顯示</button>
+      <button class="hbtn" onclick="loadSightReadToPlay()" id="srPracticeBtn" style="flex:1;background:var(--green);border-color:var(--green);color:#fff" disabled>🎮 Practice 練習</button>
+      <button class="hbtn" onclick="saveSightRead()" id="srSaveBtn" style="background:var(--accent);border-color:var(--accent);color:#fff" disabled>💾</button>
     </div>
   </div>
 </div>
@@ -392,29 +381,7 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
 </div>
 
 
-<!-- AI Modal -->
-<div class="modal-overlay" id="aiModal">
-  <div class="modal">
-    <h2>🤖 AI Score Reader</h2>
-    <p>Upload a photo of a score sheet. AI will extract the rhythm for each voice part. You can review and fix the result in the editor.</p>
-    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
-      <div id="uploadLabel">📄 Upload score (image or PDF)<br><span style="font-size:0.7rem;color:var(--dim)">JPG, PNG, PDF — photo, scan, or digital score</span></div>
-      <input type="file" id="fileInput" accept="image/*,.pdf,application/pdf" style="display:none">
-    </div>
-    <div id="pageSelectArea"></div>
-    <textarea id="aiContext" placeholder="Optional: describe the score (e.g. '4-part SATB, 4/4 time, 8 bars')"></textarea>
-    <div class="ctrl-group" style="margin-bottom:0.8rem;width:100%">
-      <label style="min-width:60px">API Key</label>
-      <input type="password" id="aiApiKey" style="flex:1;width:100%" placeholder="sk-ant-... (needed when running from Vercel)">
-    </div>
-    <div style="font-size:0.65rem;color:var(--dim);margin-bottom:0.8rem">API key is required when running from the deployed site. Not needed when previewing inside Claude chat. Key stays in your browser — never sent anywhere except Anthropic's API.</div>
-    <div class="status hidden" id="aiStatus"></div>
-    <div class="modal-btns">
-      <button class="hbtn" onclick="closeAIModal()">Cancel</button>
-      <button class="hbtn ai" id="btnAnalyze" disabled>Analyze Score 🔍</button>
-    </div>
-  </div>
-</div>
+
 
 <!-- Bottom Navigation -->
 <nav class="bottom-nav">
@@ -915,50 +882,6 @@ async function importMusicXML(){
   inp.click();
 }
 
-const HOMR_URL='https://openclaw.entoutois.com/omr/omr';
-const HOMR_TOKEN='BrFls_IDiVCNi_qWn37dfOalUtJ3P74r12T3u_IYIAk';
-
-async function scanImage(){
-  const inp=document.createElement('input');
-  inp.type='file';
-  inp.accept='image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp';
-  inp.onchange=async e=>{
-    const f=e.target.files[0];
-    if(!f)return;
-    const scanStatus=$('scanStatus');
-    const scanMsg=$('scanMsg');
-    const scanDetail=$('scanDetail');
-    scanStatus.classList.remove('hidden');
-    scanMsg.textContent='📤 Uploading '+f.name+'...';
-    scanDetail.textContent='Sending to OMR server';
-    try{
-      const form=new FormData();
-      form.append('file',f);
-      scanMsg.textContent='🔍 Processing with homr OMR...';
-      scanDetail.textContent='Reading notes, pitch, rhythm — this takes 2-5 minutes';
-      const resp=await fetch(HOMR_URL+'?token='+HOMR_TOKEN,{method:'POST',body:form});
-      if(!resp.ok){
-        const err=await resp.json().catch(()=>({error:'Server error '+resp.status}));
-        throw new Error(err.error||'OMR failed');
-      }
-      const xmlStr=await resp.text();
-      scanMsg.textContent='✅ Parsing MusicXML...';
-      scanDetail.textContent='Converting to Score Trainer format';
-      const data=parseMusicXML(xmlStr);
-      fromJSON(JSON.stringify(data));
-      scanStatus.classList.add('hidden');
-      toast('✅ Scanned: '+data.title+' ('+data.parts.length+' parts, '+data.bars+' bars)');
-      switchTab('editor');
-    }catch(err){
-      console.error('Scan error:',err);
-      scanMsg.textContent='❌ Scan failed';
-      scanDetail.textContent=err.message;
-      $('scanSpinner').style.display='none';
-      setTimeout(()=>{scanStatus.classList.add('hidden');$('scanSpinner').style.display='';},5000);
-    }
-  };
-  inp.click();
-}
 function shareSong(){const data=toJSON();const compressed=btoa(unescape(encodeURIComponent(data)));const url=location.origin+location.pathname+'#'+compressed;navigator.clipboard.writeText(url).then(()=>toast('Link copied to clipboard!')).catch(()=>{prompt('Copy this URL:',url)})}
 function loadFromHash(){if(!location.hash||location.hash.length<2)return;try{const data=decodeURIComponent(escape(atob(location.hash.slice(1))));fromJSON(data);toast('Loaded shared song!')}catch(e){}}
 
@@ -974,235 +897,6 @@ const DEMOS={
 };
 function loadDemo(n){fromJSON(JSON.stringify(DEMOS[n]))}
 
-// ════════════════════════════════════
-// AI SCORE READER
-// ════════════════════════════════════
-let aiImageData=null;
-let aiImagePages=[]; // for multi-page PDFs
-let selectedPages=new Set();
-function openAIModal(){$('aiModal').classList.add('show');aiImageData=null;aiImagePages=[];selectedPages.clear();$('uploadLabel').innerHTML='📄 Upload score (image or PDF)<br><span style="font-size:0.7rem;color:var(--dim)">JPG, PNG, PDF — photo, scan, or digital score</span>';$('uploadZone').classList.remove('has-file');$('btnAnalyze').disabled=true;$('aiStatus').classList.add('hidden');$('aiContext').value='';$('pageSelectArea').innerHTML=''}
-function closeAIModal(){$('aiModal').classList.remove('show')}
-
-async function renderPDFPage(pdf,pageNum,scale=2){
-  const page=await pdf.getPage(pageNum);
-  const vp=page.getViewport({scale});
-  const canvas=document.createElement('canvas');
-  canvas.width=vp.width;canvas.height=vp.height;
-  await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
-  return canvas.toDataURL('image/jpeg',0.85);
-}
-
-$('fileInput').addEventListener('change',async e=>{
-  const f=e.target.files[0];if(!f)return;
-  const isPDF=f.type==='application/pdf'||f.name.toLowerCase().endsWith('.pdf');
-
-  if(isPDF){
-    // Handle PDF
-    const status=$('aiStatus');status.classList.remove('hidden','error','ok');status.classList.add('loading');status.textContent='📄 Reading PDF pages...';
-    try{
-      if(!window.pdfjsLib)throw new Error('PDF.js library failed to load. Try uploading an image (JPG/PNG) instead.');
-      const arrayBuf=await f.arrayBuffer();
-      const pdf=await pdfjsLib.getDocument({data:arrayBuf}).promise;
-      const numPages=pdf.numPages;
-      aiImagePages=[];selectedPages.clear();
-
-      // Render all pages
-      for(let i=1;i<=numPages;i++){
-        const dataUrl=await renderPDFPage(pdf,i);
-        aiImagePages.push({dataUrl,base64:dataUrl.split(',')[1]});
-      }
-
-      // Show page thumbnails
-      $('uploadLabel').innerHTML=`<strong>📄 ${f.name}</strong><br><span style="font-size:0.7rem;color:var(--dim)">${numPages} page${numPages>1?'s':''} found</span>`;
-      $('uploadZone').classList.add('has-file');
-
-      let thumbHtml='<div class="page-info">Select pages to analyze (click to toggle):</div><div class="page-selector">';
-      aiImagePages.forEach((_,i)=>{
-        selectedPages.add(i);
-        thumbHtml+=`<img class="page-thumb selected" src="${aiImagePages[i].dataUrl}" data-page="${i}" onclick="togglePage(${i},this)" title="Page ${i+1}">`;
-      });
-      thumbHtml+='</div>';
-      $('pageSelectArea').innerHTML=thumbHtml;
-
-      status.classList.remove('loading');status.classList.add('ok');status.textContent=`✅ ${numPages} pages rendered. Select which pages contain the score.`;
-      $('btnAnalyze').disabled=false;
-    }catch(err){
-      status.classList.remove('loading');status.classList.add('error');status.textContent='❌ Failed to read PDF: '+err.message;
-    }
-  }else{
-    // Handle image (same as before)
-    const r=new FileReader();r.onload=ev=>{
-      aiImageData=ev.target.result.split(',')[1];
-      aiImagePages=[];selectedPages.clear();
-      const img=document.createElement('img');img.src=ev.target.result;
-      $('uploadLabel').innerHTML='';$('uploadLabel').appendChild(img);
-      $('uploadZone').classList.add('has-file');$('btnAnalyze').disabled=false;
-      $('pageSelectArea').innerHTML='';
-    };r.readAsDataURL(f);
-  }
-});
-
-function togglePage(idx,el){
-  if(selectedPages.has(idx)){selectedPages.delete(idx);el.classList.remove('selected')}
-  else{selectedPages.add(idx);el.classList.add('selected')}
-  $('btnAnalyze').disabled=selectedPages.size===0&&!aiImageData;
-}
-
-$('btnAnalyze').addEventListener('click',async()=>{
-  // Build image content array
-  let imageContent=[];
-  if(aiImagePages.length>0){
-    const pages=[...selectedPages].sort((a,b)=>a-b);
-    if(pages.length===0)return;
-    pages.forEach(idx=>{imageContent.push({type:"image",source:{type:"base64",media_type:"image/jpeg",data:aiImagePages[idx].base64}})});
-  }else if(aiImageData){
-    imageContent.push({type:"image",source:{type:"base64",media_type:"image/jpeg",data:aiImageData}});
-  }else return;
-
-  const status=$('aiStatus');status.classList.remove('hidden','error','ok');status.classList.add('loading');
-  $('btnAnalyze').disabled=true;
-  const ctx=$('aiContext').value;
-
-  try{
-    const apiKey=$('aiApiKey').value.trim();
-    const headers={"Content-Type":"application/json","anthropic-version":"2023-06-01"};
-    if(apiKey)headers["x-api-key"]=apiKey;
-
-    // ═══ PASS 1: Structure scan (enhanced) ═══
-    status.textContent='🔍 Pass 1: Reading score structure...';
-    const pass1Prompt=`You are a professional music score reader. Look at ${imageContent.length>1?'these pages of a':'this'} music score and identify the structure.
-${ctx?'Context from user: '+ctx:''}
-
-Answer ONLY in JSON (no markdown, no backticks):
-{
-  "title": "title if visible",
-  "composer": "composer/arranger if visible",
-  "keySig": "C" or "G" or "Bb" etc (the major key),
-  "timeSigTop": 4,
-  "timeSigBot": 4,
-  "bpm": estimated BPM number,
-  "parts": [
-    {"name": "S", "staff_index": 0, "clef": "treble", "range_low": "A3", "range_high": "D5"},
-    {"name": "A", "staff_index": 1, "clef": "treble", "range_low": "F3", "range_high": "Bb4"}
-  ],
-  "total_bars": 42,
-  "first_note_bar": 1,
-  "has_key_change": false,
-  "key_change_bar": null,
-  "new_key": null,
-  "sections": [
-    {"type": "verse", "bars": "1-8", "register": "low"},
-    {"type": "refrain", "bars": "9-16", "register": "high"}
-  ],
-  "repeating_patterns": "describe any repeating melodic patterns"
-}
-
-For "parts": list EVERY independent vocal/instrumental part. For SATB choral, list all 4. For voice+piano, list only the voice.
-For "sections": identify verse/refrain/bridge/coda patterns and note which register each uses.
-For "range_low"/"range_high": estimate the lowest and highest notes for each part.`;
-
-    const pass1Resp=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers,body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:2000,messages:[{role:"user",content:[...imageContent,{type:"text",text:pass1Prompt}]}]})});
-    if(!pass1Resp.ok){
-      const errBody=await pass1Resp.text().catch(()=>'');
-      if(pass1Resp.status===401||pass1Resp.status===403)throw new Error('API key required. Paste your Anthropic API key (sk-ant-...) above.');
-      throw new Error(`API error ${pass1Resp.status}: ${errBody.slice(0,200)}`);
-    }
-    const pass1Data=await pass1Resp.json();
-    if(pass1Data.error)throw new Error(pass1Data.error.message);
-    const pass1Text=pass1Data.content.map(c=>c.text||'').join('').replace(/```json|```/g,'').trim();
-    const structure=JSON.parse(pass1Text);
-    console.log('Pass 1 structure:',structure);
-
-    // ═══ PASS 2: Per-part note extraction with calibration ═══
-    const detectedParts=structure.parts||[{name:'Voice',staff_index:0,clef:'treble',range_low:'C4',range_high:'C6'}];
-    const totalParts=detectedParts.length;
-    const allParts=[];
-    const subdivPerBeat=2;
-    const timeSigTop=structure.timeSigTop||4;
-    const timeSigBot=structure.timeSigBot||4;
-    const subdivPerBar=timeSigTop*subdivPerBeat*(4/timeSigBot);
-    const durMap={
-      'w':subdivPerBeat*4,'dh':subdivPerBeat*3,'h':subdivPerBeat*2,
-      'dq':Math.round(subdivPerBeat*1.5),'q':subdivPerBeat,
-      'de':Math.max(1,Math.round(subdivPerBeat*0.75)),
-      'e':Math.max(1,Math.round(subdivPerBeat*0.5)),
-      's':Math.max(1,Math.round(subdivPerBeat*0.25))
-    };
-    const keySigNote=structure.keySig||'C';
-    const keyHints={'C':'no sharps or flats','G':'F#','D':'F# C#','A':'F# C# G#','E':'F# C# G# D#',
-      'F':'Bb','Bb':'Bb Eb','Eb':'Bb Eb Ab','Ab':'Bb Eb Ab Db'};
-    const sectionHint=structure.sections?
-      '\nSECTION STRUCTURE (watch for register changes!):\n'+structure.sections.map(s=>'- '+s.type+': bars '+s.bars+' ('+s.register+' register)').join('\n'):'';
-
-    for(let pi=0;pi<totalParts;pi++){
-      const part=detectedParts[pi];
-      const partClef=part.clef||'treble';
-      const partName=part.name||('Part '+(pi+1));
-      status.textContent=`🎵 Pass 2: Reading ${partName} (${pi+1}/${totalParts})...`;
-      const clefRef=partClef==='bass'?
-        'Bass clef lines (bottom→top): G2, B2, D3, F3, A3\nBass clef spaces: A2, C3, E3, G3\nLedger lines above: B3, C4, D4. Below: F2, E2.'
-        :'Treble clef lines (bottom→top): E4, G4, B4, D5, F5\nTreble clef spaces: F4, A4, C5, E5\nLedger lines below: D4, C4, B3, A3. Above: G5, A5.';
-      const rangeHint=(part.range_low&&part.range_high)?
-        '\nEXPECTED RANGE for '+partName+': '+part.range_low+' to '+part.range_high+'. If you read a note outside this range, double-check the octave.':'';
-
-      const pass2Prompt=`You are a precise music score reader. Extract ONLY the ${partName} part (staff ${(part.staff_index||0)+1} from top in each system). IGNORE all other staves completely.
-
-CLEF REFERENCE for ${partName} (${partClef} clef):
-${clefRef}
-
-KEY SIGNATURE: Key of ${keySigNote}: ${keyHints[keySigNote]||'check key signature'}. Extra accidentals written explicitly.
-TIME SIGNATURE: ${timeSigTop}/${timeSigBot}
-${rangeHint}
-${sectionHint}
-
-DURATION CODES: w=whole, h=half, dh=dotted half, q=quarter, dq=dotted quarter, e=eighth, de=dotted eighth, s=sixteenth
-
-CALIBRATION RULES (learned from errors — follow these strictly):
-1. OCTAVE VERIFICATION: When melody jumps between sections (verse→refrain), the register often changes dramatically. Second space in treble = A4 not A3. Verify every note against the clef reference above.
-2. KEY SIGNATURE: Every ${keyHints[keySigNote]||'note in key'} applies unless cancelled by natural sign.
-3. LYRICS CROSS-CHECK: Each syllable = one note. Count syllables to verify note count per bar.
-4. REPEATING SECTIONS: If bars repeat, read FIRST instance carefully, confirm repeats match.
-5. DOT = +50% duration. Dotted quarter = dq. Dotted half = dh.
-6. TIES across barlines = ONE note with combined duration.
-7. RESTS: Whole rest hangs from line 4. Half rest sits on line 3. Don't confuse with notes.
-
-Output ONLY valid JSON (no markdown, no backticks):
-[{"bar":1,"notes":[{"pitch":"A3","dur":"e"},{"pitch":"D4","dur":"e"}]},...]
-Include ALL bars where ${partName} has notes.`;
-
-      const pass2Resp=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers,body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:8000,messages:[{role:"user",content:[...imageContent,{type:"text",text:pass2Prompt}]}]})});
-      if(!pass2Resp.ok)throw new Error('Pass 2 ('+partName+') API error: '+pass2Resp.status);
-      const pass2Data=await pass2Resp.json();
-      if(pass2Data.error)throw new Error(pass2Data.error.message);
-      const pass2Text=pass2Data.content.map(c=>c.text||'').join('').replace(/```json|```/g,'').trim();
-      const barNotes=JSON.parse(pass2Text);
-      console.log('Pass 2 '+partName+':',barNotes.length,'bars');
-      const beats=[];let maxBar=0;
-      barNotes.forEach(bar=>{const barNum=bar.bar;if(barNum>maxBar)maxBar=barNum;const barStart=(barNum-1)*subdivPerBar;let pos=barStart;
-        (bar.notes||[]).forEach(n=>{const dur=durMap[n.dur]||subdivPerBeat;if(n.pitch&&n.pitch!=='R'){beats.push({pos:Math.round(pos),dur,pitch:n.pitch})}pos+=dur})});
-      allParts.push({name:partName,clef:partClef,beats,maxBar});
-    }
-
-    const globalMaxBar=Math.max(...allParts.map(p=>p.maxBar));
-    const songData={title:structure.title||'Imported Score',bpm:structure.bpm||100,timeSigTop,timeSigBot,
-      bars:globalMaxBar,subdivPerBeat,keySig:structure.keySig||'C',
-      parts:allParts.map(p=>({name:p.name,clef:p.clef,beats:p.beats}))};
-    const totalNotes=allParts.reduce((s,p)=>s+p.beats.length,0);
-    fromJSON(JSON.stringify(songData));
-    status.classList.remove('loading');status.classList.add('ok');
-    status.textContent=`✅ Extracted ${totalNotes} notes across ${totalParts} part${totalParts>1?'s':''}, ${globalMaxBar} bars. Check the editor!`;
-    setTimeout(()=>closeAIModal(),2000);
-  }catch(e){
-    status.classList.remove('loading');status.classList.add('error');
-    let msg=e.message;
-    if(msg.includes('Failed to fetch')||msg.includes('NetworkError')||msg.includes('CORS')){
-      msg='Cannot reach Anthropic API from this domain. Please paste your API key (sk-ant-...) above, or use this feature inside Claude chat.';
-    }
-    status.textContent='❌ '+msg;
-    $('btnAnalyze').disabled=false;
-  }
-  $('btnAnalyze').disabled=false;
-});
 
 // ════════════════════════════════════
 // PLAY MODE
@@ -1665,6 +1359,7 @@ function endPlay(){gameOn=false;gamePaused=false;currentDetectedPitch=0;currentD
   $('pRank').textContent=rk;$('pRank').className='rank '+rk;$('pScore').textContent=gScore;
   $('pPerf').textContent=gPerf;$('pGood').textContent=gGood;$('pMiss').textContent=gMiss;$('pCombo').textContent=gMaxCombo;$('resultsScreen').style.display='flex'}
 
+
 // ════════════════════════════════════
 // VEXFLOW SCORE RENDERER
 // ════════════════════════════════════
@@ -2065,10 +1760,9 @@ async function loadLibrary(){
     const data=await resp.json();
     const list=$('songList');
     list.innerHTML='';
-    const hidden=JSON.parse(localStorage.getItem('sr_hidden')||'[]');
-    data.songs.filter(s=>!hidden.includes(s.id)).forEach(s=>{
+    data.songs.forEach(s=>{
       const card=document.createElement('div');
-      card.className='song-card';card.id='card-'+s.id;
+      card.className='song-card';
       const partsHTML=s.parts.map((p,i)=>`<span class="sc-part" style="background:${PC[i%PC.length]}33;color:${PC[i%PC.length]}">${p}</span>`).join('');
       card.innerHTML=`<div class="sc-title">${s.title}</div>
         <div class="sc-meta"><span>♩ ${s.bpm}</span><span>${s.timeSig}</span><span>${s.bars} bars</span></div>
@@ -2076,23 +1770,55 @@ async function loadLibrary(){
         <div class="sc-actions">
           <button class="sc-btn" onclick="event.stopPropagation();loadSongFile('${s.id}','editor')">✏️ Edit</button>
           <button class="sc-btn play-btn" onclick="event.stopPropagation();loadSongFile('${s.id}','play')">🎮 Play</button>
-          <button class="sc-btn" onclick="event.stopPropagation();deleteSong('${s.id}')" style="background:#e6394622;color:var(--red);border-color:#e6394644">🗑</button>
         </div>`;
       list.appendChild(card);
     });
     $('libraryLoading').style.display='none';
     libraryLoaded=true;
-  }catch(e){$('libraryLoading').textContent='No songs found yet. Use 視唱 to generate, or import MusicXML!'}
+  }catch(e){}
+  // Show saved sight-reading phrases
+  loadSavedPhrases();
+  $('libraryLoading').style.display='none';
 }
 
-function deleteSong(id){
-  if(!confirm('Delete this song from library?'))return;
-  const hidden=JSON.parse(localStorage.getItem('sr_hidden')||'[]');
-  if(!hidden.includes(id))hidden.push(id);
-  localStorage.setItem('sr_hidden',JSON.stringify(hidden));
-  const card=$('card-'+id);
-  if(card)card.remove();
-  toast('Song removed');
+function loadSavedPhrases(){
+  const list=JSON.parse(localStorage.getItem('sr_saved_list')||'[]');
+  if(!list.length)return;
+  const songList=$('songList');
+  const hdr=document.createElement('div');
+  hdr.style.cssText='font-size:0.7rem;color:var(--dim);font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-top:0.8rem;margin-bottom:0.3rem';
+  hdr.textContent='💾 Saved Phrases';
+  songList.appendChild(hdr);
+  list.forEach(function(s,idx){
+    const card=document.createElement('div');
+    card.className='song-card';card.id='srcard-'+idx;
+    card.innerHTML='<div class="sc-title">🎯 Key: '+s.key+' · '+s.numBars+' bars · '+s.range+'</div>'+
+      '<div class="sc-meta"><span>'+s.created+'</span><span>'+s.notes.length+' notes</span></div>'+
+      '<div class="sc-actions">'+
+        '<button class="sc-btn play-btn" onclick="event.stopPropagation();loadSavedPhrase('+idx+')">🎮 Play</button>'+
+        '<button class="sc-btn" onclick="event.stopPropagation();deleteSavedPhrase('+idx+')" style="background:#e6394622;color:var(--red);border-color:#e6394644">🗑</button>'+
+      '</div>';
+    songList.appendChild(card);
+  });
+}
+
+function loadSavedPhrase(idx){
+  var list=JSON.parse(localStorage.getItem('sr_saved_list')||'[]');
+  var s=list[idx];if(!s)return;
+  var songData={title:'視唱 '+s.key+' '+s.numBars+'bars',bpm:80,timeSigTop:4,timeSigBot:4,
+    bars:s.numBars,subdivPerBeat:2,keySig:s.key,
+    parts:[{name:'Voice',clef:'treble',beats:s.notes.map(function(n){return{pos:n.pos,dur:n.dur,pitch:n.pitch}})}]};
+  fromJSON(JSON.stringify(songData));
+  switchTab('play');
+}
+
+function deleteSavedPhrase(idx){
+  if(!confirm('Delete this phrase?'))return;
+  var list=JSON.parse(localStorage.getItem('sr_saved_list')||'[]');
+  list.splice(idx,1);
+  localStorage.setItem('sr_saved_list',JSON.stringify(list));
+  var card=$('srcard-'+idx);if(card)card.remove();
+  toast('Phrase deleted');
 }
 
 async function loadSongFile(id,mode){
@@ -2126,9 +1852,7 @@ function $(id){return document.getElementById(id)}
 function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
 document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>switchTab(t.dataset.tab)));
 $('btnPlay').addEventListener('click',startPlayback);$('btnStop').addEventListener('click',stopPlayback);
-$('btnSave').addEventListener('click',saveSong);$('btnLoad').addEventListener('click',loadSong);
-$('btnExport').addEventListener('click',exportJSON);$('btnImport').addEventListener('click',importJSON);
-$('btnShare').addEventListener('click',shareSong);$('btnAI').addEventListener('click',openAIModal);$('btnMusicXML').addEventListener('click',importMusicXML);
+$('btnMusicXML').addEventListener('click',importMusicXML);
 ['songTitle','bpmInput','timeSigTop','timeSigBot','barCount','subdivSelect'].forEach(id=>{$(id).addEventListener('change',()=>{
   song.title=$('songTitle').value;song.bpm=+$('bpmInput').value||100;song.timeSigTop=+$('timeSigTop').value;song.timeSigBot=+$('timeSigBot').value;song.bars=+$('barCount').value||4;
   const m={'4':1,'8':2,'16':4,'12':3};song.subdivPerBeat=m[$('subdivSelect').value]||2;renderGrid()})});
@@ -2232,6 +1956,7 @@ function generateSightRead(){
   $('srPlayBtn').disabled=false;
   $('srRevealBtn').disabled=false;
   $('srPracticeBtn').disabled=false;
+  $('srSaveBtn').disabled=false;
   $('srNoteNames').textContent='';
 }
 
@@ -2407,6 +2132,21 @@ function loadSightReadToPlay(){
   switchTab('play');
 }
 
+function saveSightRead(){
+  if(!srNotes.length)return;
+  const key=$('srKey').value;
+  const numBars=parseInt($('srBars').value);
+  const range=$('srRange').value;
+  const id='sr_'+Date.now();
+  const saved={id,key,numBars,range,notes:srNotes,created:new Date().toLocaleDateString()};
+  const list=JSON.parse(localStorage.getItem('sr_saved_list')||'[]');
+  list.unshift(saved);
+  if(list.length>20)list.length=20; // keep max 20
+  localStorage.setItem('sr_saved_list',JSON.stringify(list));
+  toast('Saved! Find it in Library');
+  libraryLoaded=false; // force reload
+}
+
 // Init
 async function init(){
   const params=new URLSearchParams(location.search);
@@ -2432,8 +2172,6 @@ init();
 </script>
 </body>
 </html>
-<!-- build 1774456734 -->
-/* force redeploy 1774457064 */
-<!-- deploy 1774458170 -->
-/* FORCE BUILD 1774460215 */
-<!-- sr-fix 1774519840 -->
+
+
+
