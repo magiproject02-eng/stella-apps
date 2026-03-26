@@ -1375,7 +1375,18 @@ function startPlay(pi){
     for(const n of gNotes){const nt=n.time-el,x=hx+nt*px,nw=Math.max(12,n.durMs*px);
       if(!n.hit&&!n.missed){allD=false;var missW=gameMode==='pitch'?800:MW;if(nt<-missW){n.missed=true;gMiss++;gCombo=0;gScore=Math.max(0,gScore-100);showJ('MISS','#e63946');continue}}
       if(x+nw<-50||x>w+50)continue;
-      if(n.hit){if(n.ha>0){const r=14+(1-n.ha)*15;cx.beginPath();cx.arc(hx,by,r,0,Math.PI*2);cx.strokeStyle=`rgba(42,157,143,${n.ha})`;cx.lineWidth=2;cx.stroke();n.ha-=0.03}continue}
+      if(n.hit){
+        // Show hit animation ring
+        if(n.ha>0){const r=14+(1-n.ha)*15;cx.beginPath();cx.arc(hx,by,r,0,Math.PI*2);cx.strokeStyle=`rgba(42,157,143,${n.ha})`;cx.lineWidth=2;cx.stroke();n.ha-=0.03}
+        // Keep the note visible but dimmed green (don't vanish)
+        if(x>-50&&x<w+50){
+          cx.globalAlpha=0.4;
+          cx.fillStyle='#2a9d8f';cx.beginPath();cx.arc(x,by,10,0,Math.PI*2);cx.fill();
+          cx.fillStyle='#fff';cx.font="bold 8px 'Plus Jakarta Sans'";cx.textAlign='center';cx.textBaseline='middle';
+          cx.fillText('✓',x,by);
+          cx.globalAlpha=1;
+        }
+        continue}
       if(n.missed)cx.globalAlpha=0.25;
       // Duration tail (faded line from onset to end)
       cx.strokeStyle=pc;cx.globalAlpha=n.missed?0.1:0.3;cx.lineWidth=4;
