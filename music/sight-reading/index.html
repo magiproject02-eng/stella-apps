@@ -1080,8 +1080,7 @@ function startPlay(pi){
     const el=performance.now()-gStart-totalPaused;
     const currentPulse=Math.floor(el/pulseMs);
     while(nextMetroPulse<=currentPulse){
-      // Play metronome on every beat, but skip beat 0 (first note handles that downbeat)
-      if(metronomeOn&&nextMetroPulse!==0)playTick();
+      if(metronomeOn)playTick();
       nextMetroPulse++;
     }
   },10);
