@@ -89,27 +89,6 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
 .demo-btn{font-size:0.65rem;padding:0.2rem 0.5rem;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:5px;cursor:pointer;font-family:inherit;font-weight:600}
 .demo-btn:hover{border-color:var(--purple)}
 
-/* AI Modal */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;display:none;align-items:center;justify-content:center;padding:1rem}
-.modal-overlay.show{display:flex}
-.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;max-width:500px;width:100%;max-height:90vh;overflow-y:auto}
-.modal h2{font-size:1.2rem;font-weight:700;margin-bottom:0.5rem}
-.modal p{font-size:0.8rem;color:var(--dim);line-height:1.5;margin-bottom:1rem}
-.modal .upload-zone{border:2px dashed var(--border);border-radius:10px;padding:2rem;text-align:center;cursor:pointer;transition:border-color 0.2s;margin-bottom:1rem}
-.modal .upload-zone:hover{border-color:var(--purple)}
-.modal .upload-zone.has-file{border-color:var(--green);background:#2a9d8f11}
-.modal .upload-zone img{max-width:100%;max-height:200px;border-radius:6px;margin-top:0.5rem}
-.page-selector{display:flex;gap:0.5rem;flex-wrap:wrap;margin:0.5rem 0;justify-content:center}
-.page-thumb{width:80px;height:110px;border:2px solid var(--border);border-radius:6px;cursor:pointer;object-fit:cover;transition:border-color 0.2s;opacity:0.5}
-.page-thumb.selected{border-color:var(--green);opacity:1;box-shadow:0 0 8px #2a9d8f44}
-.page-thumb:hover{opacity:0.8}
-.page-info{font-size:0.7rem;color:var(--dim);text-align:center;margin-bottom:0.5rem}
-.modal textarea{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:0.8rem;padding:0.5rem;border-radius:6px;min-height:60px;resize:vertical;margin-bottom:0.5rem}
-.modal .status{font-size:0.75rem;padding:0.4rem 0.6rem;border-radius:6px;margin-bottom:0.8rem}
-.modal .status.loading{background:#7c3aed22;color:var(--purple);border:1px solid #7c3aed44}
-.modal .status.error{background:#e6394622;color:var(--red);border:1px solid #e6394644}
-.modal .status.ok{background:#2a9d8f22;color:var(--green);border:1px solid #2a9d8f44}
-.modal-btns{display:flex;gap:0.5rem;justify-content:flex-end}
 
 /* Play Mode */
 .play-container{display:none;height:calc(100dvh - 128px);position:relative;flex-direction:column;margin-top:56px}
@@ -160,9 +139,6 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
 .results .rs .v{font-size:1.2rem;font-weight:700}
 .results .rs .l{font-size:0.6rem;color:var(--dim);text-transform:uppercase}
 
-/* Classroom Mode */
-.classroom-container{display:none;height:calc(100dvh - 128px);position:relative;overflow:hidden;margin-top:56px}
-.classroom-container canvas{width:100%;height:100%}
 
 /* Share toast */
 .toast{position:fixed;top:1rem;right:1rem;background:var(--green);color:#fff;padding:0.5rem 1rem;border-radius:8px;font-size:0.8rem;font-weight:600;z-index:999;opacity:0;transition:opacity 0.3s;pointer-events:none}
@@ -182,7 +158,6 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
 .song-card .sc-btn{font-size:0.65rem;padding:0.3rem 0.7rem;border:1px solid var(--border);border-radius:10px;background:var(--surface2);color:var(--text);font-family:inherit;font-weight:600;cursor:pointer;transition:all 0.15s}
 .song-card .sc-btn:hover{border-color:var(--accent);background:var(--accent);color:#fff}
 .song-card .sc-btn.play-btn{background:var(--green);border-color:var(--green);color:#fff}
-.song-card .sc-btn.class-btn{background:var(--accent);border-color:var(--accent);color:#fff}
 .deployed-badge{position:fixed;bottom:80px;right:0.5rem;font-size:0.5rem;color:var(--dim);opacity:0.2;z-index:200}
 
 /* Pitch Picker */
@@ -218,7 +193,6 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
   <div class="tab active" data-tab="library">📚 Library</div>
   <div class="tab" data-tab="editor">✏️ Editor</div>
   <div class="tab" data-tab="play">🎮 Play</div>
-  <div class="tab" data-tab="classroom">🏫 Classroom</div>
 </div>
 
 <div id="libraryPanel" style="margin-top:56px">
