@@ -1410,7 +1410,10 @@ function replayGame(){
   $('pauseOverlay').style.display='none';$('pauseBtn').style.display='none';
   startPlay(selPart);
 }
-function onHit(fromPitch){if(!gameOn||gamePaused)return;const el=performance.now()-gStart-totalPaused;
+function onHit(fromPitch){if(!gameOn||gamePaused)return;
+  // In pitch/sing mode, only accept hits from pitch detection — no taps
+  if(gameMode==='pitch'&&!fromPitch)return;
+  const el=performance.now()-gStart-totalPaused;
   if(!fromPitch)playHit();
   dFlash=1;cFlash=1;
   let cl=null,cd=Infinity;for(const n of gNotes){if(n.hit||n.missed)continue;const d=Math.abs(n.time-el);if(d<cd&&d<MW){cl=n;cd=d}}
