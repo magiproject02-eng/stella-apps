@@ -1098,7 +1098,7 @@ function startPlay(pi){
 
     // Layout: staff above, belt below
     const hasPitchData=gNotes.length>0&&gNotes[0].pitch;
-    const staffH=showScore&&hasPitchData?Math.max(110,Math.min(140,h*0.28)):0;
+    const staffH=showScore&&hasPitchData?Math.max(130,Math.min(160,h*0.30)):0;
     const by=staffH+(h-staffH)*0.38;
     const bh=70;
 
@@ -1108,7 +1108,7 @@ function startPlay(pi){
     try{
     if(staffH>0){
       // Staff layout: center the 5 lines in the staff area with good padding
-      const staffPad=Math.max(16,staffH*0.12); // padding top and bottom
+      const staffPad=Math.max(24,staffH*0.18); // padding top and bottom
       const staffTop=staffPad;
       const staffBot=staffH-staffPad;
       const lineGap=(staffBot-staffTop)/4; // 5 lines, 4 gaps
@@ -1134,24 +1134,21 @@ function startPlay(pi){
       }
       
       // ── CLEF + KEY SIG + TIME SIG ──
-      // Fixed at left during count-in, then scrolls left
-      var clefX;
-      if(el<=0){
-        clefX=10;
-      }else{
-        clefX=10-el*px;
-      }
-      if(clefX>-120&&clefX<w+40){
-        // Treble clef — large, centered on G line (2nd line from bottom = staffTop+3*lineGap)
+      // Positioned BEFORE the first note in the timeline, scrolling at music speed
+      // So the player reads: clef → key sig → time sig → first note (left to right)
+      var clefLeadMs=gPulseMs*3; // 3 beats before music starts
+      var clefX=hx+(-clefLeadMs-el)*px;
+      if(clefX>-150&&clefX<w+50){
+        // Treble clef
         var clefSize=Math.round(lineGap*4);
         cx.fillStyle='#ddd';cx.font=clefSize+'px serif';cx.textAlign='left';cx.textBaseline='middle';
         cx.fillText('\u{1D11E}',clefX,staffTop+2*lineGap+lineGap*0.1);
         
-        // Key signature — positioned after clef with proper spacing
+        // Key signature — after clef
         var keySharps={'G':['F'],'D':['F','C'],'A':['F','C','G'],'E':['F','C','G','D']};
         var keyFlats={'F':['B'],'Bb':['B','E'],'Eb':['B','E','A'],'Ab':['B','E','A','D']};
         var ks=song.keySig||'C';
-        var ksX=clefX+clefSize*0.75; // space after clef
+        var ksX=clefX+clefSize*0.75;
         var accSize=Math.round(lineGap*1.4);
         if(keySharps[ks]){
           cx.fillStyle='#ddd';cx.font='bold '+accSize+'px serif';cx.textAlign='center';cx.textBaseline='middle';
@@ -1168,13 +1165,12 @@ function startPlay(pi){
           });
         }
         
-        // Time signature — two stacked numbers centered on staff
-        // Top number fills spaces 1-2 (above middle line), bottom fills spaces 3-4
+        // Time signature
         ksX+=lineGap*0.5;
         var tsSize=Math.round(lineGap*1.8);
         cx.fillStyle='#ddd';cx.font='bold '+tsSize+'px Plus Jakarta Sans,sans-serif';cx.textAlign='center';cx.textBaseline='middle';
-        cx.fillText(song.timeSigTop+'',ksX,staffTop+lineGap*1); // center of top half
-        cx.fillText(song.timeSigBot+'',ksX,staffTop+lineGap*3); // center of bottom half
+        cx.fillText(song.timeSigTop+'',ksX,staffTop+lineGap*1);
+        cx.fillText(song.timeSigBot+'',ksX,staffTop+lineGap*3);
       }
       
       // ── BAR LINES ──
