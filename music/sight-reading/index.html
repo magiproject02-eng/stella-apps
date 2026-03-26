@@ -1300,16 +1300,19 @@ function startPlay(pi){
     }catch(e){console.warn('Staff render error:',e.message)}
 
     // ─── PITCH MODE AUTO-HIT ───
-    // Suppress detection briefly after app plays audio (metronome/backing) to prevent self-detection
-    if(gameMode==='pitch'&&currentDetectedPitch>0&&performance.now()-lastAudioOutTime>200){
-      const nextNote=gNotes.find(n=>!n.hit&&!n.missed);
-      if(nextNote&&nextNote.pitch){
-        const expectedFreq=pitchNameToFreq(nextNote.pitch);
-        if(expectedFreq>0){
-          const semitones=Math.abs(12*Math.log2(currentDetectedPitch/expectedFreq));
-          const timeDist=Math.abs(nextNote.time-el);
-          if(semitones<2&&timeDist<GW){onHit(true)}
-        }
+    if(gameMode==='pitch'&&currentDetectedPitch>0){
+      // Find any upcoming or recent note within a wide window (singing is less precise than tapping)
+      var pitchHitWindow=500; // 500ms window for singing (vs 220ms for tap)
+      for(var ni2=0;ni2<gNotes.length;ni2++){
+        var pn=gNotes[ni2];
+        if(pn.hit||pn.missed)continue;
+        if(!pn.pitch)continue;
+        var pTimeDist=Math.abs(pn.time-el);
+        if(pTimeDist>pitchHitWindow)continue;
+        var pExpFreq=pitchNameToFreq(pn.pitch);
+        if(pExpFreq<=0)continue;
+        var pSemitones=Math.abs(12*Math.log2(currentDetectedPitch/pExpFreq));
+        if(pSemitones<2.5){onHit(true);break;} // 2.5 semitone tolerance
       }
     }
 
@@ -1346,7 +1349,7 @@ function startPlay(pi){
     // Main notes on belt
     let allD=true;const pc=PC[selPart];
     for(const n of gNotes){const nt=n.time-el,x=hx+nt*px,nw=Math.max(12,n.durMs*px);
-      if(!n.hit&&!n.missed){allD=false;if(nt<-MW){n.missed=true;gMiss++;gCombo=0;gScore=Math.max(0,gScore-100);showJ('MISS','#e63946');continue}}
+      if(!n.hit&&!n.missed){allD=false;var missW=gameMode==='pitch'?800:MW;if(nt<-missW){n.missed=true;gMiss++;gCombo=0;gScore=Math.max(0,gScore-100);showJ('MISS','#e63946');continue}}
       if(x+nw<-50||x>w+50)continue;
       if(n.hit){if(n.ha>0){const r=14+(1-n.ha)*15;cx.beginPath();cx.arc(hx,by,r,0,Math.PI*2);cx.strokeStyle=`rgba(42,157,143,${n.ha})`;cx.lineWidth=2;cx.stroke();n.ha-=0.03}continue}
       if(n.missed)cx.globalAlpha=0.25;
@@ -1441,9 +1444,11 @@ function onHit(fromPitch){if(!gameOn||gamePaused)return;
     }
   }
 
-  if(cd<=PW&&pitchAccurate){gScore+=300+gCombo*10;gCombo++;gPerf++;showJ('PERFECT ✨'+(pitchMsg?' '+pitchMsg:''),'#f4a261')}
-  else if(cd<=GW&&pitchAccurate){gScore+=100+gCombo*5;gCombo++;gGood++;showJ('GOOD'+(pitchMsg?' '+pitchMsg:''),'#2a9d8f')}
-  else if(cd<=GW&&!pitchAccurate){gScore=Math.max(0,gScore-30);gCombo=0;gWrong++;showJ('WRONG PITCH '+pitchMsg,'#e63946')}
+  var hitPW=gameMode==='pitch'?250:PW; // wider perfect window for singing
+  var hitGW=gameMode==='pitch'?500:GW; // wider good window for singing
+  if(cd<=hitPW&&pitchAccurate){gScore+=300+gCombo*10;gCombo++;gPerf++;showJ('PERFECT ✨'+(pitchMsg?' '+pitchMsg:''),'#f4a261')}
+  else if(cd<=hitGW&&pitchAccurate){gScore+=100+gCombo*5;gCombo++;gGood++;showJ('GOOD'+(pitchMsg?' '+pitchMsg:''),'#2a9d8f')}
+  else if(cd<=hitGW&&!pitchAccurate){gScore=Math.max(0,gScore-30);gCombo=0;gWrong++;showJ('WRONG PITCH '+pitchMsg,'#e63946')}
   else{gCombo=0;showJ('BAD','#6b6b80')} // late hit: no points, no penalty
   gMaxCombo=Math.max(gMaxCombo,gCombo)}
 
@@ -1819,9 +1824,8 @@ function detectPitchLoop(){
   const sr=pitchAnalyser._ctx?pitchAnalyser._ctx.sampleRate:44100;
   const freq=autoCorrelate(pitchBuf,sr);
   if(freq>0){
-    // Ignore frequencies near app's own sounds (tick=800Hz, hit=60-120Hz)
-    if(freq>700&&freq<900){requestAnimationFrame(detectPitchLoop);return}
-    if(freq<80){requestAnimationFrame(detectPitchLoop);return}
+    // Ignore very low frequencies (rumble, not singing)
+    if(freq<70){requestAnimationFrame(detectPitchLoop);return}
     currentDetectedPitch=freq;
     const info=freqToNote(freq);
     currentDetectedNote=info.name;
