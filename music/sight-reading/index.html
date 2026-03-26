@@ -521,9 +521,10 @@ function unlockAudio(){
 // Auto-unlock on ANY first touch/click
 document.addEventListener('touchstart',function(){if(!audioUnlocked)unlockAudio()},{once:true});
 document.addEventListener('click',function(){if(!audioUnlocked)unlockAudio()},{once:true});
-function playTick(){ia();const o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.value=800;g.gain.setValueAtTime(0.15,ac.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.04);o.connect(g).connect(ac.destination);o.start();o.stop(ac.currentTime+0.04)}
+var lastAudioOutTime=0; // suppress pitch detection briefly after app plays audio
+function playTick(){ia();lastAudioOutTime=performance.now();const o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.value=800;g.gain.setValueAtTime(0.15,ac.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.04);o.connect(g).connect(ac.destination);o.start();o.stop(ac.currentTime+0.04)}
 function playDrum(pi){ia();const f=100+pi*40,o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.setValueAtTime(f,ac.currentTime);o.frequency.exponentialRampToValueAtTime(f*0.5,ac.currentTime+0.12);g.gain.setValueAtTime(0.6,ac.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.15);o.connect(g).connect(ac.destination);o.start();o.stop(ac.currentTime+0.15)}
-function playHit(){ia();const o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.setValueAtTime(120,ac.currentTime);o.frequency.exponentialRampToValueAtTime(60,ac.currentTime+0.15);g.gain.setValueAtTime(0.8,ac.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.2);o.connect(g).connect(ac.destination);o.start();o.stop(ac.currentTime+0.2)}
+function playHit(){ia();lastAudioOutTime=performance.now();const o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.setValueAtTime(120,ac.currentTime);o.frequency.exponentialRampToValueAtTime(60,ac.currentTime+0.15);g.gain.setValueAtTime(0.8,ac.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.2);o.connect(g).connect(ac.destination);o.start();o.stop(ac.currentTime+0.2)}
 
 // ════════════════════════════════════
 // BEAT HELPERS (duration-aware)
@@ -1800,6 +1801,10 @@ function startPitchDetection(){
 
 function detectPitchLoop(){
   if(gameMode!=='pitch'||!pitchAnalyser){currentDetectedPitch=0;currentDetectedNote='';return}
+  // Suppress detection briefly after app plays audio (prevents mic picking up its own output)
+  if(performance.now()-lastAudioOutTime<150){
+    requestAnimationFrame(detectPitchLoop);return;
+  }
   pitchAnalyser.getFloatTimeDomainData(pitchBuf);
   const sr=pitchAnalyser._ctx?pitchAnalyser._ctx.sampleRate:44100;
   const freq=autoCorrelate(pitchBuf,sr);
@@ -1820,6 +1825,7 @@ function detectPitchLoop(){
 // Play a pitched note using raw Web Audio (no Tone.js needed)
 function playNote(pitchName,durationMs){
   ia();if(!pitchName)return;
+  lastAudioOutTime=performance.now();
   var freq=pitchNameToFreq(pitchName);
   if(freq<=0)return;
   var dur=Math.max(0.05,durationMs/1000);
