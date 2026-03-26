@@ -1098,7 +1098,7 @@ function startPlay(pi){
 
     // Layout: staff above, belt below
     const hasPitchData=gNotes.length>0&&gNotes[0].pitch;
-    const staffH=showScore&&hasPitchData?Math.min(100,h*0.22):0;
+    const staffH=showScore&&hasPitchData?Math.max(110,Math.min(140,h*0.28)):0;
     const by=staffH+(h-staffH)*0.38;
     const bh=70;
 
@@ -1143,31 +1143,31 @@ function startPlay(pi){
         clefX=8-el*px; // scroll left from position 8 at music speed
       }
       if(clefX>-80&&clefX<w+40){
-        cx.fillStyle='#888';cx.font=(Math.round(lineGap*2.8))+'px serif';cx.textAlign='left';cx.textBaseline='middle';
+        cx.fillStyle='#ccc';cx.font=(Math.round(lineGap*3.5))+'px serif';cx.textAlign='left';cx.textBaseline='middle';
         cx.fillText('\u{1D11E}',clefX,staffTop+2*lineGap);
         
         var keySharps={'G':['F'],'D':['F','C'],'A':['F','C','G'],'E':['F','C','G','D']};
         var keyFlats={'F':['B'],'Bb':['B','E'],'Eb':['B','E','A'],'Ab':['B','E','A','D']};
         var ks=song.keySig||'C';
-        var ksX2=clefX+lineGap*2.2;
+        var ksX2=clefX+lineGap*2.8;
         if(keySharps[ks]){
-          cx.fillStyle='#aaa';cx.font='bold '+(Math.round(lineGap*0.8))+'px serif';cx.textBaseline='middle';
+          cx.fillStyle='#ccc';cx.font='bold '+(Math.round(lineGap*1.1))+'px serif';cx.textBaseline='middle';
           keySharps[ks].forEach(function(n){
             cx.fillText('\u266F',ksX2,pitchToY(n+'5'));
-            ksX2+=lineGap*0.55;
+            ksX2+=lineGap*0.65;
           });
         }
         if(keyFlats[ks]){
-          cx.fillStyle='#aaa';cx.font='bold '+(Math.round(lineGap*0.8))+'px serif';cx.textBaseline='middle';
+          cx.fillStyle='#ccc';cx.font='bold '+(Math.round(lineGap*1.1))+'px serif';cx.textBaseline='middle';
           keyFlats[ks].forEach(function(n){
             cx.fillText('\u266D',ksX2,pitchToY(n+'4'));
-            ksX2+=lineGap*0.55;
+            ksX2+=lineGap*0.65;
           });
         }
-        ksX2+=lineGap*0.2;
-        cx.fillStyle='#aaa';cx.font='bold '+(Math.round(lineGap*1.1))+'px Plus Jakarta Sans,sans-serif';cx.textAlign='center';cx.textBaseline='middle';
-        cx.fillText(song.timeSigTop+'',ksX2,staffTop+lineGap*0.8);
-        cx.fillText(song.timeSigBot+'',ksX2,staffTop+lineGap*3.2);
+        ksX2+=lineGap*0.3;
+        cx.fillStyle='#ccc';cx.font='bold '+(Math.round(lineGap*1.5))+'px Plus Jakarta Sans,sans-serif';cx.textAlign='center';cx.textBaseline='middle';
+        cx.fillText(song.timeSigTop+'',ksX2,staffTop+lineGap*0.9);
+        cx.fillText(song.timeSigBot+'',ksX2,staffTop+lineGap*3.1);
       }
       
       // ── BAR LINES (same color as staff, clear gap before beat 1 notes) ──
@@ -2341,7 +2341,9 @@ function stopSightRead(){
 
 function revealNotes(){
   if(!srNotes.length)return;
-  $('srNoteNames').textContent=srNotes.map(n=>n.pitch).join(' → ');
+  var el=$('srNoteNames');
+  if(el.textContent){el.textContent='';$('srRevealBtn').textContent='👁 Reveal 顯示';}
+  else{el.textContent=srNotes.map(n=>n.pitch).join(' → ');$('srRevealBtn').textContent='🙈 Hide 隱藏';}
 }
 
 function loadSightReadToPlay(){
