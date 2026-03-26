@@ -1337,8 +1337,9 @@ function startPlay(pi){
           gMaxCombo=Math.max(gMaxCombo,gCombo);
           break;
         }else{
-          // Voice detected but wrong pitch — mark that we heard singing near this note
-          pn.heardVoice=true;
+          // Voice detected but wrong pitch — only mark if this note's time has passed
+          // (don't leak singing of current note into upcoming notes)
+          if(el>pn.time) pn.heardVoice=true;
         }
       }
     }
