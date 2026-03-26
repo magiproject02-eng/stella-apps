@@ -2165,7 +2165,31 @@ function renderSightReadScore(key,numBars){
   const startX=10;
   const firstW=firstExtra+staveWidth;
   const w=startX+firstW+(numBars-1)*staveWidth+20;
-  const h=150;
+  
+  // Calculate height dynamically based on note range
+  // Treble clef: bottom line = E4, top line = F5
+  // Each ledger line below E4 or above F5 needs extra space
+  function noteToStaffPos(p){
+    if(!p)return 5;
+    var m=p.match(/^([A-G][#b]?)(\d)$/);if(!m)return 5;
+    var n=m[1][0],o=parseInt(m[2]);
+    var pos={'C':0,'D':1,'E':2,'F':3,'G':4,'A':5,'B':6};
+    return(pos[n]||0)+(o-4)*7; // E4=2, C4=0, A3=-2, F5=10
+  }
+  var lowestPos=99,highestPos=-99;
+  srNotes.forEach(function(n){
+    var p=noteToStaffPos(n.pitch);
+    if(p<lowestPos)lowestPos=p;
+    if(p>highestPos)highestPos=p;
+  });
+  // Extra space needed below (E4=pos2 is bottom line)
+  var extraBelow=Math.max(0,(2-lowestPos))*8; // 8px per ledger line step
+  var extraAbove=Math.max(0,(highestPos-10))*8;
+  var staveY=20+extraAbove;
+  var h=Math.max(150,100+extraAbove+extraBelow+40);
+  
+  // Update container min-height
+  container.style.minHeight=h+'px';
   
   const renderer=new VF.Renderer(container,VF.Renderer.Backends.SVG);
   renderer.resize(w,h);
@@ -2176,7 +2200,7 @@ function renderSightReadScore(key,numBars){
   for(let bar=0;bar<numBars;bar++){
     const x=bar===0?startX:startX+firstW+(bar-1)*staveWidth;
     const thisW=bar===0?firstW:staveWidth;
-    const stave=new VF.Stave(x,15,thisW);
+    const stave=new VF.Stave(x,staveY,thisW);
     if(bar===0){
       stave.addClef('treble');
       if(key&&key!=='C')stave.addKeySignature(key);
