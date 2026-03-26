@@ -1377,7 +1377,7 @@ function startPlay(pi){
     // Main notes on belt
     let allD=true;const pc=PC[selPart];
     for(const n of gNotes){const nt=n.time-el,x=hx+nt*px,nw=Math.max(12,n.durMs*px);
-      if(!n.hit&&!n.missed){allD=false;var missW=gameMode==='pitch'?800:MW;if(nt<-missW){
+      if(!n.hit&&!n.missed){allD=false;var missW=gameMode==='pitch'?500:MW;if(nt<-missW){
         n.missed=true;gCombo=0;
         if(n.heardVoice){
           // Student sang but wrong pitch
