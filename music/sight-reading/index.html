@@ -328,8 +328,9 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
     </div>
     </div>
     <div id="micSetup" style="display:none;margin-bottom:0.8rem;text-align:center">
+      <div id="micReminder" style="font-size:0.8rem;padding:0.6rem 0.8rem;border-radius:10px;margin-bottom:0.6rem;background:#e6394622;color:var(--red);border:1px solid #e6394644;font-weight:700">⚠️ 請先允許使用麥克風 Please allow microphone first!</div>
       <div id="micStatusPlay" style="font-size:0.7rem;padding:0.3rem 0.6rem;border-radius:6px;margin-bottom:0.5rem;background:#f4a26122;color:var(--gold);border:1px solid #f4a26144">🎤 Mic not active yet</div>
-      <button class="hbtn" onclick="initMicManual()" style="background:var(--green);border-color:var(--green);color:#fff">Allow Microphone 🎤</button>
+      <button class="hbtn" onclick="initMicManual()" style="background:var(--green);border-color:var(--green);color:#fff;font-size:0.85rem;padding:0.5rem 1.2rem">Allow Microphone 🎤 允許麥克風</button>
       <div style="margin-top:0.4rem;display:flex;align-items:center;gap:0.5rem;justify-content:center">
         <span style="font-size:0.65rem;color:var(--dim)">Sensitivity</span>
         <input type="range" id="sensSlider" min="1" max="20" value="8" style="width:100px;accent-color:var(--red)">
@@ -985,6 +986,7 @@ function setPlayMode(m,el){
   document.querySelectorAll('[data-pmode]').forEach(b=>b.classList.toggle('active',b.dataset.pmode===m));
   $('micSetup').style.display=(m==='clap'||m==='pitch')?'block':'none';
   $('pitchInfo').style.display=m==='pitch'?'block':'none';
+  if($('micReminder'))$('micReminder').style.display=micOn?'none':'block';
 }
 function setInputMode(m){inputMode=m} // kept for compatibility
 function setGameMode(m){gameMode=m} // kept for compatibility
@@ -998,10 +1000,11 @@ function setScoreView(m,el){
 }
 function initMicManual(){initMic().then(()=>{
   if(micOn){
-    $('micStatusPlay').textContent='✅ Mic active — try clapping!';
+    $('micStatusPlay').textContent=gameMode==='pitch'?'✅ Mic ready — sing to play!':'✅ Mic active — try clapping!';
     $('micStatusPlay').style.background='#2a9d8f22';
     $('micStatusPlay').style.color='var(--green)';
     $('micStatusPlay').style.borderColor='#2a9d8f44';
+    if($('micReminder'))$('micReminder').style.display='none';
     // Auto-start pitch detection if in pitch mode
     if(gameMode==='pitch')startPitchDetection();
   }
@@ -2376,7 +2379,6 @@ function revealNotes(){
 
 function loadSightReadToPlay(){
   if(!srNotes.length)return;
-  unlockAudio();
   var key=srMeta?srMeta.key:'C';
   var numBars=srMeta?srMeta.bars:4;
   const songData={
@@ -2388,20 +2390,11 @@ function loadSightReadToPlay(){
   // Force Sing mode for sight-reading
   inputMode='clap';gameMode='pitch';
   document.querySelectorAll('[data-pmode]').forEach(function(b){b.classList.toggle('active',b.dataset.pmode==='pitch')});
-  // Auto-request mic permission (needs user gesture — this button click counts)
-  if(!micOn){
-    initMic().then(function(){
-      if(micOn){
-        if($('micStatusPlay')){$('micStatusPlay').textContent='✅ Mic ready';$('micStatusPlay').style.background='#2a9d8f22';$('micStatusPlay').style.color='var(--green)';$('micStatusPlay').style.borderColor='#2a9d8f44';}
-      }
-      switchTab('play');
-    }).catch(function(){
-      // Mic denied — still enter play mode, show warning
-      switchTab('play');
-    });
-  }else{
-    switchTab('play');
-  }
+  if($('micSetup'))$('micSetup').style.display='block';
+  if($('pitchInfo'))$('pitchInfo').style.display='block';
+  // Show/hide reminder based on mic state
+  if($('micReminder'))$('micReminder').style.display=micOn?'none':'block';
+  switchTab('play');
 }
 
 function saveSightRead(){
