@@ -1760,9 +1760,10 @@ async function loadLibrary(){
     const data=await resp.json();
     const list=$('songList');
     list.innerHTML='';
-    data.songs.forEach(s=>{
+    const hidden=JSON.parse(localStorage.getItem('sr_hidden')||'[]');
+    data.songs.filter(s=>!hidden.includes(s.id)).forEach(s=>{
       const card=document.createElement('div');
-      card.className='song-card';
+      card.className='song-card';card.id='card-'+s.id;
       const partsHTML=s.parts.map((p,i)=>`<span class="sc-part" style="background:${PC[i%PC.length]}33;color:${PC[i%PC.length]}">${p}</span>`).join('');
       card.innerHTML=`<div class="sc-title">${s.title}</div>
         <div class="sc-meta"><span>♩ ${s.bpm}</span><span>${s.timeSig}</span><span>${s.bars} bars</span></div>
@@ -1770,6 +1771,7 @@ async function loadLibrary(){
         <div class="sc-actions">
           <button class="sc-btn" onclick="event.stopPropagation();loadSongFile('${s.id}','editor')">✏️ Edit</button>
           <button class="sc-btn play-btn" onclick="event.stopPropagation();loadSongFile('${s.id}','play')">🎮 Play</button>
+          <button class="sc-btn" onclick="event.stopPropagation();deleteSong('${s.id}')" style="background:#e6394622;color:var(--red);border-color:#e6394644">🗑</button>
         </div>`;
       list.appendChild(card);
     });
@@ -1819,6 +1821,15 @@ function deleteSavedPhrase(idx){
   localStorage.setItem('sr_saved_list',JSON.stringify(list));
   var card=$('srcard-'+idx);if(card)card.remove();
   toast('Phrase deleted');
+}
+
+function deleteSong(id){
+  if(!confirm('Delete this song?'))return;
+  var hidden=JSON.parse(localStorage.getItem('sr_hidden')||'[]');
+  if(!hidden.includes(id))hidden.push(id);
+  localStorage.setItem('sr_hidden',JSON.stringify(hidden));
+  var card=$('card-'+id);if(card)card.remove();
+  toast('Song removed');
 }
 
 async function loadSongFile(id,mode){
