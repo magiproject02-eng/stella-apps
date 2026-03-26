@@ -1217,7 +1217,7 @@ function startPlay(pi){
         const x=hx+(n.time-el)*px;
         const nw=Math.max(6,n.durMs*px);
         if(x+nw<-50||x>w+50)continue;
-        visNotes.push({x,nw,y:pitchToY(n.pitch),nt:n.time-el,dur:n.dur,pitch:n.pitch,hit:n.hit,missed:n.missed});
+        visNotes.push({x,nw,y:pitchToY(n.pitch),nt:n.time-el,dur:n.dur,pitch:n.pitch,hit:n.hit,missed:n.missed,heardVoice:n.heardVoice});
       }
       
       // Note radius scales with staff — bigger noteheads
@@ -1240,7 +1240,7 @@ function startPlay(pi){
         var passed=vn.nt<-100;
         var current=Math.abs(vn.nt)<300;
         cx.globalAlpha=passed?0.35:1;
-        var col=current?'#e9c400':vn.hit?'#2a9d8f':'#fff';
+        var col=current?'#e9c400':vn.hit?'#2a9d8f':vn.missed?(vn.heardVoice?'#ff6b6b':'#555'):'#fff';
         
         // Notehead — slightly oval (wider than tall, like real notation)
         cx.fillStyle=col;
@@ -1329,13 +1329,16 @@ function startPlay(pi){
         if(pExpFreq<=0)continue;
         var pSemitones=Math.abs(12*Math.log2(currentDetectedPitch/pExpFreq));
         if(pSemitones<1.0){
-          // Within 1 semitone = same note (allows for natural vocal vibrato)
+          // Within 1 semitone = correct note
           pn.hit=true;pn.ha=1;dFlash=1;cFlash=1;
           var pitchMsg2=pSemitones<=0.3?'🎯':'~';
           if(pTimeDist<=250){gScore+=300+gCombo*10;gCombo++;gPerf++;showJ('PERFECT ✨ '+pitchMsg2,'#f4a261')}
           else{gScore+=100+gCombo*5;gCombo++;gGood++;showJ('GOOD '+pitchMsg2,'#2a9d8f')}
           gMaxCombo=Math.max(gMaxCombo,gCombo);
           break;
+        }else{
+          // Voice detected but wrong pitch — mark that we heard singing near this note
+          pn.heardVoice=true;
         }
       }
     }
@@ -1373,7 +1376,16 @@ function startPlay(pi){
     // Main notes on belt
     let allD=true;const pc=PC[selPart];
     for(const n of gNotes){const nt=n.time-el,x=hx+nt*px,nw=Math.max(12,n.durMs*px);
-      if(!n.hit&&!n.missed){allD=false;var missW=gameMode==='pitch'?800:MW;if(nt<-missW){n.missed=true;gMiss++;gCombo=0;gScore=Math.max(0,gScore-100);showJ('MISS','#e63946');continue}}
+      if(!n.hit&&!n.missed){allD=false;var missW=gameMode==='pitch'?800:MW;if(nt<-missW){
+        n.missed=true;gCombo=0;
+        if(n.heardVoice){
+          // Student sang but wrong pitch
+          gWrong++;gScore=Math.max(0,gScore-50);showJ('WRONG ✗','#ff6b6b');
+        }else{
+          // Student didn't sing (silence)
+          gMiss++;gScore=Math.max(0,gScore-100);showJ('MISS','#e63946');
+        }
+        continue}}
       if(x+nw<-50||x>w+50)continue;
       if(n.hit){
         // Show hit animation ring
@@ -1387,12 +1399,27 @@ function startPlay(pi){
           cx.globalAlpha=1;
         }
         continue}
-      if(n.missed)cx.globalAlpha=0.25;
+      if(n.missed){
+        if(n.heardVoice){
+          // WRONG — sang but wrong pitch: show red X
+          cx.globalAlpha=0.5;
+          cx.fillStyle='#ff6b6b';cx.beginPath();cx.arc(x,by,10,0,Math.PI*2);cx.fill();
+          cx.fillStyle='#fff';cx.font="bold 9px 'Plus Jakarta Sans'";cx.textAlign='center';cx.textBaseline='middle';
+          cx.fillText('✗',x,by);
+          cx.globalAlpha=1;
+        }else{
+          // MISS — stayed silent: faded out
+          cx.globalAlpha=0.15;
+          cx.strokeStyle='#e63946';cx.lineWidth=2;cx.beginPath();cx.arc(x,by,10,0,Math.PI*2);cx.stroke();
+          cx.globalAlpha=1;
+        }
+        continue}
+      // Upcoming/active notes
       // Duration tail (faded line from onset to end)
-      cx.strokeStyle=pc;cx.globalAlpha=n.missed?0.1:0.3;cx.lineWidth=4;
+      cx.strokeStyle=pc;cx.globalAlpha=0.3;cx.lineWidth=4;
       cx.beginPath();cx.moveTo(x,by);cx.lineTo(x+nw,by);cx.stroke();
       // Onset circle — centered exactly on x (the beat line position)
-      cx.globalAlpha=n.missed?0.25:1;
+      cx.globalAlpha=1;
       const r=12;
       cx.fillStyle=pc;cx.beginPath();cx.arc(x,by,r,0,Math.PI*2);cx.fill();
       cx.strokeStyle='#fff';cx.lineWidth=2;cx.beginPath();cx.arc(x,by,r,0,Math.PI*2);cx.stroke();
