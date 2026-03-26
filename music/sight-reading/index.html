@@ -18,6 +18,7 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
 .mat-icon{font-family:'Material Symbols Outlined';font-size:20px;vertical-align:middle;font-variation-settings:'FILL' 0,'wght' 400}
 
 .header{position:fixed;top:0;left:0;right:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:0 1rem;height:56px;background:var(--bg);border-bottom:1px solid var(--border)}
+.header.playing{border-bottom-color:transparent}
 .header h1{font-family:'Plus Jakarta Sans',sans-serif;font-size:1.1rem;font-weight:800;font-style:italic;color:var(--accent);letter-spacing:-0.03em}
 .header-btns{display:flex;gap:0.4rem;flex-wrap:wrap}
 .hbtn{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:0.7rem;font-weight:600;padding:0.35rem 0.65rem;border-radius:12px;cursor:pointer;transition:all 0.2s;white-space:nowrap}
@@ -91,8 +92,8 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);min
 
 
 /* Play Mode */
-.play-container{display:none;height:calc(100dvh - 128px);position:relative;flex-direction:column;margin-top:56px}
-.score-container{overflow-x:hidden;overflow-y:hidden;background:#12121a;border-bottom:1px solid var(--border);flex-shrink:0;height:140px;position:relative;white-space:nowrap}
+.play-container{display:none;height:calc(100dvh - 128px);position:relative;flex-direction:column;margin-top:56px;border-top:none}
+.score-container{overflow-x:hidden;overflow-y:hidden;background:#12121a;border-bottom:none;flex-shrink:0;height:140px;position:relative;white-space:nowrap}
 .score-container svg{display:block;will-change:transform}
 .score-container .vf-notehead path{fill:#e8e6f0!important;stroke:#e8e6f0!important}
 .score-container .vf-accidental path{fill:#e8e6f0!important;stroke:#e8e6f0!important}
@@ -1001,6 +1002,7 @@ function initMicManual(){initMic().then(()=>{
 
 
 function showPartSelect(){$('resultsScreen').style.display='none';$('partSelect').style.display='flex';$('scoreContainer').style.display='none';
+  document.querySelector('.header').classList.remove('playing');
   const b=$('partButtons');b.innerHTML='';
   song.parts.forEach((p,i)=>{const btn=document.createElement('button');btn.className='pbtn';btn.style.borderColor=PC[i];btn.textContent=`${p.name} (${p.beats.length} notes)`;btn.onclick=()=>startPlay(i);b.appendChild(btn)});
   // Build backing parts checkboxes
@@ -1016,6 +1018,7 @@ function showPartSelect(){$('resultsScreen').style.display='none';$('partSelect'
 
 function startPlay(pi){
   selPart=pi;$('partSelect').style.display='none';$('resultsScreen').style.display='none';resizeCV(cv);
+  document.querySelector('.header').classList.add('playing');
   unlockAudio();
   
   // Init mic for pitch mode — pitch detection starts after mic is ready
@@ -1928,6 +1931,7 @@ async function loadSongFile(id,mode){
 // ════════════════════════════════════
 function switchTab(t){
   document.querySelectorAll('.nav-btn').forEach(el=>el.classList.toggle('active',el.dataset.tab===t));
+  document.querySelector('.header').classList.remove('playing');
   $('libraryPanel').style.display=t==='library'?'':'none';
   $('editorPanel').style.display=t==='editor'?'':'none';
   $('playPanel').style.display=t==='play'?'flex':'none';
