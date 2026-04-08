@@ -1,0 +1,14 @@
+# gitleaks config for stella-apps
+# Inherits the default ruleset and adds an allowlist for the dead
+# HOMR_TOKEN (rotated 2026-04-08, no longer authenticates anything).
+# See /opt/stella-bridge/receipts/2026-04-08-homr-rotation.txt on Magi
+# for the rationale.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Dead HOMR_TOKEN, rotated 2026-04-08"
+regexes = [
+  '''BrFls_IDiVCNi_qWn37dfOalUtJ3P74r12T3u_IYIAk'''
+]
